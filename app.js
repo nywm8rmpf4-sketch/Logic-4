@@ -5,7 +5,7 @@
  */
 'use strict';
 const $=s=>document.querySelector(s), app=$('#app'), toast=$('#toast'), timerEl=$('#timer');
-const VERSION='2.3.0', SAVE_KEY='logic4-save-v1';
+const VERSION='2.3.2', SAVE_KEY='logic4-save-v1';
 let current=null, tick=null, startedAt=0, elapsedBase=0, paused=false;
 const I18N={
 fr:{
@@ -24,7 +24,7 @@ fr:{
  autoCross:'Croix automatiques quand je place une reine',queensLegend:'Touchez une case pour faire vide → X → reine. Faites glisser le doigt sur une ligne ou une colonne pour ajouter des X ; commencez sur un X pour les effacer.',
  patchesLegend:'Choisis un indice, puis touche les cases de sa zone. Tu peux aussi faire glisser le doigt pour peindre plusieurs cases.',zone:'Zone',
  aboutTitle:'À propos de Logic 4',version:'Version',copyright:'Copyright',license:'Licence',proprietary:'Logiciel propriétaire — All rights reserved.',legal:'Toute copie, modification, redistribution et exploitation sans autorisation écrite préalable de Serge Benoliel est interdite.',
- restored:'Partie restaurée',generating:'Génération…',rulesTitle:'Règles',where:'Où regarder',logic:'Logique',solutionShown:'Solution affichée',congrats:'Bravo !',gridIncomplete:'Il reste une erreur ou une case à résoudre.',tangoIncomplete:'La grille ne respecte pas encore toutes les règles.',sudokuIncomplete:'Il reste une erreur ou une case vide.',autoCrossOn:'Croix automatiques activées',autoCrossOff:'Croix automatiques désactivées',queenPlaced:'Une reine a été placée.',cellRevealed:'Une case a été révélée.',digitRevealed:'Un chiffre a été révélé.',patchRevealed:'Une case de la zone a été révélée.',finishedShare:'Terminé',dailyLabel:'Défi quotidien',backtrackFlag:'retour en arrière',hintFlag:'indice utilisé',themeLabel:'Thème',soundsOn:'Sons activés',soundsOff:'Sons désactivés',resetDone:'Grille réinitialisée.',patchAll:'Toutes les cases doivent appartenir à une zone.',patchEach:'Chaque indice doit avoir une zone.',patchOwn:'Chaque zone doit contenir son propre indice.',patchTwo:'Une zone ne peut pas contenir deux indices.',patchConnected:'Chaque zone doit être d’un seul tenant.',patchRect:'Chaque zone doit former un rectangle.',patchSize:'La taille d’une zone ne correspond pas à son indice.',patchShape:'La forme d’une zone ne correspond pas à son indice.',
+ restored:'Partie restaurée',generating:'Génération…',rulesTitle:'Règles',where:'Où regarder',logic:'Logique',solutionShown:'Solution affichée',congrats:'Bravo !',gridIncomplete:'Il reste une erreur ou une case à résoudre.',tangoIncomplete:'La grille ne respecte pas encore toutes les règles.',sudokuIncomplete:'Il reste une erreur ou une case vide.',autoCrossOn:'Croix automatiques activées',autoCrossOff:'Croix automatiques désactivées',queenPlaced:'Une reine a été placée.',cellRevealed:'Une case a été révélée.',digitRevealed:'Un chiffre a été révélé.',patchRevealed:'Une case de la zone a été révélée.',finishedShare:'Terminé',dailyLabel:'Défi quotidien',backtrackFlag:'retour en arrière',hintFlag:'indice utilisé',closeHint:'Fermer',hintMove:'Coup conseillé',hintWhy:'Pourquoi',themeLabel:'Thème',soundsOn:'Sons activés',soundsOff:'Sons désactivés',resetDone:'Grille réinitialisée.',patchAll:'Toutes les cases doivent appartenir à une zone.',patchEach:'Chaque indice doit avoir une zone.',patchOwn:'Chaque zone doit contenir son propre indice.',patchTwo:'Une zone ne peut pas contenir deux indices.',patchConnected:'Chaque zone doit être d’un seul tenant.',patchRect:'Chaque zone doit former un rectangle.',patchSize:'La taille d’une zone ne correspond pas à son indice.',patchShape:'La forme d’une zone ne correspond pas à son indice.',
 },
 en:{
  easy:'Easy',medium:'Medium',hard:'Hard',expert:'Expert',
@@ -42,7 +42,7 @@ en:{
  autoCross:'Auto-mark crosses when I place a queen',queensLegend:'Tap a cell to cycle empty → X → queen. Drag along a row or column to add X marks; start on an X to erase them.',
  patchesLegend:'Choose a clue, then tap the cells in its region. You can also drag to paint several cells.',zone:'Region',
  aboutTitle:'About Logic 4',version:'Version',copyright:'Copyright',license:'License',proprietary:'Proprietary software — All rights reserved.',legal:'Copying, modification, redistribution and exploitation without prior written permission from Serge Benoliel are prohibited.',
- restored:'Game restored',generating:'Generating…',rulesTitle:'Rules',where:'Where to look',logic:'Logic',solutionShown:'Solution shown',congrats:'Well done!',gridIncomplete:'There is still an error or an unresolved cell.',tangoIncomplete:'The grid does not yet satisfy all rules.',sudokuIncomplete:'There is still an error or an empty cell.',autoCrossOn:'Auto-crosses enabled',autoCrossOff:'Auto-crosses disabled',queenPlaced:'A queen was placed.',cellRevealed:'A cell was revealed.',digitRevealed:'A digit was revealed.',patchRevealed:'A region cell was revealed.',finishedShare:'Finished',dailyLabel:'Daily challenge',backtrackFlag:'backtracked',hintFlag:'hint used',themeLabel:'Theme',soundsOn:'Sounds enabled',soundsOff:'Sounds disabled',resetDone:'Grid reset.',patchAll:'Every cell must belong to a region.',patchEach:'Every clue must have a region.',patchOwn:'Each region must contain its own clue.',patchTwo:'A region cannot contain two clues.',patchConnected:'Each region must be connected.',patchRect:'Each region must form a rectangle.',patchSize:'A region size does not match its clue.',patchShape:'A region shape does not match its clue.',
+ restored:'Game restored',generating:'Generating…',rulesTitle:'Rules',where:'Where to look',logic:'Logic',solutionShown:'Solution shown',congrats:'Well done!',gridIncomplete:'There is still an error or an unresolved cell.',tangoIncomplete:'The grid does not yet satisfy all rules.',sudokuIncomplete:'There is still an error or an empty cell.',autoCrossOn:'Auto-crosses enabled',autoCrossOff:'Auto-crosses disabled',queenPlaced:'A queen was placed.',cellRevealed:'A cell was revealed.',digitRevealed:'A digit was revealed.',patchRevealed:'A region cell was revealed.',finishedShare:'Finished',dailyLabel:'Daily challenge',backtrackFlag:'backtracked',hintFlag:'hint used',closeHint:'Close',hintMove:'Suggested move',hintWhy:'Why',themeLabel:'Theme',soundsOn:'Sounds enabled',soundsOff:'Sounds disabled',resetDone:'Grid reset.',patchAll:'Every cell must belong to a region.',patchEach:'Every clue must have a region.',patchOwn:'Each region must contain its own clue.',patchTwo:'A region cannot contain two clues.',patchConnected:'Each region must be connected.',patchRect:'Each region must form a rectangle.',patchSize:'A region size does not match its clue.',patchShape:'A region shape does not match its clue.',
 }};
 let DIFF={};
 function lang(){return prefs().lang==='en'?'en':'fr'}
@@ -150,11 +150,20 @@ function queenIllegalCells(){
   for(let i=0;i<q.length;i++)for(let j=i+1;j<q.length;j++){let [r,c]=q[i],[r2,c2]=q[j];if(r===r2||c===c2||current.reg[r][c]===current.reg[r2][c2]||(Math.abs(r-r2)<=1&&Math.abs(c-c2)<=1)){bad.add(keyCell(r,c));bad.add(keyCell(r2,c2))}}
   return bad
 }
-function tangoIllegalCells(){
-  let bad=new Set(),n=6,s=current.state;
-  for(let r=0;r<n;r++){for(let v=0;v<=1;v++){let cells=[];for(let c=0;c<n;c++)if(s[r][c]===v)cells.push([r,c]);if(cells.length>3)cells.forEach(x=>bad.add(keyCell(...x)))}for(let c=0;c<n-2;c++)if(s[r][c]!==-1&&s[r][c]===s[r][c+1]&&s[r][c]===s[r][c+2])for(let k=0;k<3;k++)bad.add(keyCell(r,c+k))}
-  for(let c=0;c<n;c++){for(let v=0;v<=1;v++){let cells=[];for(let r=0;r<n;r++)if(s[r][c]===v)cells.push([r,c]);if(cells.length>3)cells.forEach(x=>bad.add(keyCell(...x)))}for(let r=0;r<n-2;r++)if(s[r][c]!==-1&&s[r][c]===s[r+1][c]&&s[r][c]===s[r+2][c])for(let k=0;k<3;k++)bad.add(keyCell(r+k,c))}
-  for(let [r,c,d,rel] of current.edges){let r2=d==='r'?r:r+1,c2=d==='r'?c+1:c,a=s[r][c],b=s[r2][c2];if(a!==-1&&b!==-1&&((rel==='='&&a!==b)||(rel==='×'&&a===b))){bad.add(keyCell(r,c));bad.add(keyCell(r2,c2))}}
+function tangoIllegalCells(ignoreKey=null){
+  let bad=new Set(),n=6,s=current.state,hasIgnore=cells=>ignoreKey&&cells.some(x=>keyCell(...x)===ignoreKey);
+  for(let r=0;r<n;r++){
+    for(let v=0;v<=1;v++){let cells=[];for(let c=0;c<n;c++)if(s[r][c]===v)cells.push([r,c]);if(cells.length>3&&!hasIgnore(cells))cells.forEach(x=>bad.add(keyCell(...x)))}
+    for(let c=0;c<n-2;c++)if(s[r][c]!==-1&&s[r][c]===s[r][c+1]&&s[r][c]===s[r][c+2]){let cells=[[r,c],[r,c+1],[r,c+2]];if(!hasIgnore(cells))cells.forEach(x=>bad.add(keyCell(...x)))}
+  }
+  for(let c=0;c<n;c++){
+    for(let v=0;v<=1;v++){let cells=[];for(let r=0;r<n;r++)if(s[r][c]===v)cells.push([r,c]);if(cells.length>3&&!hasIgnore(cells))cells.forEach(x=>bad.add(keyCell(...x)))}
+    for(let r=0;r<n-2;r++)if(s[r][c]!==-1&&s[r][c]===s[r+1][c]&&s[r][c]===s[r+2][c]){let cells=[[r,c],[r+1,c],[r+2,c]];if(!hasIgnore(cells))cells.forEach(x=>bad.add(keyCell(...x)))}
+  }
+  for(let [r,c,d,rel] of current.edges){
+    let r2=d==='r'?r:r+1,c2=d==='r'?c+1:c,a=s[r][c],b=s[r2][c2],cells=[[r,c],[r2,c2]];
+    if(a!==-1&&b!==-1&&!hasIgnore(cells)&&((rel==='='&&a!==b)||(rel==='×'&&a===b)))cells.forEach(x=>bad.add(keyCell(...x)))
+  }
   return bad
 }
 function sudokuIllegalCells(){
@@ -230,6 +239,13 @@ function setBusy(on,label=null){label=label||tr('generating');document.body.clas
 function pressFeedback(el){if(!el)return;el.addEventListener('pointerdown',()=>el.classList.add('pressed'),{passive:true});for(let ev of ['pointerup','pointercancel','pointerleave'])el.addEventListener(ev,()=>el.classList.remove('pressed'),{passive:true})}
 
 function showToast(t){toast.textContent=t;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),1400)}
+
+function closeHintNotice(){let n=$('#hintNotice');if(n)n.remove()}
+function showHintNotice(text){
+  closeHintNotice();
+  document.body.insertAdjacentHTML('beforeend',`<div class="hint-notice" id="hintNotice" role="status"><div class="hint-notice-text">${text}</div><button class="btn primary hint-close" id="hintClose">${tr('closeHint')}</button></div>`);
+  $('#hintClose').onclick=closeHintNotice
+}
 function timerSeconds(){return elapsedBase+(!paused&&startedAt?Math.floor((Date.now()-startedAt)/1000):0)}
 function renderTimer(){timerEl.textContent=fmt(timerSeconds())}
 function startTimer(reset=true,initial=0,isPaused=false){stopTimer(false);elapsedBase=reset?initial:timerSeconds();paused=isPaused;startedAt=paused?0:Date.now();renderTimer();if(!paused)tick=setInterval(()=>{renderTimer();if(current)saveCurrent()},1000)}
@@ -274,6 +290,7 @@ function resetCurrent(){
   let hadProgress=current.game==='queens'?current.state.flat().some(v=>v!==0):current.game==='tango'?current.state.some((row,r)=>row.some((v,c)=>!current.givens.has(r*6+c)&&v!==-1)):current.game==='sudoku'?current.state.some((row,r)=>row.some((v,c)=>current.empty.has(r*6+c)&&v!==0)):current.game==='patches'?current.paint.flat().some(v=>v!==null):false;
   if(hadProgress)markBacktrack();
   $('#victory')?.remove();
+  closeHintNotice();
   clearHintFocus();
   current.hintFlow=null;
   if(current.game==='queens'){
@@ -281,7 +298,7 @@ function resetCurrent(){
     current.state=Array.from({length:current.n},()=>Array(current.n).fill(0));
     drawQ();
   }else if(current.game==='tango'){
-    current.state=Array.from({length:6},()=>Array(6).fill(-1));
+    current.tangoPendingCell=null;current.state=Array.from({length:6},()=>Array(6).fill(-1));
     for(let i of current.givens)current.state[Math.floor(i/6)][i%6]=current.sol[Math.floor(i/6)][i%6];
     drawT();
   }else if(current.game==='sudoku'){
@@ -300,19 +317,48 @@ function resetCurrent(){
 function launch(game,diff){if(game!=='queens'&&diff==='expert')diff='hard';closePreviousAttempt();clearSaved();stopTimer();paused=false;setBusy(true);current={game,diff};requestAnimationFrame(()=>{try{if(game==='queens')queens(diff);if(game==='tango')tango(diff);if(game==='sudoku')sudoku(diff);if(game==='patches')patches(diff);statsStart(current);startTimer(true,0,false);saveCurrent();haptic(8)}finally{setBusy(false)}})}
 function resumeSaved(){let s=getSaved();if(!s)return home();stopTimer();let c=s.current;c.givens=c.givens?new Set(c.givens):c.givens;c.empty=c.empty?new Set(c.empty):c.empty;current=c;if(c.game==='queens')renderQueens(c);if(c.game==='tango')renderTango(c);if(c.game==='sudoku')renderSudoku(c);if(c.game==='patches')renderPatches(c);startTimer(true,s.elapsed||0,!!s.paused);updatePauseButton();showToast(tr('restored'))}
 
+
+function sudokuCandidatesAt(r,c){
+  let s=new Set([1,2,3,4,5,6]);for(let i=0;i<6;i++){s.delete(current.state[r][i]);s.delete(current.state[i][c])}
+  let br=Math.floor(r/2)*2,bc=Math.floor(c/3)*3;for(let rr=br;rr<br+2;rr++)for(let cc=bc;cc<bc+3;cc++)s.delete(current.state[rr][cc]);return [...s]
+}
+function tangoReason(r,c,v){
+  let sym=v===1?(lang()==='fr'?'soleil ☀':'sun ☀'):(lang()==='fr'?'lune ☾':'moon ☾'),opp=1-v,s=current.state,reasons=[];
+  let rowOpp=s[r].filter(x=>x===opp).length,rowSame=s[r].filter(x=>x===v).length,colOpp=0,colSame=0;for(let rr=0;rr<6;rr++){if(s[rr][c]===opp)colOpp++;if(s[rr][c]===v)colSame++}
+  if(rowOpp===3)reasons.push(lang()==='fr'?`la ligne contient déjà 3 ${opp===1?'soleils':'lunes'}`:`the row already contains 3 ${opp===1?'suns':'moons'}`);
+  if(colOpp===3)reasons.push(lang()==='fr'?`la colonne contient déjà 3 ${opp===1?'soleils':'lunes'}`:`the column already contains 3 ${opp===1?'suns':'moons'}`);
+  for(let [rr,cc,d,rel] of current.edges){let r2=d==='r'?rr:rr+1,c2=d==='r'?cc+1:cc;if(!((rr===r&&cc===c)||(r2===r&&c2===c)))continue;let or=rr===r&&cc===c?r2:rr,oc=rr===r&&cc===c?c2:cc,ov=s[or][oc];if(ov===-1)continue;let forced=rel==='='?ov:1-ov;if(forced===v)reasons.push(lang()==='fr'?`la relation ${rel} avec la case voisine impose ce symbole`:`the ${rel} relation with the adjacent cell forces this symbol`)}
+  let triples=[[[r,c-2],[r,c-1]],[[r,c-1],[r,c+1]],[[r,c+1],[r,c+2]],[[r-2,c],[r-1,c]],[[r-1,c],[r+1,c]],[[r+1,c],[r+2,c]]];
+  for(let pair of triples){let vals=pair.map(([rr,cc])=>rr>=0&&rr<6&&cc>=0&&cc<6?s[rr][cc]:-9);if(vals[0]===opp&&vals[1]===opp){reasons.push(lang()==='fr'?`deux ${opp===1?'soleils':'lunes'} voisins interdisent un troisième symbole identique`:`two adjacent ${opp===1?'suns':'moons'} prevent a third identical symbol`);break}}
+  if(!reasons.length)reasons.push(lang()==='fr'?`ce ${sym} est compatible avec l’équilibre 3/3, les relations et la règle des trois`:`this ${sym} is compatible with the 3/3 balance, relations and no-three rule`);
+  return reasons.join(lang()==='fr'?' ; ': '; ')
+}
+function queenReason(r,c){
+  let z=current.reg[r][c],sameRegion=[],sameRow=[],sameCol=[];for(let rr=0;rr<current.n;rr++)for(let cc=0;cc<current.n;cc++)if(current.state[rr][cc]!==1){if(current.reg[rr][cc]===z)sameRegion.push([rr,cc]);if(rr===r)sameRow.push([rr,cc]);if(cc===c)sameCol.push([rr,cc])}
+  let txt=lang()==='fr'?`cette case respecte la ligne ${r+1}, la colonne ${c+1}, la zone ${z+1} et la règle de non-adjacence.`:`this cell satisfies row ${r+1}, column ${c+1}, region ${z+1}, and the non-adjacency rule.`;
+  if(sameRegion.length===1)txt+=(lang()==='fr'?' C’est la dernière case non barrée de sa zone.':' It is the last unmarked cell in its region.');
+  return txt
+}
+function patchReason(r,c,id,cl){
+  let piece=lang()==='fr'?`zone ${id+1}`:`region ${id+1}`,shape=cl.shape==='carré'?(lang()==='fr'?'carrée':'square'):cl.shape==='vertical'?(lang()==='fr'?'verticale':'vertical'):cl.shape==='horizontal'?(lang()==='fr'?'horizontale':'horizontal'):(lang()==='fr'?'rectangulaire':'rectangular');
+  if(cl.mode==='both')return lang()==='fr'?`l’indice impose une zone ${shape} de ${cl.size} cases ; cette case appartient au rectangle compatible avec cet indice.`:`the clue requires a ${shape} region of ${cl.size} cells; this cell belongs to the rectangle compatible with that clue.`;
+  if(cl.mode==='size')return lang()==='fr'?`l’indice impose ${cl.size} cases ; cette case est nécessaire pour compléter un rectangle de cette surface.`:`the clue requires ${cl.size} cells; this cell is needed to complete a rectangle of that area.`;
+  if(cl.mode==='shape')return lang()==='fr'?`l’indice impose une forme ${shape} ; cette case prolonge la zone sans recouvrir un autre indice.`:`the clue requires a ${shape} shape; this cell extends the region without covering another clue.`;
+  return lang()==='fr'?`cette case appartient à ${piece} dans l’unique découpage valide et n’introduit ni chevauchement ni second indice.`:`this cell belongs to ${piece} in the unique valid partition and creates neither overlap nor a second clue.`
+}
 function hintStage(kind,target,message,apply){
   markHintUsed();updateScoreFlags();
   if(!current.hintFlow||current.hintFlow.kind!==kind||current.hintFlow.key!==target.join(','))current.hintFlow={kind,key:target.join(','),stage:0};
   let h=current.hintFlow;h.stage++;
-  clearHintFocus();
-  if(h.stage===1){focusHint(target);showToast(`${tr('where')} : ${message.where}`)}
-  else if(h.stage===2){focusHint(target);showToast(`${tr('logic')} : ${message.logic}`)}
-  else{apply();current.hintFlow=null;showToast(message.reveal);haptic(12)}
+  clearHintFocus();focusHint(target);
+  if(h.stage===1)showHintNotice(`<b>${tr('hintMove')} :</b> ${message.move}<br><span class="hint-secondary">${message.where}</span>`);
+  else if(h.stage===2)showHintNotice(`<b>${tr('hintMove')} :</b> ${message.move}<br><b>${tr('hintWhy')} :</b> ${message.why}`);
+  else{apply();current.hintFlow=null;showHintNotice(`<b>${tr('hintMove')} :</b> ${message.move}<br><b>${tr('hintWhy')} :</b> ${message.why}<br><span class="hint-applied">${message.reveal}</span>`);haptic(12)}
   saveCurrent()
 }
 function focusHint([r,c]){let board=document.querySelector('.board');if(!board)return;let n=current.n||6,d=board.children[r*n+c];if(d)d.classList.add('hint-focus')}
 function clearHintFocus(){document.querySelectorAll('.hint-focus').forEach(x=>x.classList.remove('hint-focus'))}
-function touchSave(fn){return()=>{if(paused)return;current.hintFlow=null;clearHintFocus();fn();saveCurrent()}}
+function touchSave(fn){return()=>{if(paused)return;closeHintNotice();current.hintFlow=null;clearHintFocus();fn();saveCurrent()}}
 // QUEENS
 const queenBases={easy:{sol:[1,3,5,0,2,4],reg:[[0,0,1,1,1,1],[0,1,1,1,1,1],[0,0,0,0,2,2],[3,4,4,4,2,2],[4,4,4,4,2,2],[4,4,4,4,5,2]]},medium:{sol:[2,5,1,4,0,3,6],reg:[[0,0,0,0,0,1,1],[2,0,6,6,6,1,6],[2,2,6,3,3,1,6],[2,2,6,5,3,1,6],[4,2,6,5,3,3,6],[4,2,6,5,5,5,6],[6,6,6,6,6,6,6]]},hard:{sol:[2,5,0,3,6,1,4,7],reg:[[0,0,0,0,0,4,4,4],[2,2,0,0,0,1,4,4],[2,7,7,4,4,4,4,4],[2,2,7,3,3,4,4,4],[5,2,7,6,3,4,4,7],[5,5,7,6,6,6,6,7],[7,7,7,7,6,6,7,7],[7,7,7,7,7,7,7,7]]}};
 function queens(diff){let base=queenBases[diff],k=Math.floor(Math.random()*8),reg=transformGrid(base.reg,k),n=reg.length,queensSol=Array(n).fill(-1);let mask=base.sol.map((c,r)=>Array.from({length:n},(_,j)=>j===c?1:0));mask=transformGrid(mask,k);for(let r=0;r<n;r++)queensSol[r]=mask[r].indexOf(1);current={game:'queens',diff,n,reg,sol:queensSol,state:Array.from({length:n},()=>Array(n).fill(0)),completed:false};renderQueens(current)}
@@ -384,15 +430,22 @@ b.onpointerup=endDrag;b.onpointercancel=e=>{if(!dragging||e.pointerId!==pointerI
 drawQ();$('#queenAutoCross').onchange=e=>{setQueenAutoCross(e.target.checked);if(e.target.checked){for(let r=0;r<current.n;r++)for(let col=0;col<current.n;col++)if(current.state[r][col]===2)applyQueenAutoCross(r,col);drawQ();saveCurrent();showToast(tr('autoCrossOn'))}else showToast(tr('autoCrossOff'))};$('#checkBtn').onclick=checkQ;$('#hintBtn').onclick=hintQ;$('#solutionBtn').onclick=()=>{if(paused)return;current.state=current.state.map((row,r)=>row.map((_,col)=>col===current.sol[r]?2:1));drawQ();finish(tr('solutionShown'),'revealed')}}
 function drawQ(){let b=$('#qboard');if(current?.game==='queens'&&current.completed&&solvedQ())b.classList.add('queens-win');[...b.children].forEach((d,i)=>{let r=Math.floor(i/current.n),c=i%current.n,v=current.state[r][c];d.innerHTML=v===2?'<span class="queen">♛</span>':v===1?'<span class="mark">×</span>':'';d.classList.remove('error')});applyIllegalClasses(b,queenIllegalCells(),current.n);updateScoreFlags()}
 function checkQ(){if(solvedQ())finish(`${tr('congrats')} Queens`);else status(tr('gridIncomplete'),false)}
-function hintQ(){if(paused)return;let a=[];for(let r=0;r<current.n;r++){let c=current.sol[r];if(current.state[r][c]!==2)a.push([r,c])}if(!a.length)return;let t=a[0],z=current.reg[t[0]][t[1]];hintStage('queens',t,{where:lang()==='fr'?`observe la région ${z+1} et la ligne ${t[0]+1}.`:`look at region ${z+1} and row ${t[0]+1}.`,logic:lang()==='fr'?'croise les cases encore possibles avec les colonnes et les régions déjà occupées.':'cross-check remaining cells against occupied columns and regions.',reveal:tr('queenPlaced')},()=>{setQueenCell(t[0],t[1],2);drawQ();maybeAutoFinish()})}
+function hintQ(){if(paused)return;let a=[];for(let r=0;r<current.n;r++){let c=current.sol[r];if(current.state[r][c]!==2)a.push([r,c])}if(!a.length)return;let t=a[0],z=current.reg[t[0]][t[1]],move=lang()==='fr'?`Place une reine ♛ en ligne ${t[0]+1}, colonne ${t[1]+1}.`:`Place a queen ♛ at row ${t[0]+1}, column ${t[1]+1}.`;hintStage('queens',t,{move,where:lang()==='fr'?`Regarde particulièrement la zone ${z+1} et la ligne ${t[0]+1}.`:`Focus on region ${z+1} and row ${t[0]+1}.`,why:queenReason(t[0],t[1]),reveal:tr('queenPlaced')},()=>{setQueenCell(t[0],t[1],2);drawQ();maybeAutoFinish()})}
 
 // TANGO
 const tangoSolutions={easy:[[0,1,0,1,0,1],[1,0,1,0,1,0],[1,1,0,0,1,0],[0,0,1,1,0,1],[1,0,0,1,0,1],[0,1,1,0,1,0]],medium:[[0,1,0,0,1,1],[1,0,1,1,0,0],[0,0,1,0,1,1],[1,1,0,1,0,0],[0,1,1,0,0,1],[1,0,0,1,1,0]],hard:[[1,0,1,0,0,1],[0,1,0,1,1,0],[1,1,0,0,1,0],[0,0,1,1,0,1],[1,0,1,0,1,0],[0,1,0,1,0,1]]};
 function tango(diff){let sol=transformGrid(tangoSolutions[diff],Math.floor(Math.random()*8)),n=6,givenCount={easy:12,medium:8,hard:5}[diff],relCount={easy:8,medium:10,hard:11}[diff],positions=shuffle(Array.from({length:36},(_,i)=>i)),givens=new Set(positions.slice(0,givenCount)),edges=[];for(let r=0;r<n;r++)for(let c=0;c<n;c++){if(c<n-1)edges.push([r,c,'r',sol[r][c]===sol[r][c+1]?'=':'×']);if(r<n-1)edges.push([r,c,'d',sol[r][c]===sol[r+1][c]?'=':'×'])}edges=shuffle(edges).slice(0,relCount);let state=Array.from({length:n},()=>Array(n).fill(-1));for(let i of givens){let r=Math.floor(i/6),c=i%6;state[r][c]=sol[r][c]}current={game:'tango',diff,n,sol,givens,edges,state,completed:false};renderTango(current)}
-function renderTango(c){shell('Tango',lang()==='fr'?'6×6 · Soleil & Lune · générée':'6×6 · Sun & Moon · generated',c.diff,`<div class="board-wrap"><div class="board" id="tboard" style="grid-template-columns:repeat(6,minmax(0,1fr));grid-template-rows:repeat(6,minmax(0,1fr))"></div></div>`,gameRules('tango'));let b=$('#tboard');for(let r=0;r<6;r++)for(let col=0;col<6;col++){let d=document.createElement('div');d.className='cell'+(c.givens.has(r*6+col)?' fixed':'');d.dataset.r=r;d.dataset.c=col;if(!c.givens.has(r*6+col))d.onclick=touchSave(()=>{let prev=current.state[r][col],next=(prev+2)%3-1;if(prev===1&&next===-1)markBacktrack();current.state[r][col]=next;haptic(8);drawT();updateScoreFlags();maybeAutoFinish()});b.appendChild(d)}drawT();$('#checkBtn').onclick=checkT;$('#hintBtn').onclick=hintT;$('#solutionBtn').onclick=()=>{if(paused)return;current.state=current.sol.map(r=>[...r]);drawT();finish(tr('solutionShown'),'revealed')}}
-function drawT(){let b=$('#tboard');[...b.children].forEach((d,i)=>{let r=Math.floor(i/6),c=i%6,v=current.state[r][c];d.innerHTML=v===0?'<span class="tango-symbol">☾</span>':v===1?'<span class="tango-symbol">☀</span>':''});current.edges.forEach(([r,c,dir,s])=>{let d=b.children[r*6+c];let e=document.createElement('span');e.className='relation '+dir;e.textContent=s;d.appendChild(e)});applyIllegalClasses(b,tangoIllegalCells(),6);updateScoreFlags()}
+function renderTango(c){shell('Tango',lang()==='fr'?'6×6 · Soleil & Lune · générée':'6×6 · Sun & Moon · generated',c.diff,`<div class="board-wrap"><div class="board" id="tboard" style="grid-template-columns:repeat(6,minmax(0,1fr));grid-template-rows:repeat(6,minmax(0,1fr))"></div></div>`,gameRules('tango'));let b=$('#tboard');for(let r=0;r<6;r++)for(let col=0;col<6;col++){let d=document.createElement('div');d.className='cell'+(c.givens.has(r*6+col)?' fixed':'');d.dataset.r=r;d.dataset.c=col;if(!c.givens.has(r*6+col))d.onclick=touchSave(()=>{
+  let prev=current.state[r][col],next=(prev+2)%3-1;
+  current.tangoPendingCell=null;
+  if(prev===1&&next===-1)markBacktrack();
+  current.state[r][col]=next;
+  if(next===0)current.tangoPendingCell=[r,col];
+  haptic(8);drawT();updateScoreFlags();maybeAutoFinish()
+});b.appendChild(d)}drawT();$('#checkBtn').onclick=checkT;$('#hintBtn').onclick=hintT;$('#solutionBtn').onclick=()=>{if(paused)return;current.tangoPendingCell=null;current.state=current.sol.map(r=>[...r]);drawT();finish(tr('solutionShown'),'revealed')}}
+function drawT(){let b=$('#tboard');[...b.children].forEach((d,i)=>{let r=Math.floor(i/6),c=i%6,v=current.state[r][c];d.innerHTML=v===0?'<span class="tango-symbol">☾</span>':v===1?'<span class="tango-symbol">☀</span>':''});current.edges.forEach(([r,c,dir,s])=>{let d=b.children[r*6+c];let e=document.createElement('span');e.className='relation '+dir;e.textContent=s;d.appendChild(e)});let ignore=current.tangoPendingCell?keyCell(...current.tangoPendingCell):null;applyIllegalClasses(b,tangoIllegalCells(ignore),6);updateScoreFlags()}
 function checkT(){if(solvedT())finish(`${tr('congrats')} Tango`);else status(tr('tangoIncomplete'),false)}
-function hintT(){if(paused)return;let a=[];for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(current.state[r][c]!==current.sol[r][c]&&!current.givens.has(r*6+c))a.push([r,c]);if(!a.length)return;let t=a[0];hintStage('tango',t,{where:lang()==='fr'?`regarde la case ligne ${t[0]+1}, colonne ${t[1]+1} et ses voisines.`:`look at row ${t[0]+1}, column ${t[1]+1} and its neighbors.`,logic:lang()==='fr'?'utilise d’abord une relation =/× éventuelle, puis la règle 3/3 et l’interdiction de trois symboles identiques.':'use any =/× relation first, then the 3/3 balance and the no-three-identical rule.',reveal:tr('cellRevealed')},()=>{current.state[t[0]][t[1]]=current.sol[t[0]][t[1]];drawT();maybeAutoFinish()})}
+function hintT(){if(paused)return;current.tangoPendingCell=null;let a=[];for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(current.state[r][c]!==current.sol[r][c]&&!current.givens.has(r*6+c))a.push([r,c]);if(!a.length)return;let t=a[0],v=current.sol[t[0]][t[1]],name=v===1?(lang()==='fr'?'un soleil ☀':'a sun ☀'):(lang()==='fr'?'une lune ☾':'a moon ☾'),move=lang()==='fr'?`Place ${name} en ligne ${t[0]+1}, colonne ${t[1]+1}.`:`Place ${name} at row ${t[0]+1}, column ${t[1]+1}.`;hintStage('tango',t,{move,where:lang()==='fr'?`Observe cette case, sa ligne, sa colonne et les éventuelles relations = / ×.`:`Check this cell, its row, column, and any = / × relations.`,why:tangoReason(t[0],t[1],v),reveal:tr('cellRevealed')},()=>{current.state[t[0]][t[1]]=v;drawT();maybeAutoFinish()})}
 
 // MINI SUDOKU 6x6 regions 2x3
 const sudBase=[[1,2,3,4,5,6],[4,5,6,1,2,3],[2,3,4,5,6,1],[5,6,1,2,3,4],[3,4,5,6,1,2],[6,1,2,3,4,5]];
@@ -402,7 +455,7 @@ function sudoku(diff){let map=shuffle([1,2,3,4,5,6]),sol=sudBase.map(r=>r.map(v=
 function renderSudoku(c){shell('Mini Sudoku',lang()==='fr'?'6×6 · chiffres 1 à 6 · générée':'6×6 · digits 1 to 6 · generated',c.diff,`<div class="board-wrap"><div class="board sudoku" id="sboard" style="grid-template-columns:repeat(6,minmax(0,1fr));grid-template-rows:repeat(6,minmax(0,1fr))"></div></div><div class="numpad" id="numpad">${[1,2,3,4,5,6].map(n=>`<button data-n="${n}">${n}</button>`).join('')}<button data-n="0" aria-label="${lang()==='fr'?'Effacer':'Erase'}">⌫</button></div>`,gameRules('sudoku'));let b=$('#sboard');for(let r=0;r<6;r++)for(let col=0;col<6;col++){let fixed=!c.empty.has(r*6+col),d=document.createElement('div');d.className='cell '+(fixed?'fixed ':'')+((col===2)?'boxR ':'')+((r===1||r===3)?'boxB ':'');if(!fixed)d.onclick=touchSave(()=>{current.sel=[r,col];drawS()});b.appendChild(d)}$('#numpad').querySelectorAll('button').forEach(bt=>bt.onclick=touchSave(()=>{if(current.sel){let [r,col]=current.sel,prev=current.state[r][col],next=+bt.dataset.n;if(prev!==0&&prev!==next)markBacktrack();current.state[r][col]=next;haptic(8);drawS();updateScoreFlags();maybeAutoFinish()}}));drawS();$('#checkBtn').onclick=checkS;$('#hintBtn').onclick=hintS;$('#solutionBtn').onclick=()=>{if(paused)return;current.state=current.sol.map(r=>[...r]);drawS();finish(tr('solutionShown'),'revealed')}}
 function drawS(){let sel=current.sel,sv=sel?current.state[sel[0]][sel[1]]:0;[...$('#sboard').children].forEach((d,i)=>{let r=Math.floor(i/6),c=i%6,v=current.state[r][c];d.textContent=v||'';let sameUnit=!!sel&&(r===sel[0]||c===sel[1]||(Math.floor(r/2)===Math.floor(sel[0]/2)&&Math.floor(c/3)===Math.floor(sel[1]/3)));d.classList.toggle('peer',sameUnit&&!(r===sel[0]&&c===sel[1]));d.classList.toggle('same-value',!!sv&&v===sv&&!(r===sel[0]&&c===sel[1]));d.classList.toggle('selected',!!sel&&sel[0]===r&&sel[1]===c);d.classList.remove('error')});applyIllegalClasses($('#sboard'),sudokuIllegalCells(),6);updateScoreFlags()}
 function checkS(){if(solvedS())finish(`${tr('congrats')} Mini Sudoku`);else status(tr('sudokuIncomplete'),false)}
-function hintS(){if(paused)return;let a=[];for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(current.state[r][c]!==current.sol[r][c]&&current.empty.has(r*6+c))a.push([r,c]);if(!a.length)return;let t=a[0];hintStage('sudoku',t,{where:lang()==='fr'?`étudie la case ligne ${t[0]+1}, colonne ${t[1]+1}.`:`study the cell at row ${t[0]+1}, column ${t[1]+1}.`,logic:lang()==='fr'?'élimine les chiffres déjà présents dans sa ligne, sa colonne et son bloc 2×3.':'eliminate digits already present in its row, column and 2×3 box.',reveal:tr('digitRevealed')},()=>{current.state[t[0]][t[1]]=current.sol[t[0]][t[1]];current.sel=t;drawS();maybeAutoFinish()})}
+function hintS(){if(paused)return;let a=[];for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(current.state[r][c]!==current.sol[r][c]&&current.empty.has(r*6+c))a.push([r,c]);if(!a.length)return;let t=a[0],v=current.sol[t[0]][t[1]],cand=sudokuCandidatesAt(t[0],t[1]),move=lang()==='fr'?`Place le chiffre ${v} en ligne ${t[0]+1}, colonne ${t[1]+1}.`:`Place digit ${v} at row ${t[0]+1}, column ${t[1]+1}.`,why=cand.length===1?(lang()==='fr'?`Après élimination des chiffres déjà présents dans la ligne, la colonne et le bloc 2×3, seul ${v} reste possible.`:`After eliminating digits already present in the row, column and 2×3 box, only ${v} remains possible.`):(lang()==='fr'?`Le chiffre ${v} est le candidat correct pour cette case ; élimine les autres candidats à l’aide de la ligne, de la colonne et du bloc 2×3.`:`Digit ${v} is the correct candidate for this cell; eliminate the others using the row, column and 2×3 box.`);hintStage('sudoku',t,{move,where:lang()==='fr'?`Étudie la case ligne ${t[0]+1}, colonne ${t[1]+1}.`:`Study row ${t[0]+1}, column ${t[1]+1}.`,why,reveal:tr('digitRevealed')},()=>{current.state[t[0]][t[1]]=v;current.sel=t;drawS();maybeAutoFinish()})}
 
 // PATCHES — connected target regions; player paints each clue region.
 const patchDefs={
@@ -415,7 +468,7 @@ function renderPatches(c){shell('Patches',lang()==='fr'?`${c.n}×${c.n} · gén�
 function clueHTML(cl){let parts=[];if(cl.mode==='both'||cl.mode==='size')parts.push(`<b>${cl.size}</b>`);if(cl.mode==='both'||cl.mode==='shape')parts.push(`<span>${cl.shape==='carré'?'□':cl.shape==='vertical'?'▯':cl.shape==='horizontal'?'▭':'✣'}</span>`);if(cl.mode==='none')parts.push('<b>?</b>');return `<span class="patch-clue">${parts.join('')}</span>`}
 function drawP(){let b=$('#pboard');[...b.children].forEach((d,i)=>{let r=Math.floor(i/current.n),c=i%current.n,p=current.paint[r][c];d.style.background=p===null?'#fff':current.pal[p%current.pal.length];d.classList.toggle('paint',p!==null);d.innerHTML='';d.classList.remove('clue');for(let id of current.ids){let [rr,cc]=current.clues[id].pos;if(rr===r&&cc===c){d.classList.add('clue');d.innerHTML=clueHTML(current.clues[id]);break}}});$('#patchPalette').querySelectorAll('.patch-chip').forEach(x=>x.classList.toggle('active',+x.dataset.id===current.active));applyIllegalClasses(b,patchIllegalCells(),current.n);updateScoreFlags()}
 function checkP(){let n=current.n,all=current.paint.every(row=>row.every(v=>v!==null));if(!all){status(tr('patchAll'),false);return}let cluePositions=new Map(current.ids.map(id=>[current.clues[id].pos.join(','),id]));for(let id of current.ids){let cells=[];for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.paint[r][c]===id)cells.push([r,c]);if(!cells.length){status(tr('patchEach'),false);return}let own=current.clues[id].pos;if(!cells.some(([r,c])=>r===own[0]&&c===own[1])){status(tr('patchOwn'),false);return}let other=cells.some(([r,c])=>cluePositions.has(r+','+c)&&cluePositions.get(r+','+c)!==id);if(other){status(tr('patchTwo'),false);return}let seen=new Set([cells[0].join(',')]),q=[cells[0]],set=new Set(cells.map(x=>x.join(',')));while(q.length){let [r,c]=q.pop();for(let [rr,cc] of [[r+1,c],[r-1,c],[r,c+1],[r,c-1]]){let k=rr+','+cc;if(set.has(k)&&!seen.has(k)){seen.add(k);q.push([rr,cc])}}}if(seen.size!==cells.length){status(tr('patchConnected'),false);return}let cl=current.clues[id],sh=patchShape(cells);if(sh==='libre'){status(tr('patchRect'),false);return}if((cl.mode==='both'||cl.mode==='size')&&cells.length!==cl.size){status(tr('patchSize'),false);return}if((cl.mode==='both'||cl.mode==='shape')&&sh!==cl.shape){status(tr('patchShape'),false);return}}finish(`${tr('congrats')} Patches`)}
-function hintP(){if(paused)return;let bad=[];for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(current.paint[r][c]!==current.reg[r][c])bad.push([r,c]);if(!bad.length)return;let t=bad[0],id=current.reg[t[0]][t[1]],cl=current.clues[id];hintStage('patches',t,{where:lang()==='fr'?`observe l’indice de la zone ${id+1} et les cases autour.`:`look at region ${id+1}'s clue and nearby cells.`,logic:lang()==='fr'?`teste les rectangles compatibles avec ${cl.mode==='size'||cl.mode==='both'?'la taille '+cl.size:'sa forme'} sans recouvrir un autre indice.`:`test rectangles compatible with ${cl.mode==='size'||cl.mode==='both'?'area '+cl.size:'its shape'} without covering another clue.`,reveal:tr('patchRevealed')},()=>{current.paint[t[0]][t[1]]=id;drawP();maybeAutoFinish()})}
+function hintP(){if(paused)return;let bad=[];for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(current.paint[r][c]!==current.reg[r][c])bad.push([r,c]);if(!bad.length)return;let t=bad[0],id=current.reg[t[0]][t[1]],cl=current.clues[id],move=lang()==='fr'?`Attribue la case ligne ${t[0]+1}, colonne ${t[1]+1} à la zone ${id+1}.`:`Assign row ${t[0]+1}, column ${t[1]+1} to region ${id+1}.`;hintStage('patches',t,{move,where:lang()==='fr'?`Observe l’indice de la zone ${id+1} et les cases qui peuvent former son rectangle.`:`Look at region ${id+1}'s clue and the cells that can form its rectangle.`,why:patchReason(t[0],t[1],id,cl),reveal:tr('patchRevealed')},()=>{current.paint[t[0]][t[1]]=id;drawP();maybeAutoFinish()})}
 // ===== v1.2 generators: generated puzzles + uniqueness checks =====
 function countQueensGenerated(reg,limit=2){const n=reg.length;let count=0,usedC=new Set(),usedR=new Set();function bt(r,prev){if(count>=limit)return;if(r===n){count++;return}for(let c=0;c<n;c++){let z=reg[r][c];if(usedC.has(c)||usedR.has(z))continue;if(r>0&&Math.abs(c-prev)===1)continue;usedC.add(c);usedR.add(z);bt(r+1,c);usedC.delete(c);usedR.delete(z);if(count>=limit)return}}bt(0,-99);return count}
 function randomQueenSolution(n){for(let t=0;t<3000;t++){let p=shuffle(Array.from({length:n},(_,i)=>i));if(p.every((c,r)=>r===0||Math.abs(c-p[r-1])!==1))return p}return null}

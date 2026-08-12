@@ -1,6 +1,27 @@
-# Logic 4 — v2.3.0
+# Logic 4 — v2.3.2
 
 Site statique mobile-first regroupant Queens, Tango, Mini Sudoku 6×6 et Patches.
+
+## Amélioration v2.3.2 — indices explicatifs
+- Chaque indice indique maintenant explicitement **la pièce, le symbole, le chiffre ou la zone à poser**, ainsi que sa position.
+- Le premier niveau d’aide affiche le **coup conseillé** et la zone à observer.
+- Le deuxième niveau conserve le coup conseillé et ajoute **Pourquoi**, avec une justification logique.
+- Le troisième niveau applique le coup tout en conservant l’explication à l’écran jusqu’au bouton `Fermer / Close`.
+- Queens : l’indice indique la reine à placer et rappelle les contraintes de ligne, colonne, zone et non-adjacence ; lorsqu’une zone n’a plus qu’une case non barrée, cette raison est explicitement signalée.
+- Tango : l’indice indique `☀` ou `☾` et explique, lorsque c’est déductible, l’équilibre 3/3, une relation `=`/`×` ou la règle interdisant trois symboles identiques.
+- Mini Sudoku : l’indice donne le chiffre exact ; lorsqu’il s’agit d’un candidat unique, il précise que les autres chiffres sont éliminés par la ligne, la colonne et le bloc 2×3.
+- Patches : l’indice donne la zone à attribuer à une case et explique la contrainte de taille et/ou de forme portée par l’indice.
+- Les textes restent bilingues français / anglais et les indices restent persistants jusqu’à fermeture.
+
+## Correctif v2.3.1 — indices persistants et saisie Tango
+- Les indices ne disparaissent plus automatiquement après 1,4 seconde.
+- Chaque niveau d’indice est maintenant affiché dans une carte persistante avec bouton `Fermer / Close`.
+- La carte reste visible aussi longtemps que nécessaire et ne bloque pas le plateau.
+- Une nouvelle action de jeu ferme automatiquement l’ancien indice afin d’éviter d’encombrer l’écran.
+- Tango : lorsqu’une lune est posée au premier tap, cette case est temporairement exclue de la colorisation rouge.
+- La lune provisoire reste visible, mais aucune violation impliquant cette case n’est signalée avant l’action suivante.
+- Au tap suivant, l’ancienne saisie devient définitive ; si la case est transformée en soleil, les règles sont alors évaluées normalement.
+- Le comportement évite les faux signaux rouges liés au cycle de saisie vide → lune → soleil.
 
 ## Évolution v2.3.0 — coups illégaux et score d’assistance
 - Les quatre jeux signalent désormais immédiatement les **coups illégaux** en colorant en rouge toutes les cases directement concernées par la violation.

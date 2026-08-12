@@ -265,3 +265,34 @@ body.busy{pointer-events:none}
 :root[data-theme="dark"] .aid-badge.hint-used{background:#29434e;color:#b9e0ef}
 .live-aids:empty{display:none}
 .history-row .aid-badge{margin-left:3px}
+
+/* v2.3.1 — indice persistant */
+.hint-notice{
+  position:fixed;
+  left:50%;
+  bottom:max(18px,env(safe-area-inset-bottom));
+  transform:translateX(-50%);
+  z-index:118;
+  width:min(92vw,520px);
+  display:grid;
+  grid-template-columns:1fr auto;
+  align-items:center;
+  gap:12px;
+  padding:14px 14px 14px 16px;
+  border-radius:18px;
+  background:var(--paper);
+  color:var(--ink);
+  border:1px solid color-mix(in srgb,var(--accent) 42%,var(--muted));
+  box-shadow:0 18px 48px rgba(0,0,0,.22);
+}
+.hint-notice-text{font-size:14px;line-height:1.45}
+.hint-close{min-width:78px}
+:root[data-theme="dark"] .hint-notice{background:#252823}
+@media(max-width:520px){
+  .hint-notice{grid-template-columns:1fr;align-items:stretch}
+  .hint-close{width:100%}
+}
+
+/* v2.3.2 — indices explicites : coup + justification */
+.hint-secondary{display:block;margin-top:5px;color:var(--muted)}
+.hint-applied{display:block;margin-top:7px;color:var(--accent);font-weight:700}
