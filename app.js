@@ -5,7 +5,7 @@
  */
 'use strict';
 const $=s=>document.querySelector(s), app=$('#app'), toast=$('#toast'), timerEl=$('#timer');
-const VERSION='2.2.1', SAVE_KEY='logic4-save-v1';
+const VERSION='2.2.2', SAVE_KEY='logic4-save-v1';
 let current=null, tick=null, startedAt=0, elapsedBase=0, paused=false;
 const I18N={
 fr:{
@@ -327,7 +327,13 @@ function boardCellAt(x,y){let rect=b.getBoundingClientRect(),rx=x-rect.left,ry=y
 function applyDragCell(r,col){let k=r+','+col;if(visited.has(k)||current.state[r][col]===2)return;visited.add(k);current.hintFlow=null;clearHintFocus();let v=dragMode==='remove'?0:1;if(current.state[r][col]!==v){current.state[r][col]=v;dragged=true}}
 function applyDragTo(hit){if(!startCell||!hit)return;let sr=+startCell.dataset.r,sc=+startCell.dataset.c,hr=+hit.dataset.r,hc=+hit.dataset.c;if(!dragAxis&&(hr!==sr||hc!==sc))dragAxis=Math.abs(hc-sc)>=Math.abs(hr-sr)?'row':'col';if(!dragAxis)return;let er=dragAxis==='row'?sr:hr,ec=dragAxis==='col'?sc:hc;for(let [r,col] of queenDragRange(sr,sc,er,ec,dragAxis))applyDragCell(r,col);drawQ()}
 for(let r=0;r<c.n;r++)for(let col=0;col<c.n;col++){let d=document.createElement('div');d.className='cell';d.style.background=colors[c.reg[r][col]%colors.length];d.dataset.r=r;d.dataset.c=col;b.appendChild(d)}
-b.ondblclick=e=>{e.preventDefault();e.stopPropagation()};b.addEventListener('contextmenu',e=>e.preventDefault());b.addEventListener('gesturestart',e=>e.preventDefault(),{passive:false});b.onpointerdown=e=>{if(paused)return;let d=boardCellAt(e.clientX,e.clientY);if(!d)return;e.preventDefault();dragging=true;pointerId=e.pointerId;startCell=d;dragAxis=null;dragged=false;visited.clear();let r=+d.dataset.r,col=+d.dataset.c;dragMode=current.state[r][col]===1?'remove':'add';try{b.setPointerCapture(pointerId)}catch(_){}};
+b.ondblclick=e=>{e.preventDefault();e.stopPropagation()};
+b.addEventListener('contextmenu',e=>e.preventDefault());
+b.addEventListener('gesturestart',e=>e.preventDefault(),{passive:false});
+b.addEventListener('touchstart',e=>e.preventDefault(),{passive:false});
+b.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
+b.addEventListener('touchend',e=>e.preventDefault(),{passive:false});
+b.onpointerdown=e=>{if(paused)return;let d=boardCellAt(e.clientX,e.clientY);if(!d)return;e.preventDefault();dragging=true;pointerId=e.pointerId;startCell=d;dragAxis=null;dragged=false;visited.clear();let r=+d.dataset.r,col=+d.dataset.c;dragMode=current.state[r][col]===1?'remove':'add';try{b.setPointerCapture(pointerId)}catch(_){}};
 b.onpointermove=e=>{if(!dragging||e.pointerId!==pointerId)return;e.preventDefault();let hit=boardCellAt(e.clientX,e.clientY);if(hit)applyDragTo(hit)};
 let endDrag=e=>{if(!dragging||e.pointerId!==pointerId)return;e.preventDefault();let finalHit=boardCellAt(e.clientX,e.clientY);if(finalHit)applyDragTo(finalHit);try{b.releasePointerCapture(pointerId)}catch(_){};let d=startCell;dragging=false;pointerId=null;if(!dragged&&d){let r=+d.dataset.r,col=+d.dataset.c;current.hintFlow=null;clearHintFocus();let next=(current.state[r][col]+1)%3;setQueenCell(r,col,next);haptic(next===2?16:7);drawQ()}else if(dragged){haptic(7)}saveCurrent();maybeAutoFinish();startCell=null;dragAxis=null;visited.clear()};
 b.onpointerup=endDrag;b.onpointercancel=e=>{if(!dragging||e.pointerId!==pointerId)return;try{b.releasePointerCapture(pointerId)}catch(_){};dragging=false;pointerId=null;startCell=null;dragAxis=null;visited.clear();drawQ()};

@@ -179,3 +179,14 @@ body.busy{pointer-events:none}
   .toolbar{grid-template-columns:repeat(5,minmax(0,1fr))}
   .toolbar .btn{font-size:11px}
 }
+
+/* v2.2.2 — blocage explicite du double-tap zoom Safari sur Queens */
+#qboard{
+  touch-action:none!important;
+  -ms-touch-action:none;
+}
+#qboard,#qboard *{
+  -webkit-touch-callout:none;
+  -webkit-user-select:none;
+  user-select:none;
+}

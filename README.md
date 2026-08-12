@@ -1,6 +1,12 @@
-# Logic 4 — v2.2.1
+# Logic 4 — v2.2.2
 
 Site statique mobile-first regroupant Queens, Tango, Mini Sudoku 6×6 et Patches.
+
+## Correctif v2.2.2 — double-tap zoom Safari sur Queens
+- Le plateau Queens intercepte maintenant directement les événements tactiles natifs Safari `touchstart`, `touchmove` et `touchend` avec `preventDefault()` en mode non-passif.
+- Ce correctif vient en complément de `touch-action:none`, du blocage `dblclick`, de `gesturestart`, du menu contextuel et du verrouillage du viewport déjà utilisé par l’application.
+- Les deux taps rapides restent traités par les `pointer events` du jeu et doivent donc produire vide → `X` → reine, sans déclencher le zoom Safari.
+- Le correctif est limité au plateau Queens afin de ne pas désactiver le zoom de la page entière.
 
 ## Correctif v2.2.1 — réinitialisation et double-tap Queens
 - Ajout d’un bouton `Réinitialiser / Reset` dans chacun des quatre jeux.
