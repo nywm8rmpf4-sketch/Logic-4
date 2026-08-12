@@ -159,3 +159,23 @@ body.busy{pointer-events:none}
 .celebration-layer i:nth-child(3n){background:#d6a648}.celebration-layer i:nth-child(3n+1){background:#6e98bb}
 @keyframes confettiFall{0%{opacity:0;transform:translate(0,-16px) rotate(0)}12%{opacity:1}100%{opacity:0;transform:translate(var(--dx),72vh) rotate(var(--rot))}}
 @media(prefers-reduced-motion:reduce){.win-pop,.celebration-layer i{animation:none!important}.celebration-layer{display:none}}
+
+/* v2.2.0 — langue et écran À propos */
+.about-grid{display:grid;gap:10px;margin:20px 0}
+.about-grid>div{display:grid;grid-template-columns:minmax(90px,.7fr) 1.5fr;gap:12px;padding:13px 14px;background:color-mix(in srgb,var(--soft) 62%,transparent);border-radius:12px}
+.about-grid span{color:var(--muted);font-size:12px}.about-grid b{font-size:13px;line-height:1.4}
+.legal-text{font-size:13px;line-height:1.55;color:var(--muted);padding-top:8px}
+@media(max-width:520px){.about-grid>div{grid-template-columns:1fr}.about-grid span{margin-bottom:-5px}}
+
+/* v2.2.1 — reset + protection double-tap Queens */
+#qboard,#qboard .cell{
+  touch-action:none;
+  -webkit-user-select:none;
+  user-select:none;
+  -webkit-touch-callout:none;
+}
+#qboard .cell{-webkit-tap-highlight-color:transparent}
+@media(max-width:520px){
+  .toolbar{grid-template-columns:repeat(5,minmax(0,1fr))}
+  .toolbar .btn{font-size:11px}
+}

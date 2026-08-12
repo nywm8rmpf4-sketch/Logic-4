@@ -1,6 +1,37 @@
-# Logic 4 — v2.1.0
+# Logic 4 — v2.2.1
 
 Site statique mobile-first regroupant Queens, Tango, Mini Sudoku 6×6 et Patches.
+
+## Correctif v2.2.1 — réinitialisation et double-tap Queens
+- Ajout d’un bouton `Réinitialiser / Reset` dans chacun des quatre jeux.
+- La réinitialisation conserve la même grille et la même difficulté, restaure uniquement les indices de départ et remet le chronomètre à `00:00`.
+- Queens : toutes les reines et tous les `X` sont effacés.
+- Tango : seules les cases données au départ sont restaurées.
+- Mini Sudoku : seuls les chiffres initiaux sont conservés.
+- Patches : toutes les zones peintes sont effacées et la première zone redevient active.
+- Si une partie déjà terminée est réinitialisée, une nouvelle tentative statistique est démarrée ; une partie en cours réinitialisée reste la même tentative.
+- Le plateau Queens neutralise explicitement le double-clic, le geste de zoom et le menu contextuel du navigateur.
+- Deux taps rapides restent interprétés par le jeu comme deux actions successives : vide → `X` → reine, sans agrandissement du plateau.
+- La non-régression Queens Difficile rejette aussi les grilles générées avec trop de régions singleton accidentelles, afin de préserver le niveau de difficulté calibré.
+
+## Évolution v2.2.0 — français / anglais, règles et À propos
+- Interface bilingue **Français / English**, avec langue mémorisée localement.
+- Le changement de langue est disponible dans `Préférences / Preferences` et s’applique immédiatement aux écrans principaux, commandes, difficultés, statistiques, défi quotidien, messages de jeu, aides et résultats partagés.
+- Chaque jeu possède désormais une explication complète de ses règles, disponible dans le panneau de jeu et via le bouton `Règles / Rules`.
+- Ajout d’un écran `À propos / About` accessible depuis l’accueil.
+- L’écran À propos affiche la version courante, `© 2026 Serge Benoliel`, la nature propriétaire du logiciel et l’interdiction de copie, modification, redistribution et exploitation sans autorisation écrite préalable.
+- L’attribut de langue du document HTML est mis à jour dynamiquement (`fr` / `en`) pour l’accessibilité.
+- Les réglages de langue utilisent la même persistance locale que les autres préférences.
+
+## Correctif v2.1.1 — drag Queens et tempo de victoire
+- Le drag Queens est refait au niveau du plateau : le gestionnaire `pointermove` est maintenant attaché au même élément qui capture le pointeur, ce qui corrige le comportement tactile sur iPhone/iPad.
+- Le calcul de la cellule sous le doigt utilise directement les coordonnées du plateau, sans dépendre de `elementFromPoint` pendant la capture.
+- Le drag interpole toutes les cases entre la case de départ et la position courante : un mouvement rapide ne saute plus de cases.
+- Départ sur une case vide : glisser ajoute des `X`.
+- Départ sur une case contenant `X` : glisser efface les `X`.
+- Une reine existante n’est jamais écrasée par le drag.
+- Un toucher simple conserve le cycle vide → `X` → reine → vide.
+- Après la fin de l’animation de victoire, une pause supplémentaire de **0,4 seconde** est désormais respectée avant l’affichage du pop-up de félicitations.
 
 ## Évolution v2.1.0 — Queens Difficile renforcé + Expert
 - Le niveau **Difficile** de Queens reste en 8×8 mais sa génération a été profondément recalibrée.
