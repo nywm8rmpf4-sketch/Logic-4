@@ -5,7 +5,7 @@
  */
 'use strict';
 const $=s=>document.querySelector(s), app=$('#app'), toast=$('#toast'), timerEl=$('#timer');
-const VERSION='2.2.2', SAVE_KEY='logic4-save-v1';
+const VERSION='2.2.5', SAVE_KEY='logic4-save-v1';
 let current=null, tick=null, startedAt=0, elapsedBase=0, paused=false;
 const I18N={
 fr:{
@@ -236,6 +236,7 @@ function resetCurrent(){
   clearHintFocus();
   current.hintFlow=null;
   if(current.game==='queens'){
+    $('#qboard')?.classList.remove('queens-win');
     current.state=Array.from({length:current.n},()=>Array(current.n).fill(0));
     drawQ();
   }else if(current.game==='tango'){
@@ -288,6 +289,7 @@ function maybeAutoFinish(){
 function celebrateBoard(){
   let board=document.querySelector('.board');if(!board)return;
   board.classList.add('board-complete');
+  if(current?.game==='queens'||board.id==='qboard')board.classList.add('queens-win');
   [...board.children].forEach((cell,i)=>{cell.style.setProperty('--win-delay',`${Math.min(i,80)*16}ms`);cell.classList.add('win-pop')});
   let layer=document.createElement('div');layer.className='celebration-layer';layer.setAttribute('aria-hidden','true');
   for(let i=0;i<22;i++){let p=document.createElement('i');p.style.setProperty('--x',`${8+Math.random()*84}%`);p.style.setProperty('--dx',`${-55+Math.random()*110}px`);p.style.setProperty('--delay',`${Math.random()*220}ms`);p.style.setProperty('--rot',`${Math.random()*500-250}deg`);layer.appendChild(p)}
@@ -338,7 +340,7 @@ b.onpointermove=e=>{if(!dragging||e.pointerId!==pointerId)return;e.preventDefaul
 let endDrag=e=>{if(!dragging||e.pointerId!==pointerId)return;e.preventDefault();let finalHit=boardCellAt(e.clientX,e.clientY);if(finalHit)applyDragTo(finalHit);try{b.releasePointerCapture(pointerId)}catch(_){};let d=startCell;dragging=false;pointerId=null;if(!dragged&&d){let r=+d.dataset.r,col=+d.dataset.c;current.hintFlow=null;clearHintFocus();let next=(current.state[r][col]+1)%3;setQueenCell(r,col,next);haptic(next===2?16:7);drawQ()}else if(dragged){haptic(7)}saveCurrent();maybeAutoFinish();startCell=null;dragAxis=null;visited.clear()};
 b.onpointerup=endDrag;b.onpointercancel=e=>{if(!dragging||e.pointerId!==pointerId)return;try{b.releasePointerCapture(pointerId)}catch(_){};dragging=false;pointerId=null;startCell=null;dragAxis=null;visited.clear();drawQ()};
 drawQ();$('#queenAutoCross').onchange=e=>{setQueenAutoCross(e.target.checked);if(e.target.checked){for(let r=0;r<current.n;r++)for(let col=0;col<current.n;col++)if(current.state[r][col]===2)applyQueenAutoCross(r,col);drawQ();saveCurrent();showToast(tr('autoCrossOn'))}else showToast(tr('autoCrossOff'))};$('#checkBtn').onclick=checkQ;$('#hintBtn').onclick=hintQ;$('#solutionBtn').onclick=()=>{if(paused)return;current.state=current.state.map((row,r)=>row.map((_,col)=>col===current.sol[r]?2:1));drawQ();finish(tr('solutionShown'),'revealed')}}
-function drawQ(){[...$('#qboard').children].forEach((d,i)=>{let r=Math.floor(i/current.n),c=i%current.n,v=current.state[r][c];d.innerHTML=v===2?'<span class="queen">♛</span>':v===1?'<span class="mark">×</span>':'';d.classList.remove('error')})}
+function drawQ(){let b=$('#qboard');if(current?.game==='queens'&&current.completed&&solvedQ())b.classList.add('queens-win');[...b.children].forEach((d,i)=>{let r=Math.floor(i/current.n),c=i%current.n,v=current.state[r][c];d.innerHTML=v===2?'<span class="queen">♛</span>':v===1?'<span class="mark">×</span>':'';d.classList.remove('error')})}
 function checkQ(){if(solvedQ())finish(`${tr('congrats')} Queens`);else status(tr('gridIncomplete'),false)}
 function hintQ(){if(paused)return;let a=[];for(let r=0;r<current.n;r++){let c=current.sol[r];if(current.state[r][c]!==2)a.push([r,c])}if(!a.length)return;let t=a[0],z=current.reg[t[0]][t[1]];hintStage('queens',t,{where:lang()==='fr'?`observe la région ${z+1} et la ligne ${t[0]+1}.`:`look at region ${z+1} and row ${t[0]+1}.`,logic:lang()==='fr'?'croise les cases encore possibles avec les colonnes et les régions déjà occupées.':'cross-check remaining cells against occupied columns and regions.',reveal:tr('queenPlaced')},()=>{setQueenCell(t[0],t[1],2);drawQ();maybeAutoFinish()})}
 

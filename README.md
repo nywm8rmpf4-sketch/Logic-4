@@ -1,6 +1,27 @@
-# Logic 4 — v2.2.2
+# Logic 4 — v2.2.5
 
 Site statique mobile-first regroupant Queens, Tango, Mini Sudoku 6×6 et Patches.
+
+## Ajustement v2.2.5 — reines dorées persistantes
+- Après une victoire Queens, les reines restent dorées tant que la grille réussie est affichée.
+- Le doré devient un marqueur visuel permanent de réussite du plateau, et non plus un simple effet d’animation.
+- La fermeture du pop-up de félicitations ne retire pas le doré.
+- Une réinitialisation du plateau retire le doré, puisque la grille n’est alors plus terminée.
+- Si un plateau Queens déjà terminé est re-rendu dans la même session, le style doré est restauré automatiquement.
+
+## Amélioration v2.2.4 — reines dorées à la victoire
+- Lorsqu’une grille Queens est résolue correctement, toutes les reines passent temporairement en doré pendant l’animation de victoire.
+- La couleur normale des reines reste inchangée pendant la partie.
+- Le rendu doré est adapté aux thèmes clair et sombre.
+- La couleur de victoire disparaît automatiquement à la fin de l’animation du plateau, avant le pop-up de félicitations.
+
+## Correctif v2.2.3 — suppression définitive de l’effet de zoom Queens
+- Le correctif traite désormais aussi la géométrie du plateau, pas seulement les gestes Safari.
+- `#qboard` utilise `contain:size layout paint` : son contenu ne peut plus modifier ses dimensions.
+- Chaque cellule Queens est confinée avec `min-width:0`, `min-height:0` et `overflow:hidden`.
+- Les symboles reine `♛` et croix `×` sont positionnés en absolu dans leur case : ils ne participent plus au calcul de taille du grid.
+- Le verrouillage tactile Safari de v2.2.2 (`touchstart`, `touchmove`, `touchend`, `dblclick`, `gesturestart`) est conservé.
+- Ainsi, deux taps rapides produisent uniquement les deux actions du jeu, sans agrandissement du plateau lié au symbole affiché.
 
 ## Correctif v2.2.2 — double-tap zoom Safari sur Queens
 - Le plateau Queens intercepte maintenant directement les événements tactiles natifs Safari `touchstart`, `touchmove` et `touchend` avec `preventDefault()` en mode non-passif.
