@@ -1,6 +1,33 @@
-# Logic 4 — v2.0.2
+# Logic 4 — v2.1.0
 
 Site statique mobile-first regroupant Queens, Tango, Mini Sudoku 6×6 et Patches.
+
+## Évolution v2.1.0 — Queens Difficile renforcé + Expert
+- Le niveau **Difficile** de Queens reste en 8×8 mais sa génération a été profondément recalibrée.
+- Les régions d’une seule case, qui rendaient trop de reines immédiatement évidentes, passent d’environ cinq à seulement deux.
+- Le générateur produit plusieurs grilles uniques puis conserve les candidates ayant le score de recherche le plus élevé.
+- Lors de la campagne de calibration, les grilles Difficile effectivement sélectionnées ont obtenu des scores d’environ **912 à 2140**, contre des scores souvent inférieurs à 100 pour les anciennes grilles faciles.
+- Nouveau niveau **Expert**, uniquement pour Queens, en **9×9**.
+- Expert utilise très peu de régions triviales et sélectionne les grilles les plus complexes parmi davantage de candidates ; pendant la calibration, les scores sélectionnés étaient d’environ **1721 à 5489**.
+- Une neuvième couleur de région a été ajoutée pour que les 9 régions d’une grille Expert restent visuellement distinctes.
+- Facile et Moyen restent disponibles et leurs dimensions restent 6×6 et 7×7.
+- Les autres jeux conservent uniquement Facile / Moyen / Difficile.
+
+## Amélioration v2.0.4 — victoire automatique
+- La réussite est maintenant détectée automatiquement dès le dernier coup correct, sans appuyer sur `Vérifier`.
+- Le comportement est actif sur Queens, Tango, Mini Sudoku et Patches.
+- Le bouton `Vérifier` reste disponible pour contrôler une grille incomplète ou incorrecte.
+- Une vraie réussite déclenche une animation en deux temps : propagation sur les cases du plateau, puis particules et écran de victoire.
+- L’affichage volontaire de la `Solution` reste distingué d’une victoire et ne déclenche pas la réussite automatique.
+- L’animation respecte `prefers-reduced-motion`.
+
+## Amélioration v2.0.3 — interaction Queens
+- Glisser le doigt horizontalement ou verticalement sur la grille Queens pose désormais des `X` en continu.
+- Le geste se verrouille automatiquement sur la ligne ou la colonne dominante afin d’éviter les marquages accidentels en diagonale.
+- Un simple toucher conserve le cycle habituel : vide → `X` → reine → vide.
+- Nouvelle option **Croix automatiques quand je place une reine**, désactivée par défaut et mémorisée sur l’appareil.
+- Lorsque l’option est activée, placer une reine marque automatiquement d’un `X` toutes les cases incompatibles : même ligne, même colonne, même région et cases adjacentes.
+- Le glissement ne remplace jamais une reine déjà posée par un `X`.
 
 ## Correctif v2.0.2 — taille fixe des grilles
 - Les quatre plateaux définissent maintenant explicitement un nombre identique de lignes et de colonnes en fractions fixes.
