@@ -236,3 +236,32 @@ body.busy{pointer-events:none}
     0 0 7px rgba(240,200,75,.58),
     0 0 18px rgba(240,200,75,.28);
 }
+
+/* v2.3.0 — coups illégaux + indicateurs d'aide */
+.board .cell.illegal{
+  background:#ffd7d7!important;
+  box-shadow:inset 0 0 0 3px #c83737!important;
+  color:#8f1111;
+}
+:root[data-theme="dark"] .board .cell.illegal{
+  background:#5c2929!important;
+  box-shadow:inset 0 0 0 3px #f07878!important;
+  color:#fff1f1;
+}
+.aid-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:2px;
+  margin-left:4px;
+  padding:1px 5px;
+  border-radius:999px;
+  font:700 10px/1.5 -apple-system,BlinkMacSystemFont,Arial,sans-serif;
+  vertical-align:middle;
+  white-space:nowrap;
+}
+.aid-badge.backtrack{background:#eee2c8;color:#72531e}
+.aid-badge.hint-used{background:#dce9ef;color:#315e70}
+:root[data-theme="dark"] .aid-badge.backtrack{background:#4c412a;color:#f0d79e}
+:root[data-theme="dark"] .aid-badge.hint-used{background:#29434e;color:#b9e0ef}
+.live-aids:empty{display:none}
+.history-row .aid-badge{margin-left:3px}

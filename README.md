@@ -1,6 +1,26 @@
-# Logic 4 — v2.2.5
+# Logic 4 — v2.3.0
 
 Site statique mobile-first regroupant Queens, Tango, Mini Sudoku 6×6 et Patches.
+
+## Évolution v2.3.0 — coups illégaux et score d’assistance
+- Les quatre jeux signalent désormais immédiatement les **coups illégaux** en colorant en rouge toutes les cases directement concernées par la violation.
+- Queens : conflits entre reines sur une même ligne, colonne, zone ou cases adjacentes.
+- Tango : plus de 3 symboles identiques dans une ligne/colonne, trois symboles identiques consécutifs ou relation `=` / `×` violée.
+- Mini Sudoku : doublons dans une ligne, une colonne ou un bloc 2×3.
+- Patches : occupation d’un autre indice, dépassement de taille impossible ou violation immédiate d’une contrainte de forme. Les situations encore réparables sans violer une règle ne sont pas signalées comme illégales.
+- Deux marqueurs d’assistance sont suivis par tentative : `↶` pour un **retour en arrière/correction**, `💡` pour **indice utilisé**.
+- Les marqueurs apparaissent immédiatement à côté du score de difficulté pendant la partie puis sont enregistrés dans l’historique des scores.
+- Le cycle nécessaire de Queens `vide → X → reine` n’est pas considéré comme un retour en arrière. En revanche, retirer une reine ou effacer des X par drag l’est.
+- Pour Tango, un cycle normal nécessaire pour choisir le symbole n’est pas pénalisé ; revenir d’un symbole posé vers vide est enregistré.
+- Pour Sudoku, remplacer ou effacer une valeur déjà saisie est un retour en arrière.
+- Pour Patches, effacer ou repeindre une case déjà attribuée est un retour en arrière.
+- Réinitialiser une partie en cours après avoir joué est enregistré comme retour en arrière. Une nouvelle tentative créée après réinitialisation d’une partie déjà terminée repart avec des indicateurs vierges.
+
+## Ajustement v2.2.6 — Queens Difficile / Expert
+- Queens **Difficile** : au maximum **une seule** région de surface 1.
+- Queens **Expert** : les régions de surface 1 sont désormais **interdites**.
+- Le générateur rejette explicitement toute grille qui ne respecte pas ces limites, même si la construction interne produit accidentellement davantage de singletons.
+- Les contrôles d’unicité et la sélection par score de difficulté restent inchangés.
 
 ## Ajustement v2.2.5 — reines dorées persistantes
 - Après une victoire Queens, les reines restent dorées tant que la grille réussie est affichée.
