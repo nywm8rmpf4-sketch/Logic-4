@@ -1,6 +1,17 @@
-# Logic 4 — v2.3.2
+# Logic 4 — v2.3.3
 
 Site statique mobile-first regroupant Queens, Tango, Mini Sudoku 6×6 et Patches.
+
+## Correctif v2.3.3 — indices déductibles depuis l’état affiché
+- Le moteur d’indices ne consulte plus la solution cachée pour choisir un coup.
+- Un indice n’est proposé que s’il peut être déduit des éléments actuellement visibles sur le plateau.
+- Si aucun coup n’est logiquement forcé à cet instant, l’application affiche `Aucun coup directement déductible avec l’état actuel / No move can be directly deduced from the current state` au lieu de révéler la solution.
+- Queens : recherche d’une ligne, colonne ou zone n’ayant plus qu’une seule case possible, compte tenu des reines et `X` déjà posés.
+- Tango : déductions par équilibre 3/3, règle des trois symboles, ou relation `=` / `×` avec un voisin connu.
+- Mini Sudoku : candidats uniques puis singles cachés dans une ligne, colonne ou bloc 2×3, calculés uniquement à partir des chiffres visibles.
+- Patches : génération des rectangles encore compatibles avec chaque indice et les cases déjà peintes ; une case n’est proposée que si elle appartient à tous les rectangles possibles d’une zone, ou si un seul rectangle reste possible.
+- Le troisième niveau d’aide applique uniquement le coup déjà démontré par les deux premiers niveaux.
+- Les textes d’explication restent persistants et bilingues.
 
 ## Amélioration v2.3.2 — indices explicatifs
 - Chaque indice indique maintenant explicitement **la pièce, le symbole, le chiffre ou la zone à poser**, ainsi que sa position.
