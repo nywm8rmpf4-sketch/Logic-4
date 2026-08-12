@@ -1,6 +1,18 @@
-# Logic 4 — v2.0.0
+# Logic 4 — v2.0.2
 
 Site statique mobile-first regroupant Queens, Tango, Mini Sudoku 6×6 et Patches.
+
+## Correctif v2.0.2 — taille fixe des grilles
+- Les quatre plateaux définissent maintenant explicitement un nombre identique de lignes et de colonnes en fractions fixes.
+- Dans Queens, l’ajout d’une reine ou d’une croix ne peut plus modifier la hauteur d’une ligne ni redimensionner le plateau.
+- Le correctif est appliqué de manière préventive à Tango, Mini Sudoku et Patches afin que leur géométrie reste également indépendante du contenu des cases.
+
+## Propriété intellectuelle et licence
+Copyright © 2026 Serge Benoliel. All rights reserved.
+
+Logic 4 est un logiciel propriétaire. Toute copie, modification, redistribution, publication, sous-licence, vente, mise à disposition de tiers ou exploitation, totale ou partielle, est interdite sans l’autorisation écrite préalable de Serge Benoliel.
+
+Les conditions détaillées figurent dans le fichier `LICENSE`.
 
 ## Nouveautés v2.0.0 — finition générale
 - Identité visuelle harmonisée et interface affinée sans modifier les règles des quatre jeux.

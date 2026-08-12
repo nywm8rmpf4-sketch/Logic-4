@@ -1,3 +1,8 @@
+/*
+ * Logic 4
+ * Copyright © 2026 Serge Benoliel. All rights reserved.
+ * Proprietary software. Copying, modification, redistribution or exploitation without prior written authorization is prohibited.
+ */
 :root{--bg:#f7f4ec;--paper:#fffdf8;--ink:#252525;--muted:#6f6d68;--line:#242424;--accent:#326b5f;--soft:#e7e2d8;--danger:#b54848;--ok:#2f7b57;--shadow:0 12px 30px rgba(33,28,20,.10)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif}
@@ -129,3 +134,8 @@ body.busy{pointer-events:none}
 @keyframes fadeIn{from{opacity:0}}@keyframes victoryPop{from{transform:translateY(18px) scale(.94);opacity:0}}@keyframes spinIn{from{transform:rotate(-70deg) scale(.6);opacity:0}}
 @media(max-width:520px){.top-actions{gap:1px}.theme-btn{width:34px;height:34px;min-height:34px}.setting-row{align-items:flex-start}.victory-card{border-radius:24px}.victory-time{font-size:52px}}
 @media(prefers-reduced-motion:reduce){.victory,.victory-card,.victory-burst{animation:none!important}}
+
+/* v2.0.2 — plateaux à dimensions stables */
+.board{grid-auto-rows:minmax(0,1fr);overflow:visible}
+.board>.cell{min-width:0;min-height:0}
+#qboard .queen,#qboard .mark{display:block;line-height:1;max-width:100%;max-height:100%}
