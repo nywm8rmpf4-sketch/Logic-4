@@ -1,6 +1,23 @@
-# Logic 4 — v2.5.0
+# Logic 4 — v2.5.2
 
 Site statique mobile-first regroupant Queens, Tango, Mini Sudoku 6×6 et Patches.
+
+## Correctif v2.5.2 — explications Queens de rang 2
+- Les explications Queens de rang 2 suivent maintenant concrètement la grille.
+- L'indice commence par tester explicitement `reine ♛` ou `X` dans la case étudiée.
+- Il nomme ensuite la **ligne, colonne ou zone précise** qui devient problématique.
+- Les emplacements de reine encore apparemment possibles dans cette unité sont listés un par un.
+- Pour chacun, l'application indique la conséquence concrète : quelle autre ligne, colonne ou zone se retrouverait sans emplacement pour sa reine.
+- La conclusion explique ensuite pourquoi l'hypothèse de départ doit être rejetée.
+- Le moteur de décision reste indépendant de la solution cachée.
+
+## Correctif v2.5.1 — explications de rang 2 plus lisibles
+- Le raisonnement de rang 2 est présenté comme une démonstration numérotée : **1. Hypothèse → 2. Conséquence → 3. Impasse → 4. Conclusion**.
+- Tango nomme désormais la case précise qui devient impossible et teste explicitement les deux symboles sur cette case.
+- Pour chaque symbole rejeté, l’explication cherche à citer la règle concrète : trois symboles consécutifs, dépassement de l’équilibre 3/3, ou relation `=` / `×` avec une case voisine.
+- La formulation abstraite « on poursuit les possibilités légales » a été supprimée des explications Tango de rang 2.
+- Quand une branche de rang 2 échoue au contrôle suivant, l'explication descend jusqu'à la **case réellement bloquée** et détaille séparément pourquoi `☾` et `☀` y sont impossibles, avec la règle concrète et les coordonnées concernées.
+- Le moteur logique n’est pas modifié : ce correctif améliore la trace pédagogique sans changer la décision produite.
 
 ## Évolution v2.5.0 — inférence de rang 2 pédagogique
 - Le moteur d’indices suit désormais l’ordre : **règles directes → rang 1 → rang 2 → aucun indice**.

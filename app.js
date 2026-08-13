@@ -5,7 +5,7 @@
  */
 'use strict';
 const $=s=>document.querySelector(s), app=$('#app'), toast=$('#toast'), timerEl=$('#timer');
-const VERSION='2.5.0', SAVE_KEY='logic4-save-v1';
+const VERSION='2.5.2', SAVE_KEY='logic4-save-v1';
 let current=null, tick=null, startedAt=0, elapsedBase=0, paused=false;
 const I18N={
 fr:{
@@ -578,24 +578,64 @@ function pieceName(kind,v){
   return lang()==='fr'?`zone ${v+1}`:`region ${v+1}`
 }
 function rank2Why(h){
-  return `<span class="reason-step"><b>${tr('hypothesis')} :</b> ${h.hypothesis}</span>`+
-         `<span class="reason-step"><b>${tr('consequence')} :</b> ${h.consequence}</span>`+
-         `<span class="reason-step dead"><b>${tr('deadend')} :</b> ${h.deadend}</span>`+
-         `<span class="reason-step conclusion"><b>${tr('conclusion')} :</b> ${h.conclusion}</span>`
+  return `<span class="reason-step"><b>1. ${tr('hypothesis')} :</b> ${h.hypothesis}</span>`+
+         `<span class="reason-step"><b>2. ${tr('consequence')} :</b> ${h.consequence}</span>`+
+         `<span class="reason-step dead"><b>3. ${tr('deadend')} :</b> ${h.deadend}</span>`+
+         `<span class="reason-step conclusion"><b>4. ${tr('conclusion')} :</b> ${h.conclusion}</span>`
 }
 
 // TANGO rank 2
+
+function tangoRejectReason(r,c,v){
+  let s=current.state,n=6,name=pieceName('tango',v),opp=pieceName('tango',1-v);
+  // three consecutive
+  let line=s[r].slice();line[c]=v;
+  for(let i=Math.max(0,c-2);i<=Math.min(c,3);i++)if(line[i]===v&&line[i+1]===v&&line[i+2]===v)
+    return lang()==='fr'?`${name} formerait trois ${v===1?'soleils':'lunes'} consécutifs sur la ligne ${r+1}.`:`${name} would create three consecutive ${v===1?'suns':'moons'} in row ${r+1}.`;
+  let col=Array.from({length:n},(_,rr)=>rr===r?v:s[rr][c]);
+  for(let i=Math.max(0,r-2);i<=Math.min(r,3);i++)if(col[i]===v&&col[i+1]===v&&col[i+2]===v)
+    return lang()==='fr'?`${name} formerait trois ${v===1?'soleils':'lunes'} consécutifs dans la colonne ${c+1}.`:`${name} would create three consecutive ${v===1?'suns':'moons'} in column ${c+1}.`;
+  // balance
+  if(line.filter(x=>x===v).length>3)return lang()==='fr'?`il y aurait plus de 3 ${v===1?'soleils':'lunes'} sur la ligne ${r+1}.`:`row ${r+1} would contain more than 3 ${v===1?'suns':'moons'}.`;
+  if(col.filter(x=>x===v).length>3)return lang()==='fr'?`il y aurait plus de 3 ${v===1?'soleils':'lunes'} dans la colonne ${c+1}.`:`column ${c+1} would contain more than 3 ${v===1?'suns':'moons'}.`;
+  // equality / opposite relation
+  for(let [er,ec,d,rel] of current.edges){
+    let r2=d==='r'?er:er+1,c2=d==='r'?ec+1:ec;
+    if(!((er===r&&ec===c)||(r2===r&&c2===c)))continue;
+    let or=er===r&&ec===c?r2:er,oc=er===r&&ec===c?c2:ec,ov=s[or][oc];
+    if(ov===-1)continue;
+    let ok=rel==='='?v===ov:v!==ov;
+    if(!ok)return lang()==='fr'
+      ?`${name} ne respecterait pas la relation « ${rel} » avec ${cellName(or,oc)} (${pieceName('tango',ov)}).`
+      :`${name} would violate the “${rel}” relation with ${cellName(or,oc)} (${pieceName('tango',ov)}).`;
+  }
+  return lang()==='fr'?`${name} rendrait immédiatement les contraintes de cette ligne ou colonne impossibles.`:`${name} would immediately make the row or column constraints impossible.`
+}
+
+function tangoRank1ContradictionDetail(){
+  if(tangoImmediateContradiction())return {text:lang()==='fr'?'les règles sont déjà violées immédiatement.':'the rules are already violated immediately.'};
+  for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(current.state[r][c]===-1){
+    let ok0=tangoCandidateLocallyLegal(r,c,0),ok1=tangoCandidateLocallyLegal(r,c,1);
+    if(!ok0&&!ok1)return {r,c,text:lang()==='fr'
+      ?`${cellName(r,c)} devient impossible :<br>&nbsp;&nbsp;– lune ☾ : ${tangoRejectReason(r,c,0)}<br>&nbsp;&nbsp;– soleil ☀ : ${tangoRejectReason(r,c,1)}`
+      :`${cellName(r,c)} becomes impossible:<br>&nbsp;&nbsp;– moon ☾: ${tangoRejectReason(r,c,0)}<br>&nbsp;&nbsp;– sun ☀: ${tangoRejectReason(r,c,1)}`}
+  }
+  return null
+}
 function tangoRank2WitnessAfterAssumption(){
   for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(current.state[r][c]===-1){
-    let viable=[];
+    let viable=[],reasons={};
     for(let v=0;v<=1;v++){
-      if(!tangoCandidateLocallyLegal(r,c,v))continue;
+      if(!tangoCandidateLocallyLegal(r,c,v)){reasons[v]=tangoRejectReason(r,c,v);continue}
       let bad=withTempCurrent(x=>{x.state[r][c]=v},()=>tangoStateContradiction());
-      if(!bad)viable.push(v)
+      if(!bad)viable.push(v);else{
+        let d=withTempCurrent(x=>{x.state[r][c]=v},()=>tangoRank1ContradictionDetail());
+        reasons[v]=d&&d.text?d.text:(lang()==='fr'?`${pieceName('tango',v)} conduit à une contradiction.`:`${pieceName('tango',v)} leads to a contradiction.`)
+      }
     }
-    if(!viable.length)return {r,c,detail:lang()==='fr'
-      ?`${cellName(r,c)} n'accepte plus ni soleil ☀ ni lune ☾ sans créer une contradiction.`
-      :`${cellName(r,c)} can no longer take either sun ☀ or moon ☾ without contradiction.`}
+    if(!viable.length)return {r,c,reasons,detail:lang()==='fr'
+      ?`${cellName(r,c)} ne peut plus recevoir aucun symbole.`
+      :`${cellName(r,c)} can no longer take either symbol.`}
   }
   return null
 }
@@ -618,8 +658,10 @@ function findTangoRank2Hint(){
       let v=good[0],rej=bad[0],w=witness[rej];
       return {r,c,v,rank:2,
         hypothesis:lang()==='fr'?`supposons ${cellName(r,c)} = ${pieceName('tango',rej)}.`:`suppose ${cellName(r,c)} = ${pieceName('tango',rej)}.`,
-        consequence:lang()==='fr'?`on poursuit alors les possibilités encore légales au coup suivant.`:`we then examine the still-legal possibilities for the next move.`,
-        deadend:w.detail,
+        consequence:lang()==='fr'
+          ?`regardons alors ${cellName(w.r,w.c)} :<br>• si on y place une lune ☾ : ${w.reasons[0]||'ce choix conduit à une contradiction.'}<br>• si on y place un soleil ☀ : ${w.reasons[1]||'ce choix conduit à une contradiction.'}`
+          :`now look at ${cellName(w.r,w.c)}:<br>• if we place a moon ☾: ${w.reasons[0]||'this choice leads to a contradiction.'}<br>• if we place a sun ☀: ${w.reasons[1]||'this choice leads to a contradiction.'}`,
+        deadend:lang()==='fr'?`${cellName(w.r,w.c)} n'a donc plus aucune valeur possible. Notre hypothèse de départ est impossible.`:`${cellName(w.r,w.c)} therefore has no possible value. Our initial assumption is impossible.`,
         conclusion:lang()==='fr'?`${pieceName('tango',rej)} est donc impossible en ${cellName(r,c)} ; il faut placer ${pieceName('tango',v)}.`:`${pieceName('tango',rej)} is therefore impossible at ${cellName(r,c)}; place ${pieceName('tango',v)}.`,
         why:null}
     }
@@ -666,26 +708,64 @@ function findSudokuRank2Hint(){
 }
 
 // QUEENS rank 2
+
+function queenPlacementRejectReason(r,c){
+  if(current.state[r][c]===1)return lang()==='fr'?`${cellName(r,c)} est déjà barrée par X.`:`${cellName(r,c)} is already marked X.`;
+  for(let rr=0;rr<current.n;rr++)for(let cc=0;cc<current.n;cc++)if(current.state[rr][cc]===2){
+    if(rr===r)return lang()==='fr'?`la ligne ${r+1} contient déjà une reine en ${cellName(rr,cc)}.`:`row ${r+1} already contains a queen at ${cellName(rr,cc)}.`;
+    if(cc===c)return lang()==='fr'?`la colonne ${c+1} contient déjà une reine en ${cellName(rr,cc)}.`:`column ${c+1} already contains a queen at ${cellName(rr,cc)}.`;
+    if(current.reg[rr][cc]===current.reg[r][c])return lang()==='fr'?`la zone ${current.reg[r][c]+1} contient déjà une reine en ${cellName(rr,cc)}.`:`region ${current.reg[r][c]+1} already contains a queen at ${cellName(rr,cc)}.`;
+    if(Math.abs(rr-r)<=1&&Math.abs(cc-c)<=1)return lang()==='fr'?`${cellName(r,c)} touche diagonalement la reine de ${cellName(rr,cc)}.`:`${cellName(r,c)} touches the queen at ${cellName(rr,cc)} diagonally.`;
+  }
+  return null
+}
+function queenRank1PlacementFailure(r,c){
+  // Called while testing a queen in r,c. Explain the first unit that becomes impossible.
+  return withTempCurrent(x=>{x.state[r][c]=2},()=>{
+    if(queenIllegalCells().size)return {text:queenPlacementRejectReason(r,c)|| (lang()==='fr'?'ce placement crée un conflit de reines.':'this placement creates a queen conflict.')};
+    let n=current.n;
+    for(let rr=0;rr<n;rr++){
+      if(current.state[rr].some(v=>v===2))continue;
+      let possible=[];
+      for(let cc=0;cc<n;cc++)if(current.state[rr][cc]===0&&queenCellAllowed(rr,cc))possible.push([rr,cc]);
+      if(!possible.length)return {type:'row',i:rr,text:lang()==='fr'?`la ligne ${rr+1} n'aurait alors plus aucune case où placer sa reine.`:`row ${rr+1} would then have no cell left for its queen.`}
+    }
+    for(let cc=0;cc<n;cc++){
+      let has=false;for(let rr=0;rr<n;rr++)if(current.state[rr][cc]===2)has=true;if(has)continue;
+      let possible=[];for(let rr=0;rr<n;rr++)if(current.state[rr][cc]===0&&queenCellAllowed(rr,cc))possible.push([rr,cc]);
+      if(!possible.length)return {type:'col',i:cc,text:lang()==='fr'?`la colonne ${cc+1} n'aurait alors plus aucune case où placer sa reine.`:`column ${cc+1} would then have no cell left for its queen.`}
+    }
+    for(let id of [...new Set(current.reg.flat())]){
+      let has=false,cells=[];for(let rr=0;rr<n;rr++)for(let cc=0;cc<n;cc++)if(current.reg[rr][cc]===id){if(current.state[rr][cc]===2)has=true;else if(current.state[rr][cc]===0&&queenCellAllowed(rr,cc))cells.push([rr,cc])}
+      if(!has&&!cells.length)return {type:'region',i:id,text:lang()==='fr'?`la zone ${id+1} n'aurait alors plus aucune case où placer sa reine.`:`region ${id+1} would then have no cell left for its queen.`}
+    }
+    return null
+  })
+}
 function queenUnitViableWithRank1(){
   let n=current.n;
-  // A required row must contain at least one queen placement that does not
-  // itself cause a rank-1 contradiction.
+  function inspect(cells,type,i){
+    let candidates=cells.filter(([r,c])=>current.state[r][c]===0&&queenCellAllowed(r,c));
+    let failures=[];
+    for(let [r,c] of candidates){
+      let failure=queenRank1PlacementFailure(r,c);
+      if(!failure)return null; // at least one continuation survives
+      failures.push({r,c,text:failure.text});
+    }
+    if(!candidates.length||failures.length===candidates.length)return {type,i,candidates,failures}
+    return null
+  }
   for(let r=0;r<n;r++){
     if(current.state[r].some(v=>v===2))continue;
-    let viable=false;
-    for(let c=0;c<n;c++)if(current.state[r][c]===0&&queenCellAllowed(r,c)){
-      if(!withTempCurrent(x=>{x.state[r][c]=2},()=>queenStateContradiction())){viable=true;break}
-    }
-    if(!viable)return {type:'row',i:r}
+    let w=inspect(Array.from({length:n},(_,c)=>[r,c]),'row',r);if(w)return w
+  }
+  for(let c=0;c<n;c++){
+    let has=false;for(let r=0;r<n;r++)if(current.state[r][c]===2)has=true;if(has)continue;
+    let w=inspect(Array.from({length:n},(_,r)=>[r,c]),'col',c);if(w)return w
   }
   for(let id of [...new Set(current.reg.flat())]){
-    let has=false;for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.reg[r][c]===id&&current.state[r][c]===2)has=true;
-    if(has)continue;
-    let viable=false;
-    for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.reg[r][c]===id&&current.state[r][c]===0&&queenCellAllowed(r,c)){
-      if(!withTempCurrent(x=>{x.state[r][c]=2},()=>queenStateContradiction())){viable=true;break}
-    }
-    if(!viable)return {type:'region',i:id}
+    let cells=[],has=false;for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.reg[r][c]===id){cells.push([r,c]);if(current.state[r][c]===2)has=true}
+    if(has)continue;let w=inspect(cells,'region',id);if(w)return w
   }
   return null
 }
@@ -702,12 +782,14 @@ function findQueenRank2Hint(){
     let good=surviving.filter(v=>!bad.includes(v));
     if(good.length===1&&bad.length){
       let v=good[0],rej=bad[0],w=witness[rej],unit=lang()==='fr'
-        ?(w.type==='row'?`la ligne ${w.i+1}`:`la zone ${w.i+1}`)
-        :(w.type==='row'?`row ${w.i+1}`:`region ${w.i+1}`);
+        ?(w.type==='row'?`la ligne ${w.i+1}`:w.type==='col'?`la colonne ${w.i+1}`:`la zone ${w.i+1}`)
+        :(w.type==='row'?`row ${w.i+1}`:w.type==='col'?`column ${w.i+1}`:`region ${w.i+1}`);
+      let details=(w.failures||[]).map(f=>`• ${cellName(f.r,f.c)} : ${f.text}`).join('<br>');
+      if(!details)details=lang()==='fr'?`aucune case n'y reste disponible pour une reine.`:`no cell remains available there for a queen.`;
       return {r,c,v,rank:2,
-        hypothesis:lang()==='fr'?`supposons ${pieceName('queens',rej)} en ${cellName(r,c)}.`:`suppose ${pieceName('queens',rej)} at ${cellName(r,c)}.`,
-        consequence:lang()==='fr'?`on teste ensuite les positions de reine encore possibles dans les unités restantes.`:`we then test the remaining possible queen positions in the unresolved units.`,
-        deadend:lang()==='fr'?`${unit} n'a plus aucune position de reine qui survive au contrôle suivant.`:`${unit} has no queen position that survives the next consistency check.`,
+        hypothesis:lang()==='fr'?`essayons ${rej===2?'une reine ♛':'un X'} en ${cellName(r,c)}.`:`try ${rej===2?'a queen ♛':'an X'} at ${cellName(r,c)}.`,
+        consequence:lang()==='fr'?`avec cette hypothèse, regardons ${unit}. Les emplacements de reine qui restent apparemment possibles sont testés un par un :<br>${details}`:`with that assumption, look at ${unit}. Each apparently possible queen position is tested:<br>${details}`,
+        deadend:lang()==='fr'?`aucun de ces emplacements ne permet de continuer. ${unit} finirait donc sans aucune position possible pour sa reine.`:`none of these positions allows the puzzle to continue. ${unit} would therefore be left with no possible queen position.`,
         conclusion:lang()==='fr'?`${pieceName('queens',rej)} est impossible en ${cellName(r,c)} ; il faut ${v===2?'y placer une reine ♛':'barrer cette case par X'}.`:`${pieceName('queens',rej)} is impossible at ${cellName(r,c)}; ${v===2?'place a queen ♛ there':'mark that cell X'}.`,
         why:null}
     }
