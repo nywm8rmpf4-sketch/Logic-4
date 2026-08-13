@@ -1,6 +1,31 @@
-# Logic 4 — v2.3.3
+# Logic 4 — v2.5.0
 
 Site statique mobile-first regroupant Queens, Tango, Mini Sudoku 6×6 et Patches.
+
+## Évolution v2.5.0 — inférence de rang 2 pédagogique
+- Le moteur d’indices suit désormais l’ordre : **règles directes → rang 1 → rang 2 → aucun indice**.
+- Le rang 2 ne s’exécute qu’après échec des niveaux précédents.
+- Un candidat survivant au rang 1 est simulé ; le moteur examine ensuite les décisions encore possibles au coup suivant. Si une décision obligatoire se retrouve sans aucune réponse viable, l’hypothèse initiale est éliminée.
+- L’algorithme utilise l’arrêt anticipé : dès qu’une branche viable est trouvée, l’exploration inutile de cette branche s’arrête.
+- L’explication n’emploie pas seulement « contradiction de rang 2 » : elle présente une démonstration pédagogique en quatre étapes **Hypothèse → Conséquence → Impasse → Conclusion**, avec les coordonnées des cases concernées.
+- Tango : le moteur peut éliminer un soleil ou une lune qui est légal immédiatement mais qui rend, au niveau suivant, une case sans symbole légal ou l’équilibre 3/3 impossible.
+- Mini Sudoku : un candidat peut être éliminé s’il laisse ensuite une case sans candidat ou une unité sans emplacement viable.
+- Queens : une hypothèse `reine` ou `X` peut être éliminée si elle conduit au niveau suivant à une ligne ou une zone sans position de reine viable.
+- Patches : une affectation de zone peut être éliminée si elle conduit au niveau suivant à une case sans zone possible ou à un ensemble de rectangles incompatible.
+- Aucun moteur d’indice de rang 2 n’utilise la solution cachée pour choisir le coup.
+- Les explications restent bilingues et persistantes jusqu’au bouton `Fermer / Close`.
+
+## Évolution v2.4.0 — inférence logique de rang 1
+- Le moteur d’indices comporte maintenant deux étages : déduction directe, puis **inférence de rang 1** si aucune règle immédiate ne suffit.
+- Une inférence de rang 1 simule chaque candidat encore légal **sans modifier le plateau**. Un candidat est éliminé s’il crée immédiatement une contradiction ou s’il laisse, au coup suivant, une contrainte obligatoire sans aucun candidat légal.
+- Cette analyse n’utilise jamais la solution cachée pour sélectionner l’indice.
+- **Tango** : après simulation d’un soleil ou d’une lune, le moteur vérifie les limites 3/3, les suites de trois, les relations `=` / `×`, puis vérifie que chaque case encore vide conserve au moins un symbole légal. Un coup légal à l’instant T mais qui rend le coup suivant impossible est donc éliminé.
+- **Mini Sudoku** : chaque candidat d’une case est simulé. Il est rejeté s’il crée un doublon, une case sans candidat, ou si un chiffre manquant n’a plus aucune position possible dans une ligne, colonne ou bloc 2×3.
+- **Queens** : pour chaque case encore possible, le moteur compare `reine` et `X`. Il rejette un choix s’il crée un conflit ou laisse une ligne, colonne ou zone sans aucune position possible pour sa reine.
+- **Patches** : une attribution de zone est rejetée si elle laisse une zone sans rectangle compatible, un marquage déjà posé sans rectangle possible, ou une case restante qui ne peut plus être couverte par aucune zone.
+- Si un seul candidat survit, l’indice explique quel candidat opposé conduit à l’impasse et pourquoi le coup conseillé est forcé.
+- Si plusieurs candidats restent compatibles après cette profondeur d’analyse, aucun coup n’est révélé.
+- Les indices restent persistants, bilingues, et le troisième appui applique uniquement le coup déjà démontré.
 
 ## Correctif v2.3.3 — indices déductibles depuis l’état affiché
 - Le moteur d’indices ne consulte plus la solution cachée pour choisir un coup.

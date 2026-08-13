@@ -296,3 +296,8 @@ body.busy{pointer-events:none}
 /* v2.3.2 — indices explicites : coup + justification */
 .hint-secondary{display:block;margin-top:5px;color:var(--muted)}
 .hint-applied{display:block;margin-top:7px;color:var(--accent);font-weight:700}
+
+/* v2.5.0 — explications pédagogiques des inférences de rang 2 */
+.reason-step{display:block;margin-top:7px;padding-left:10px;border-left:3px solid color-mix(in srgb,var(--accent) 35%,transparent)}
+.reason-step.dead{border-left-color:#c45a5a}
+.reason-step.conclusion{border-left-color:#6d9b63;font-weight:600}
