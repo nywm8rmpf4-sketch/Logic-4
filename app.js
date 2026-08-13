@@ -5,7 +5,7 @@
  */
 'use strict';
 const $=s=>document.querySelector(s), app=$('#app'), toast=$('#toast'), timerEl=$('#timer');
-const VERSION='2.5.2', SAVE_KEY='logic4-save-v1';
+const VERSION='2.5.3', SAVE_KEY='logic4-save-v1';
 let current=null, tick=null, startedAt=0, elapsedBase=0, paused=false;
 const I18N={
 fr:{
@@ -459,10 +459,22 @@ function findQueenRank1Hint(){
     let queenBad=withTempCurrent(x=>{x.state[r][c]=2},()=>queenStateContradiction());
     let xBad=withTempCurrent(x=>{x.state[r][c]=1},()=>queenStateContradiction());
     if(queenBad!==xBad){
-      let v=queenBad?1:2;
-      return {r,c,v,why:lang()==='fr'
-        ?(v===2?`si cette case était barrée par X, une ligne, colonne ou zone se retrouverait sans aucune position possible pour sa reine. La reine est donc forcée par ${tr('rank1')}.`:`si une reine était placée ici, elle supprimerait toutes les possibilités nécessaires dans une ligne, colonne ou zone. Cette case doit donc être barrée par X (${tr('rank1')}).`)
-        :(v===2?`if this cell were crossed out, a row, column, or region would be left with no possible queen position. The queen is therefore forced by ${tr('rank1')}.`:`placing a queen here would remove every required possibility in a row, column, or region. This cell must therefore be marked X (${tr('rank1')}).`)}
+      let v=queenBad?1:2,rej=v===2?1:2,w;
+      if(rej===2)w=queenRank1PlacementFailure(r,c);
+      else w=withTempCurrent(x=>{x.state[r][c]=1},()=>{
+        let n=current.n;
+        for(let rr=0;rr<n;rr++){let q=current.state[rr].some(z=>z===2),open=[];for(let cc=0;cc<n;cc++)if(current.state[rr][cc]===0&&queenCellAllowed(rr,cc))open.push([rr,cc]);if(!q&&!open.length)return {text:lang()==='fr'?`la ligne ${rr+1} n'aurait plus aucune case disponible pour sa reine.`:`row ${rr+1} would have no cell left for its queen.`}}
+        for(let cc=0;cc<n;cc++){let q=false,open=[];for(let rr=0;rr<n;rr++){if(current.state[rr][cc]===2)q=true;else if(current.state[rr][cc]===0&&queenCellAllowed(rr,cc))open.push([rr,cc])}if(!q&&!open.length)return {text:lang()==='fr'?`la colonne ${cc+1} n'aurait plus aucune case disponible pour sa reine.`:`column ${cc+1} would have no cell left for its queen.`}}
+        for(let id of [...new Set(current.reg.flat())]){let q=false,open=[];for(let rr=0;rr<n;rr++)for(let cc=0;cc<n;cc++)if(current.reg[rr][cc]===id){if(current.state[rr][cc]===2)q=true;else if(current.state[rr][cc]===0&&queenCellAllowed(rr,cc))open.push([rr,cc])}if(!q&&!open.length)return {text:lang()==='fr'?`la zone ${id+1} n'aurait plus aucune case disponible pour sa reine.`:`region ${id+1} would have no cell left for its queen.`}}
+        return null
+      });
+      let badText=w&&w.text?w.text:(lang()==='fr'?'une ligne, une colonne ou une zone deviendrait impossible.':'a row, column, or region would become impossible.');
+      return {r,c,v,rank:1,
+        hypothesis:lang()==='fr'?`essayons ${rej===2?'une reine ♛':'un X'} en ${cellName(r,c)}.`:`try ${rej===2?'a queen ♛':'an X'} at ${cellName(r,c)}.`,
+        consequence:badText,
+        deadend:lang()==='fr'?`ce choix ne permet donc pas de terminer la grille en respectant une reine par ligne, colonne et zone.`:`this choice cannot lead to a completed grid with one queen per row, column, and region.`,
+        conclusion:lang()==='fr'?`${cellName(r,c)} doit donc contenir ${v===2?'une reine ♛':'un X'}.`:`${cellName(r,c)} must therefore contain ${v===2?'a queen ♛':'an X'}.`,
+        why:null}
     }
   }
   return null
@@ -492,14 +504,18 @@ function tangoStateContradiction(){
 function findTangoRank1Hint(){
   for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(current.state[r][c]===-1){
     let direct0=tangoCandidateLocallyLegal(r,c,0),direct1=tangoCandidateLocallyLegal(r,c,1);
-    if(!direct0||!direct1)continue; // direct rules should have caught this.
-    let bad=[];
-    for(let v=0;v<=1;v++)bad[v]=withTempCurrent(x=>{x.state[r][c]=v},()=>tangoStateContradiction());
+    if(!direct0||!direct1)continue;
+    let bad=[];for(let v=0;v<=1;v++)bad[v]=withTempCurrent(x=>{x.state[r][c]=v},()=>tangoStateContradiction());
     if(bad[0]!==bad[1]){
       let v=bad[0]?1:0,rejected=1-v;
-      return {r,c,v,why:lang()==='fr'
-        ?`les deux symboles sont légaux immédiatement. Mais si l’on pose ${rejected===1?'un soleil ☀':'une lune ☾'}, au moins une case suivante ne conserve plus aucun symbole légal (ou une ligne/colonne ne peut plus atteindre l’équilibre 3/3). Ce candidat est donc impossible par ${tr('rank1')}.`
-        :`both symbols are immediately legal. But placing ${rejected===1?'a sun ☀':'a moon ☾'} leaves at least one following cell with no legal symbol (or makes the 3/3 balance impossible in a row/column). That candidate is therefore eliminated by ${tr('rank1')}.`}
+      let d=withTempCurrent(x=>{x.state[r][c]=rejected},()=>tangoRank1ContradictionDetail());
+      let detail=d&&d.text?d.text:(lang()==='fr'?'une case suivante ne conserverait plus aucun symbole possible.':'a following cell would have no possible symbol left.');
+      return {r,c,v,rank:1,
+        hypothesis:lang()==='fr'?`essayons ${pieceName('tango',rejected)} en ${cellName(r,c)}.`:`try ${pieceName('tango',rejected)} at ${cellName(r,c)}.`,
+        consequence:detail,
+        deadend:lang()==='fr'?`ce choix conduit donc à une situation impossible dès le coup suivant.`:`this choice therefore creates an impossible situation on the next move.`,
+        conclusion:lang()==='fr'?`${cellName(r,c)} doit contenir ${pieceName('tango',v)}.`:`${cellName(r,c)} must contain ${pieceName('tango',v)}.`,
+        why:null}
     }
   }
   return null
@@ -518,18 +534,31 @@ function sudokuImmediateContradiction(){
   }
   return false
 }
+
+function sudokuContradictionDetail(){
+  if(sudokuIllegalCells().size)return lang()==='fr'?'un chiffre est en conflit direct avec sa ligne, sa colonne ou son bloc.':'a digit directly conflicts with its row, column, or box.';
+  for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(current.state[r][c]===0&&sudokuCandidatesAt(r,c).length===0)return lang()==='fr'?`${cellName(r,c)} n'aurait plus aucun chiffre possible.`:`${cellName(r,c)} would have no possible digit left.`;
+  let units=[];for(let r=0;r<6;r++)units.push({name:lang()==='fr'?`la ligne ${r+1}`:`row ${r+1}`,cells:Array.from({length:6},(_,c)=>[r,c])});
+  for(let c=0;c<6;c++)units.push({name:lang()==='fr'?`la colonne ${c+1}`:`column ${c+1}`,cells:Array.from({length:6},(_,r)=>[r,c])});
+  for(let br=0;br<6;br+=2)for(let bc=0;bc<6;bc+=3){let a=[];for(let r=br;r<br+2;r++)for(let c=bc;c<bc+3;c++)a.push([r,c]);units.push({name:lang()==='fr'?`le bloc L${br+1}-${br+2}/C${bc+1}-${bc+3}`:`box R${br+1}-${br+2}/C${bc+1}-${bc+3}`,cells:a})}
+  for(let u of units)for(let v=1;v<=6;v++)if(!u.cells.some(([r,c])=>current.state[r][c]===v)&&!u.cells.some(([r,c])=>current.state[r][c]===0&&sudokuCandidatesAt(r,c).includes(v)))return lang()==='fr'?`le chiffre ${v} n'aurait plus aucun emplacement possible dans ${u.name}.`:`digit ${v} would have no possible place in ${u.name}.`;
+  return lang()==='fr'?'les contraintes du Sudoku deviendraient impossibles.':'the Sudoku constraints would become impossible.';
+}
 function findSudokuRank1Hint(){
   for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(current.state[r][c]===0&&current.empty.has(r*6+c)){
     let cand=sudokuCandidatesAt(r,c);if(cand.length<2)continue;
-    let good=[],bad=[];
-    for(let v of cand){let contradiction=withTempCurrent(x=>{x.state[r][c]=v},()=>sudokuImmediateContradiction());(contradiction?bad:good).push(v)}
+    let good=[],bad=[],details={};
+    for(let v of cand){let contradiction=withTempCurrent(x=>{x.state[r][c]=v},()=>sudokuImmediateContradiction());(contradiction?bad:good).push(v);if(contradiction)details[v]=withTempCurrent(x=>{x.state[r][c]=v},()=>sudokuContradictionDetail())}
     if(good.length===1&&bad.length){
-      return {r,c,v:good[0],why:lang()==='fr'
-        ?`les candidats ${cand.join(', ')} sont d’abord possibles. En testant les autres candidats, chacun crée immédiatement une case sans candidat ou un chiffre impossible à placer dans une ligne, colonne ou bloc. Seul ${good[0]} survit à ${tr('rank1')}.`
-        :`candidates ${cand.join(', ')} are initially possible. Testing the other candidates immediately leaves a cell with no candidate or a digit with no possible place in a row, column, or box. Only ${good[0]} survives ${tr('rank1')}.`}
+      let lines=bad.map(v=>`• ${v} : ${details[v]}`).join('<br>');
+      return {r,c,v:good[0],rank:1,
+        hypothesis:lang()==='fr'?`${cellName(r,c)} accepte d'abord les candidats ${cand.join(', ')}. Testons les autres possibilités.`:`${cellName(r,c)} initially allows candidates ${cand.join(', ')}. Test the alternatives.`,
+        consequence:lines,
+        deadend:lang()==='fr'?`tous les candidats sauf ${good[0]} créent immédiatement une impossibilité.`:`every candidate except ${good[0]} immediately creates an impossibility.`,
+        conclusion:lang()==='fr'?`${cellName(r,c)} doit donc contenir ${good[0]}.`:`${cellName(r,c)} must therefore contain ${good[0]}.`,
+        why:null}
     }
-  }
-  return null
+  }return null
 }
 
 // PATCHES
@@ -549,18 +578,28 @@ function patchStateContradiction(){
 function patchPossibleIdsAt(r,c){
   let out=[];for(let id of current.ids){let cands=patchRectCandidates(id);if(cands.some(rect=>rect.some(x=>x[0]===r&&x[1]===c)))out.push(id)}return out
 }
+
+function patchContradictionDetail(){
+  let all={};for(let id of current.ids){all[id]=patchRectCandidates(id);if(!all[id].length)return lang()==='fr'?`la zone ${id+1} n'aurait plus aucun rectangle possible.`:`region ${id+1} would have no possible rectangle left.`}
+  for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(current.paint[r][c]!=null){let id=current.paint[r][c];if(!all[id].some(rect=>rect.some(x=>x[0]===r&&x[1]===c)))return lang()==='fr'?`${cellName(r,c)}, déjà attribuée à la zone ${id+1}, ne pourrait plus appartenir à aucun rectangle valide de cette zone.`:`${cellName(r,c)}, assigned to region ${id+1}, would no longer fit any valid rectangle for that region.`}
+  for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(current.paint[r][c]==null){let covered=false;for(let id of current.ids)if(all[id].some(rect=>rect.some(x=>x[0]===r&&x[1]===c))){covered=true;break}if(!covered)return lang()==='fr'?`${cellName(r,c)} ne pourrait plus être couverte par aucune zone.`:`${cellName(r,c)} could no longer be covered by any region.`}
+  return lang()==='fr'?'le découpage en rectangles deviendrait impossible.':'the rectangle partition would become impossible.';
+}
 function findPatchRank1Hint(){
   for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(current.paint[r][c]==null){
     let ids=patchPossibleIdsAt(r,c);if(ids.length<2)continue;
-    let good=[],bad=[];
-    for(let id of ids){let contradiction=withTempCurrent(x=>{x.paint[r][c]=id},()=>patchStateContradiction());(contradiction?bad:good).push(id)}
+    let good=[],bad=[],details={};
+    for(let id of ids){let contradiction=withTempCurrent(x=>{x.paint[r][c]=id},()=>patchStateContradiction());(contradiction?bad:good).push(id);if(contradiction)details[id]=withTempCurrent(x=>{x.paint[r][c]=id},()=>patchContradictionDetail())}
     if(good.length===1&&bad.length){
-      return {r,c,id:good[0],why:lang()==='fr'
-        ?`plusieurs zones peuvent sembler compatibles avec cette case. En testant les autres, chacune laisse au moins une zone sans rectangle possible ou une case qui ne peut plus être couverte. La zone ${good[0]+1} est donc imposée par ${tr('rank1')}.`
-        :`several regions may initially fit this cell. Testing the alternatives leaves at least one region with no possible rectangle or a cell that can no longer be covered. Region ${good[0]+1} is therefore forced by ${tr('rank1')}.`}
+      let lines=bad.map(id=>`• ${lang()==='fr'?'zone':'region'} ${id+1} : ${details[id]}`).join('<br>');
+      return {r,c,id:good[0],rank:1,
+        hypothesis:lang()==='fr'?`${cellName(r,c)} pourrait a priori appartenir aux zones ${ids.map(x=>x+1).join(', ')}. Testons les alternatives.`:`${cellName(r,c)} could initially belong to regions ${ids.map(x=>x+1).join(', ')}. Test the alternatives.`,
+        consequence:lines,
+        deadend:lang()==='fr'?`toutes les zones sauf la zone ${good[0]+1} rendent le pavage impossible.`:`every region except region ${good[0]+1} makes the partition impossible.`,
+        conclusion:lang()==='fr'?`${cellName(r,c)} doit donc appartenir à la zone ${good[0]+1}.`:`${cellName(r,c)} must therefore belong to region ${good[0]+1}.`,
+        why:null}
     }
-  }
-  return null
+  }return null
 }
 
 // ===== Rank-2 inference =====
@@ -918,7 +957,7 @@ b.onpointerup=endDrag;b.onpointercancel=e=>{if(!dragging||e.pointerId!==pointerI
 drawQ();$('#queenAutoCross').onchange=e=>{setQueenAutoCross(e.target.checked);if(e.target.checked){for(let r=0;r<current.n;r++)for(let col=0;col<current.n;col++)if(current.state[r][col]===2)applyQueenAutoCross(r,col);drawQ();saveCurrent();showToast(tr('autoCrossOn'))}else showToast(tr('autoCrossOff'))};$('#checkBtn').onclick=checkQ;$('#hintBtn').onclick=hintQ;$('#solutionBtn').onclick=()=>{if(paused)return;current.state=current.state.map((row,r)=>row.map((_,col)=>col===current.sol[r]?2:1));drawQ();finish(tr('solutionShown'),'revealed')}}
 function drawQ(){let b=$('#qboard');if(current?.game==='queens'&&current.completed&&solvedQ())b.classList.add('queens-win');[...b.children].forEach((d,i)=>{let r=Math.floor(i/current.n),c=i%current.n,v=current.state[r][c];d.innerHTML=v===2?'<span class="queen">♛</span>':v===1?'<span class="mark">×</span>':'';d.classList.remove('error')});applyIllegalClasses(b,queenIllegalCells(),current.n);updateScoreFlags()}
 function checkQ(){if(solvedQ())finish(`${tr('congrats')} Queens`);else status(tr('gridIncomplete'),false)}
-function hintQ(){if(paused)return;let h=findQueenLogicalHint()||findQueenRank1Hint()||findQueenRank2Hint();if(!h)return showNoLogicalHint();let isX=h.v===1,move=lang()==='fr'?(isX?`Place un X en ligne ${h.r+1}, colonne ${h.c+1}.`:`Place une reine ♛ en ligne ${h.r+1}, colonne ${h.c+1}.`):(isX?`Mark X at row ${h.r+1}, column ${h.c+1}.`:`Place a queen ♛ at row ${h.r+1}, column ${h.c+1}.`);hintStage('queens',[h.r,h.c],{move,where:lang()==='fr'?`Ce coup est imposé par les marques et reines déjà visibles.`:`This move is forced by the queens and X marks already visible.`,why:h.rank===2?rank2Why(h):h.why,reveal:tr('queenPlaced')},()=>{setQueenCell(h.r,h.c,h.v===1?1:2);drawQ();maybeAutoFinish()})}
+function hintQ(){if(paused)return;let h=findQueenLogicalHint()||findQueenRank1Hint()||findQueenRank2Hint();if(!h)return showNoLogicalHint();let isX=h.v===1,move=lang()==='fr'?(isX?`Place un X en ligne ${h.r+1}, colonne ${h.c+1}.`:`Place une reine ♛ en ligne ${h.r+1}, colonne ${h.c+1}.`):(isX?`Mark X at row ${h.r+1}, column ${h.c+1}.`:`Place a queen ♛ at row ${h.r+1}, column ${h.c+1}.`);hintStage('queens',[h.r,h.c],{move,where:lang()==='fr'?`Ce coup est imposé par les marques et reines déjà visibles.`:`This move is forced by the queens and X marks already visible.`,why:h.rank===2?rank2Why(h):h.rank===1?rank1Why(h):h.why,reveal:tr('queenPlaced')},()=>{setQueenCell(h.r,h.c,h.v===1?1:2);drawQ();maybeAutoFinish()})}
 
 // TANGO
 const tangoSolutions={easy:[[0,1,0,1,0,1],[1,0,1,0,1,0],[1,1,0,0,1,0],[0,0,1,1,0,1],[1,0,0,1,0,1],[0,1,1,0,1,0]],medium:[[0,1,0,0,1,1],[1,0,1,1,0,0],[0,0,1,0,1,1],[1,1,0,1,0,0],[0,1,1,0,0,1],[1,0,0,1,1,0]],hard:[[1,0,1,0,0,1],[0,1,0,1,1,0],[1,1,0,0,1,0],[0,0,1,1,0,1],[1,0,1,0,1,0],[0,1,0,1,0,1]]};
@@ -933,7 +972,7 @@ function renderTango(c){shell('Tango',lang()==='fr'?'6×6 · Soleil & Lune · g�
 });b.appendChild(d)}drawT();$('#checkBtn').onclick=checkT;$('#hintBtn').onclick=hintT;$('#solutionBtn').onclick=()=>{if(paused)return;current.tangoPendingCell=null;current.state=current.sol.map(r=>[...r]);drawT();finish(tr('solutionShown'),'revealed')}}
 function drawT(){let b=$('#tboard');[...b.children].forEach((d,i)=>{let r=Math.floor(i/6),c=i%6,v=current.state[r][c];d.innerHTML=v===0?'<span class="tango-symbol">☾</span>':v===1?'<span class="tango-symbol">☀</span>':''});current.edges.forEach(([r,c,dir,s])=>{let d=b.children[r*6+c];let e=document.createElement('span');e.className='relation '+dir;e.textContent=s;d.appendChild(e)});let ignore=current.tangoPendingCell?keyCell(...current.tangoPendingCell):null;applyIllegalClasses(b,tangoIllegalCells(ignore),6);updateScoreFlags()}
 function checkT(){if(solvedT())finish(`${tr('congrats')} Tango`);else status(tr('tangoIncomplete'),false)}
-function hintT(){if(paused)return;current.tangoPendingCell=null;let h=findTangoLogicalHint()||findTangoRank1Hint()||findTangoRank2Hint();if(!h)return showNoLogicalHint();let name=h.v===1?(lang()==='fr'?'un soleil ☀':'a sun ☀'):(lang()==='fr'?'une lune ☾':'a moon ☾'),move=lang()==='fr'?`Place ${name} en ligne ${h.r+1}, colonne ${h.c+1}.`:`Place ${name} at row ${h.r+1}, column ${h.c+1}.`;hintStage('tango',[h.r,h.c],{move,where:lang()==='fr'?`Le coup est déduit uniquement des symboles et relations déjà affichés.`:`The move is deduced only from the symbols and relations already displayed.`,why:h.rank===2?rank2Why(h):h.why,reveal:tr('cellRevealed')},()=>{current.state[h.r][h.c]=h.v;drawT();maybeAutoFinish()})}
+function hintT(){if(paused)return;current.tangoPendingCell=null;let h=findTangoLogicalHint()||findTangoRank1Hint()||findTangoRank2Hint();if(!h)return showNoLogicalHint();let name=h.v===1?(lang()==='fr'?'un soleil ☀':'a sun ☀'):(lang()==='fr'?'une lune ☾':'a moon ☾'),move=lang()==='fr'?`Place ${name} en ligne ${h.r+1}, colonne ${h.c+1}.`:`Place ${name} at row ${h.r+1}, column ${h.c+1}.`;hintStage('tango',[h.r,h.c],{move,where:lang()==='fr'?`Le coup est déduit uniquement des symboles et relations déjà affichés.`:`The move is deduced only from the symbols and relations already displayed.`,why:h.rank===2?rank2Why(h):h.rank===1?rank1Why(h):h.why,reveal:tr('cellRevealed')},()=>{current.state[h.r][h.c]=h.v;drawT();maybeAutoFinish()})}
 
 // MINI SUDOKU 6x6 regions 2x3
 const sudBase=[[1,2,3,4,5,6],[4,5,6,1,2,3],[2,3,4,5,6,1],[5,6,1,2,3,4],[3,4,5,6,1,2],[6,1,2,3,4,5]];
@@ -943,7 +982,7 @@ function sudoku(diff){let map=shuffle([1,2,3,4,5,6]),sol=sudBase.map(r=>r.map(v=
 function renderSudoku(c){shell('Mini Sudoku',lang()==='fr'?'6×6 · chiffres 1 à 6 · générée':'6×6 · digits 1 to 6 · generated',c.diff,`<div class="board-wrap"><div class="board sudoku" id="sboard" style="grid-template-columns:repeat(6,minmax(0,1fr));grid-template-rows:repeat(6,minmax(0,1fr))"></div></div><div class="numpad" id="numpad">${[1,2,3,4,5,6].map(n=>`<button data-n="${n}">${n}</button>`).join('')}<button data-n="0" aria-label="${lang()==='fr'?'Effacer':'Erase'}">⌫</button></div>`,gameRules('sudoku'));let b=$('#sboard');for(let r=0;r<6;r++)for(let col=0;col<6;col++){let fixed=!c.empty.has(r*6+col),d=document.createElement('div');d.className='cell '+(fixed?'fixed ':'')+((col===2)?'boxR ':'')+((r===1||r===3)?'boxB ':'');if(!fixed)d.onclick=touchSave(()=>{current.sel=[r,col];drawS()});b.appendChild(d)}$('#numpad').querySelectorAll('button').forEach(bt=>bt.onclick=touchSave(()=>{if(current.sel){let [r,col]=current.sel,prev=current.state[r][col],next=+bt.dataset.n;if(prev!==0&&prev!==next)markBacktrack();current.state[r][col]=next;haptic(8);drawS();updateScoreFlags();maybeAutoFinish()}}));drawS();$('#checkBtn').onclick=checkS;$('#hintBtn').onclick=hintS;$('#solutionBtn').onclick=()=>{if(paused)return;current.state=current.sol.map(r=>[...r]);drawS();finish(tr('solutionShown'),'revealed')}}
 function drawS(){let sel=current.sel,sv=sel?current.state[sel[0]][sel[1]]:0;[...$('#sboard').children].forEach((d,i)=>{let r=Math.floor(i/6),c=i%6,v=current.state[r][c];d.textContent=v||'';let sameUnit=!!sel&&(r===sel[0]||c===sel[1]||(Math.floor(r/2)===Math.floor(sel[0]/2)&&Math.floor(c/3)===Math.floor(sel[1]/3)));d.classList.toggle('peer',sameUnit&&!(r===sel[0]&&c===sel[1]));d.classList.toggle('same-value',!!sv&&v===sv&&!(r===sel[0]&&c===sel[1]));d.classList.toggle('selected',!!sel&&sel[0]===r&&sel[1]===c);d.classList.remove('error')});applyIllegalClasses($('#sboard'),sudokuIllegalCells(),6);updateScoreFlags()}
 function checkS(){if(solvedS())finish(`${tr('congrats')} Mini Sudoku`);else status(tr('sudokuIncomplete'),false)}
-function hintS(){if(paused)return;let h=findSudokuLogicalHint()||findSudokuRank1Hint()||findSudokuRank2Hint();if(!h)return showNoLogicalHint();let move=lang()==='fr'?`Place le chiffre ${h.v} en ligne ${h.r+1}, colonne ${h.c+1}.`:`Place digit ${h.v} at row ${h.r+1}, column ${h.c+1}.`;hintStage('sudoku',[h.r,h.c],{move,where:lang()==='fr'?`Le coup est déduit uniquement des chiffres actuellement visibles.`:`The move is deduced only from the digits currently visible.`,why:h.rank===2?rank2Why(h):h.why,reveal:tr('digitRevealed')},()=>{current.state[h.r][h.c]=h.v;current.sel=[h.r,h.c];drawS();maybeAutoFinish()})}
+function hintS(){if(paused)return;let h=findSudokuLogicalHint()||findSudokuRank1Hint()||findSudokuRank2Hint();if(!h)return showNoLogicalHint();let move=lang()==='fr'?`Place le chiffre ${h.v} en ligne ${h.r+1}, colonne ${h.c+1}.`:`Place digit ${h.v} at row ${h.r+1}, column ${h.c+1}.`;hintStage('sudoku',[h.r,h.c],{move,where:lang()==='fr'?`Le coup est déduit uniquement des chiffres actuellement visibles.`:`The move is deduced only from the digits currently visible.`,why:h.rank===2?rank2Why(h):h.rank===1?rank1Why(h):h.why,reveal:tr('digitRevealed')},()=>{current.state[h.r][h.c]=h.v;current.sel=[h.r,h.c];drawS();maybeAutoFinish()})}
 
 // PATCHES — connected target regions; player paints each clue region.
 const patchDefs={
@@ -956,7 +995,7 @@ function renderPatches(c){shell('Patches',lang()==='fr'?`${c.n}×${c.n} · gén�
 function clueHTML(cl){let parts=[];if(cl.mode==='both'||cl.mode==='size')parts.push(`<b>${cl.size}</b>`);if(cl.mode==='both'||cl.mode==='shape')parts.push(`<span>${cl.shape==='carré'?'□':cl.shape==='vertical'?'▯':cl.shape==='horizontal'?'▭':'✣'}</span>`);if(cl.mode==='none')parts.push('<b>?</b>');return `<span class="patch-clue">${parts.join('')}</span>`}
 function drawP(){let b=$('#pboard');[...b.children].forEach((d,i)=>{let r=Math.floor(i/current.n),c=i%current.n,p=current.paint[r][c];d.style.background=p===null?'#fff':current.pal[p%current.pal.length];d.classList.toggle('paint',p!==null);d.innerHTML='';d.classList.remove('clue');for(let id of current.ids){let [rr,cc]=current.clues[id].pos;if(rr===r&&cc===c){d.classList.add('clue');d.innerHTML=clueHTML(current.clues[id]);break}}});$('#patchPalette').querySelectorAll('.patch-chip').forEach(x=>x.classList.toggle('active',+x.dataset.id===current.active));applyIllegalClasses(b,patchIllegalCells(),current.n);updateScoreFlags()}
 function checkP(){let n=current.n,all=current.paint.every(row=>row.every(v=>v!==null));if(!all){status(tr('patchAll'),false);return}let cluePositions=new Map(current.ids.map(id=>[current.clues[id].pos.join(','),id]));for(let id of current.ids){let cells=[];for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.paint[r][c]===id)cells.push([r,c]);if(!cells.length){status(tr('patchEach'),false);return}let own=current.clues[id].pos;if(!cells.some(([r,c])=>r===own[0]&&c===own[1])){status(tr('patchOwn'),false);return}let other=cells.some(([r,c])=>cluePositions.has(r+','+c)&&cluePositions.get(r+','+c)!==id);if(other){status(tr('patchTwo'),false);return}let seen=new Set([cells[0].join(',')]),q=[cells[0]],set=new Set(cells.map(x=>x.join(',')));while(q.length){let [r,c]=q.pop();for(let [rr,cc] of [[r+1,c],[r-1,c],[r,c+1],[r,c-1]]){let k=rr+','+cc;if(set.has(k)&&!seen.has(k)){seen.add(k);q.push([rr,cc])}}}if(seen.size!==cells.length){status(tr('patchConnected'),false);return}let cl=current.clues[id],sh=patchShape(cells);if(sh==='libre'){status(tr('patchRect'),false);return}if((cl.mode==='both'||cl.mode==='size')&&cells.length!==cl.size){status(tr('patchSize'),false);return}if((cl.mode==='both'||cl.mode==='shape')&&sh!==cl.shape){status(tr('patchShape'),false);return}}finish(`${tr('congrats')} Patches`)}
-function hintP(){if(paused)return;let h=findPatchLogicalHint()||findPatchRank1Hint()||findPatchRank2Hint();if(!h)return showNoLogicalHint();let move=lang()==='fr'?`Attribue la case ligne ${h.r+1}, colonne ${h.c+1} à la zone ${h.id+1}.`:`Assign row ${h.r+1}, column ${h.c+1} to region ${h.id+1}.`;hintStage('patches',[h.r,h.c],{move,where:lang()==='fr'?`Le coup est déduit uniquement des indices et cases déjà peintes.`:`The move is deduced only from the clues and cells already painted.`,why:h.rank===2?rank2Why(h):h.why,reveal:tr('patchRevealed')},()=>{current.paint[h.r][h.c]=h.id;drawP();maybeAutoFinish()})}
+function hintP(){if(paused)return;let h=findPatchLogicalHint()||findPatchRank1Hint()||findPatchRank2Hint();if(!h)return showNoLogicalHint();let move=lang()==='fr'?`Attribue la case ligne ${h.r+1}, colonne ${h.c+1} à la zone ${h.id+1}.`:`Assign row ${h.r+1}, column ${h.c+1} to region ${h.id+1}.`;hintStage('patches',[h.r,h.c],{move,where:lang()==='fr'?`Le coup est déduit uniquement des indices et cases déjà peintes.`:`The move is deduced only from the clues and cells already painted.`,why:h.rank===2?rank2Why(h):h.rank===1?rank1Why(h):h.why,reveal:tr('patchRevealed')},()=>{current.paint[h.r][h.c]=h.id;drawP();maybeAutoFinish()})}
 // ===== v1.2 generators: generated puzzles + uniqueness checks =====
 function countQueensGenerated(reg,limit=2){const n=reg.length;let count=0,usedC=new Set(),usedR=new Set();function bt(r,prev){if(count>=limit)return;if(r===n){count++;return}for(let c=0;c<n;c++){let z=reg[r][c];if(usedC.has(c)||usedR.has(z))continue;if(r>0&&Math.abs(c-prev)===1)continue;usedC.add(c);usedR.add(z);bt(r+1,c);usedC.delete(c);usedR.delete(z);if(count>=limit)return}}bt(0,-99);return count}
 function randomQueenSolution(n){for(let t=0;t<3000;t++){let p=shuffle(Array.from({length:n},(_,i)=>i));if(p.every((c,r)=>r===0||Math.abs(c-p[r-1])!==1))return p}return null}

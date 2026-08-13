@@ -1,6 +1,14 @@
-# Logic 4 — v2.5.2
+# Logic 4 — v2.5.3
 
 Site statique mobile-first regroupant Queens, Tango, Mini Sudoku 6×6 et Patches.
+
+## Correctif v2.5.3 — explications pédagogiques de rang 1
+- Les quatre jeux présentent désormais les inférences de rang 1 sous forme de démonstration : **1. Essai → 2. Ce que cela provoque → 3. Pourquoi ça bloque → 4. Conclusion**.
+- Queens nomme la case testée puis la ligne, colonne ou zone précise qui perdrait toute possibilité de reine.
+- Tango nomme la case qui devient impossible et explique pourquoi lune et soleil y sont rejetés lorsque cette information est disponible.
+- Mini Sudoku liste les candidats éliminés et précise la case qui resterait sans candidat ou le chiffre qui n'aurait plus de place dans une ligne, colonne ou bloc.
+- Patches liste les zones alternatives rejetées et précise la zone sans rectangle valide ou la case qui ne pourrait plus être couverte.
+- Le moteur logique n'utilise toujours pas la solution cachée pour produire l'indice.
 
 ## Correctif v2.5.2 — explications Queens de rang 2
 - Les explications Queens de rang 2 suivent maintenant concrètement la grille.
