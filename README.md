@@ -1,6 +1,16 @@
-# Logic 4 — v2.5.3
+# Logic 4 — v2.5.4
 
 Site statique mobile-first regroupant Queens, Tango, Mini Sudoku 6×6 et Patches.
+
+## Correctif v2.5.4 — réponse du bouton Indice Queens et fenêtre mobile
+- Queens dispose maintenant d’un budget explicite de **5 000 ms** pour la recherche d’un indice.
+- Dès l’appui sur `Indice`, un message `Recherche d’un indice…` est affiché avant de lancer le calcul, afin que l’action soit toujours visible.
+- La recherche distingue les issues et affiche un message dans tous les cas : **indice trouvé**, **aucun indice déductible**, **limite de 5 secondes atteinte**, **partie en pause**, ou **erreur interne de recherche**.
+- Les recherches de rang 1 et de rang 2 contrôlent le budget pendant leur parcours et abandonnent proprement si le délai est dépassé.
+- `Aucun indice` et `Délai dépassé` ne déclenchent plus le marqueur `💡`, puisque aucun indice n’a effectivement été donné.
+- La fenêtre d’indice possède désormais une poignée `Déplacer / Move` et peut être déplacée au doigt ou à la souris.
+- Son déplacement est limité à l’intérieur de la fenêtre visible afin qu’elle ne puisse pas être perdue hors écran.
+- Le bouton `Fermer / Close` reste disponible après déplacement.
 
 ## Correctif v2.5.3 — explications pédagogiques de rang 1
 - Les quatre jeux présentent désormais les inférences de rang 1 sous forme de démonstration : **1. Essai → 2. Ce que cela provoque → 3. Pourquoi ça bloque → 4. Conclusion**.

@@ -5,7 +5,7 @@
  */
 'use strict';
 const $=s=>document.querySelector(s), app=$('#app'), toast=$('#toast'), timerEl=$('#timer');
-const VERSION='2.5.3', SAVE_KEY='logic4-save-v1';
+const VERSION='2.5.4', SAVE_KEY='logic4-save-v1';
 let current=null, tick=null, startedAt=0, elapsedBase=0, paused=false;
 const I18N={
 fr:{
@@ -24,7 +24,7 @@ fr:{
  autoCross:'Croix automatiques quand je place une reine',queensLegend:'Touchez une case pour faire vide → X → reine. Faites glisser le doigt sur une ligne ou une colonne pour ajouter des X ; commencez sur un X pour les effacer.',
  patchesLegend:'Choisis un indice, puis touche les cases de sa zone. Tu peux aussi faire glisser le doigt pour peindre plusieurs cases.',zone:'Zone',
  aboutTitle:'À propos de Logic 4',version:'Version',copyright:'Copyright',license:'Licence',proprietary:'Logiciel propriétaire — All rights reserved.',legal:'Toute copie, modification, redistribution et exploitation sans autorisation écrite préalable de Serge Benoliel est interdite.',
- restored:'Partie restaurée',generating:'Génération…',rulesTitle:'Règles',where:'Où regarder',logic:'Logique',solutionShown:'Solution affichée',congrats:'Bravo !',gridIncomplete:'Il reste une erreur ou une case à résoudre.',tangoIncomplete:'La grille ne respecte pas encore toutes les règles.',sudokuIncomplete:'Il reste une erreur ou une case vide.',autoCrossOn:'Croix automatiques activées',autoCrossOff:'Croix automatiques désactivées',queenPlaced:'Une reine a été placée.',cellRevealed:'Une case a été révélée.',digitRevealed:'Un chiffre a été révélé.',patchRevealed:'Une case de la zone a été révélée.',finishedShare:'Terminé',dailyLabel:'Défi quotidien',backtrackFlag:'retour en arrière',hintFlag:'indice utilisé',closeHint:'Fermer',hintMove:'Coup conseillé',hintWhy:'Pourquoi',noLogicalHint:'Aucun coup directement déductible avec l’état actuel.',rank1:'inférence de rang 1',rank2:'inférence de rang 2',hypothesis:'Hypothèse',consequence:'Conséquence',deadend:'Impasse',conclusion:'Conclusion',themeLabel:'Thème',soundsOn:'Sons activés',soundsOff:'Sons désactivés',resetDone:'Grille réinitialisée.',patchAll:'Toutes les cases doivent appartenir à une zone.',patchEach:'Chaque indice doit avoir une zone.',patchOwn:'Chaque zone doit contenir son propre indice.',patchTwo:'Une zone ne peut pas contenir deux indices.',patchConnected:'Chaque zone doit être d’un seul tenant.',patchRect:'Chaque zone doit former un rectangle.',patchSize:'La taille d’une zone ne correspond pas à son indice.',patchShape:'La forme d’une zone ne correspond pas à son indice.',
+ restored:'Partie restaurée',generating:'Génération…',rulesTitle:'Règles',where:'Où regarder',logic:'Logique',solutionShown:'Solution affichée',congrats:'Bravo !',gridIncomplete:'Il reste une erreur ou une case à résoudre.',tangoIncomplete:'La grille ne respecte pas encore toutes les règles.',sudokuIncomplete:'Il reste une erreur ou une case vide.',autoCrossOn:'Croix automatiques activées',autoCrossOff:'Croix automatiques désactivées',queenPlaced:'Une reine a été placée.',cellRevealed:'Une case a été révélée.',digitRevealed:'Un chiffre a été révélé.',patchRevealed:'Une case de la zone a été révélée.',finishedShare:'Terminé',dailyLabel:'Défi quotidien',backtrackFlag:'retour en arrière',hintFlag:'indice utilisé',closeHint:'Fermer',hintMove:'Coup conseillé',hintWhy:'Pourquoi',noLogicalHint:'Aucun coup directement déductible avec l’état actuel.',hintTimeout:'La recherche d’indice a atteint la limite de 5 secondes. Aucun indice fiable n’a été trouvé dans ce délai.',hintSearching:'Recherche d’un indice…',hintPaused:'Reprenez la partie pour demander un indice.',hintError:'La recherche d’indice n’a pas pu aboutir. Réessayez après votre prochain coup.',dragHint:'Déplacer',rank1:'inférence de rang 1',rank2:'inférence de rang 2',hypothesis:'Hypothèse',consequence:'Conséquence',deadend:'Impasse',conclusion:'Conclusion',themeLabel:'Thème',soundsOn:'Sons activés',soundsOff:'Sons désactivés',resetDone:'Grille réinitialisée.',patchAll:'Toutes les cases doivent appartenir à une zone.',patchEach:'Chaque indice doit avoir une zone.',patchOwn:'Chaque zone doit contenir son propre indice.',patchTwo:'Une zone ne peut pas contenir deux indices.',patchConnected:'Chaque zone doit être d’un seul tenant.',patchRect:'Chaque zone doit former un rectangle.',patchSize:'La taille d’une zone ne correspond pas à son indice.',patchShape:'La forme d’une zone ne correspond pas à son indice.',
 },
 en:{
  easy:'Easy',medium:'Medium',hard:'Hard',expert:'Expert',
@@ -42,7 +42,7 @@ en:{
  autoCross:'Auto-mark crosses when I place a queen',queensLegend:'Tap a cell to cycle empty → X → queen. Drag along a row or column to add X marks; start on an X to erase them.',
  patchesLegend:'Choose a clue, then tap the cells in its region. You can also drag to paint several cells.',zone:'Region',
  aboutTitle:'About Logic 4',version:'Version',copyright:'Copyright',license:'License',proprietary:'Proprietary software — All rights reserved.',legal:'Copying, modification, redistribution and exploitation without prior written permission from Serge Benoliel are prohibited.',
- restored:'Game restored',generating:'Generating…',rulesTitle:'Rules',where:'Where to look',logic:'Logic',solutionShown:'Solution shown',congrats:'Well done!',gridIncomplete:'There is still an error or an unresolved cell.',tangoIncomplete:'The grid does not yet satisfy all rules.',sudokuIncomplete:'There is still an error or an empty cell.',autoCrossOn:'Auto-crosses enabled',autoCrossOff:'Auto-crosses disabled',queenPlaced:'A queen was placed.',cellRevealed:'A cell was revealed.',digitRevealed:'A digit was revealed.',patchRevealed:'A region cell was revealed.',finishedShare:'Finished',dailyLabel:'Daily challenge',backtrackFlag:'backtracked',hintFlag:'hint used',closeHint:'Close',hintMove:'Suggested move',hintWhy:'Why',noLogicalHint:'No move can be directly deduced from the current state.',rank1:'rank-1 inference',rank2:'rank-2 inference',hypothesis:'Assumption',consequence:'Consequence',deadend:'Dead end',conclusion:'Conclusion',themeLabel:'Theme',soundsOn:'Sounds enabled',soundsOff:'Sounds disabled',resetDone:'Grid reset.',patchAll:'Every cell must belong to a region.',patchEach:'Every clue must have a region.',patchOwn:'Each region must contain its own clue.',patchTwo:'A region cannot contain two clues.',patchConnected:'Each region must be connected.',patchRect:'Each region must form a rectangle.',patchSize:'A region size does not match its clue.',patchShape:'A region shape does not match its clue.',
+ restored:'Game restored',generating:'Generating…',rulesTitle:'Rules',where:'Where to look',logic:'Logic',solutionShown:'Solution shown',congrats:'Well done!',gridIncomplete:'There is still an error or an unresolved cell.',tangoIncomplete:'The grid does not yet satisfy all rules.',sudokuIncomplete:'There is still an error or an empty cell.',autoCrossOn:'Auto-crosses enabled',autoCrossOff:'Auto-crosses disabled',queenPlaced:'A queen was placed.',cellRevealed:'A cell was revealed.',digitRevealed:'A digit was revealed.',patchRevealed:'A region cell was revealed.',finishedShare:'Finished',dailyLabel:'Daily challenge',backtrackFlag:'backtracked',hintFlag:'hint used',closeHint:'Close',hintMove:'Suggested move',hintWhy:'Why',noLogicalHint:'No move can be directly deduced from the current state.',hintTimeout:'The hint search reached the 5-second limit. No reliable hint was found within that time.',hintSearching:'Searching for a hint…',hintPaused:'Resume the game to request a hint.',hintError:'The hint search could not complete. Try again after your next move.',dragHint:'Move',rank1:'rank-1 inference',rank2:'rank-2 inference',hypothesis:'Assumption',consequence:'Consequence',deadend:'Dead end',conclusion:'Conclusion',themeLabel:'Theme',soundsOn:'Sounds enabled',soundsOff:'Sounds disabled',resetDone:'Grid reset.',patchAll:'Every cell must belong to a region.',patchEach:'Every clue must have a region.',patchOwn:'Each region must contain its own clue.',patchTwo:'A region cannot contain two clues.',patchConnected:'Each region must be connected.',patchRect:'Each region must form a rectangle.',patchSize:'A region size does not match its clue.',patchShape:'A region shape does not match its clue.',
 }};
 let DIFF={};
 function lang(){return prefs().lang==='en'?'en':'fr'}
@@ -241,10 +241,26 @@ function pressFeedback(el){if(!el)return;el.addEventListener('pointerdown',()=>e
 function showToast(t){toast.textContent=t;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),1400)}
 
 function closeHintNotice(){let n=$('#hintNotice');if(n)n.remove()}
+function clampHintPosition(n,left,top){
+  let w=n.offsetWidth||Math.min((window.innerWidth||390)*.92,520),h=n.offsetHeight||130,pad=8,W=window.innerWidth||390,H=window.innerHeight||844;
+  return [Math.max(pad,Math.min(left,W-w-pad)),Math.max(pad,Math.min(top,H-h-pad))]
+}
+function makeHintDraggable(n){
+  let h=n?.querySelector('.hint-drag-handle');if(!h)return;
+  h.onpointerdown=e=>{
+    if(e.button!=null&&e.button!==0)return;e.preventDefault();
+    let rect=n.getBoundingClientRect(),dx=e.clientX-rect.left,dy=e.clientY-rect.top;
+    n.style.left=rect.left+'px';n.style.top=rect.top+'px';n.style.bottom='auto';n.style.transform='none';
+    try{h.setPointerCapture(e.pointerId)}catch(_){}
+    h.onpointermove=ev=>{if(ev.pointerId!==e.pointerId)return;ev.preventDefault();let [x,y]=clampHintPosition(n,ev.clientX-dx,ev.clientY-dy);n.style.left=x+'px';n.style.top=y+'px'};
+    let done=ev=>{if(ev.pointerId!==e.pointerId)return;try{h.releasePointerCapture(ev.pointerId)}catch(_){};h.onpointermove=null;h.onpointerup=null;h.onpointercancel=null};
+    h.onpointerup=done;h.onpointercancel=done
+  }
+}
 function showHintNotice(text){
   closeHintNotice();
-  document.body.insertAdjacentHTML('beforeend',`<div class="hint-notice" id="hintNotice" role="status"><div class="hint-notice-text">${text}</div><button class="btn primary hint-close" id="hintClose">${tr('closeHint')}</button></div>`);
-  $('#hintClose').onclick=closeHintNotice
+  document.body.insertAdjacentHTML('beforeend',`<div class="hint-notice" id="hintNotice" role="status"><div class="hint-drag-handle" title="${tr('dragHint')}" aria-label="${tr('dragHint')}"><span>⋮⋮</span> ${tr('dragHint')}</div><div class="hint-notice-text">${text}</div><button class="btn primary hint-close" id="hintClose">${tr('closeHint')}</button></div>`);
+  let n=$('#hintNotice');$('#hintClose').onclick=closeHintNotice;makeHintDraggable(n)
 }
 function timerSeconds(){return elapsedBase+(!paused&&startedAt?Math.floor((Date.now()-startedAt)/1000):0)}
 function renderTimer(){timerEl.textContent=fmt(timerSeconds())}
@@ -347,7 +363,7 @@ function patchReason(r,c,id,cl){
   return lang()==='fr'?`cette case appartient à ${piece} dans l’unique découpage valide et n’introduit ni chevauchement ni second indice.`:`this cell belongs to ${piece} in the unique valid partition and creates neither overlap nor a second clue.`
 }
 
-function showNoLogicalHint(){markHintUsed();updateScoreFlags();showHintNotice(tr('noLogicalHint'));saveCurrent()}
+function showNoLogicalHint(){showHintNotice(tr('noLogicalHint'));saveCurrent()}
 
 function queenCellAllowed(r,c){
   if(current.state[r][c]===1)return false;
@@ -453,11 +469,15 @@ function queenStateContradiction(){
   }
   return false
 }
-function findQueenRank1Hint(){
+const QUEEN_HINT_BUDGET_MS=5000;
+function hintBudgetExpired(deadline){return Number.isFinite(deadline)&&Date.now()>=deadline}
+function queenHintTimeout(){return {timeout:true}}
+function findQueenRank1Hint(deadline=Infinity){
   let n=current.n;
-  for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.state[r][c]===0&&queenCellAllowed(r,c)){
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(hintBudgetExpired(deadline))return queenHintTimeout();else if(current.state[r][c]===0&&queenCellAllowed(r,c)){
     let queenBad=withTempCurrent(x=>{x.state[r][c]=2},()=>queenStateContradiction());
     let xBad=withTempCurrent(x=>{x.state[r][c]=1},()=>queenStateContradiction());
+    if(hintBudgetExpired(deadline))return queenHintTimeout();
     if(queenBad!==xBad){
       let v=queenBad?1:2,rej=v===2?1:2,w;
       if(rej===2)w=queenRank1PlacementFailure(r,c);
@@ -808,14 +828,15 @@ function queenUnitViableWithRank1(){
   }
   return null
 }
-function findQueenRank2Hint(){
+function findQueenRank2Hint(deadline=Infinity){
   let n=current.n;
-  for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.state[r][c]===0&&queenCellAllowed(r,c)){
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(hintBudgetExpired(deadline))return queenHintTimeout();else if(current.state[r][c]===0&&queenCellAllowed(r,c)){
     let opts=[1,2],surviving=opts.filter(v=>!withTempCurrent(x=>{x.state[r][c]=v},()=>queenStateContradiction()));
     if(surviving.length<2)continue;
     let bad=[],witness={};
     for(let v of surviving){
       let w=withTempCurrent(x=>{x.state[r][c]=v},()=>queenUnitViableWithRank1());
+      if(hintBudgetExpired(deadline))return queenHintTimeout();
       if(w){bad.push(v);witness[v]=w}
     }
     let good=surviving.filter(v=>!bad.includes(v));
@@ -957,7 +978,26 @@ b.onpointerup=endDrag;b.onpointercancel=e=>{if(!dragging||e.pointerId!==pointerI
 drawQ();$('#queenAutoCross').onchange=e=>{setQueenAutoCross(e.target.checked);if(e.target.checked){for(let r=0;r<current.n;r++)for(let col=0;col<current.n;col++)if(current.state[r][col]===2)applyQueenAutoCross(r,col);drawQ();saveCurrent();showToast(tr('autoCrossOn'))}else showToast(tr('autoCrossOff'))};$('#checkBtn').onclick=checkQ;$('#hintBtn').onclick=hintQ;$('#solutionBtn').onclick=()=>{if(paused)return;current.state=current.state.map((row,r)=>row.map((_,col)=>col===current.sol[r]?2:1));drawQ();finish(tr('solutionShown'),'revealed')}}
 function drawQ(){let b=$('#qboard');if(current?.game==='queens'&&current.completed&&solvedQ())b.classList.add('queens-win');[...b.children].forEach((d,i)=>{let r=Math.floor(i/current.n),c=i%current.n,v=current.state[r][c];d.innerHTML=v===2?'<span class="queen">♛</span>':v===1?'<span class="mark">×</span>':'';d.classList.remove('error')});applyIllegalClasses(b,queenIllegalCells(),current.n);updateScoreFlags()}
 function checkQ(){if(solvedQ())finish(`${tr('congrats')} Queens`);else status(tr('gridIncomplete'),false)}
-function hintQ(){if(paused)return;let h=findQueenLogicalHint()||findQueenRank1Hint()||findQueenRank2Hint();if(!h)return showNoLogicalHint();let isX=h.v===1,move=lang()==='fr'?(isX?`Place un X en ligne ${h.r+1}, colonne ${h.c+1}.`:`Place une reine ♛ en ligne ${h.r+1}, colonne ${h.c+1}.`):(isX?`Mark X at row ${h.r+1}, column ${h.c+1}.`:`Place a queen ♛ at row ${h.r+1}, column ${h.c+1}.`);hintStage('queens',[h.r,h.c],{move,where:lang()==='fr'?`Ce coup est imposé par les marques et reines déjà visibles.`:`This move is forced by the queens and X marks already visible.`,why:h.rank===2?rank2Why(h):h.rank===1?rank1Why(h):h.why,reveal:tr('queenPlaced')},()=>{setQueenCell(h.r,h.c,h.v===1?1:2);drawQ();maybeAutoFinish()})}
+let queenHintSearchToken=0;
+function hintQ(){
+  if(paused){showHintNotice(tr('hintPaused'));return}
+  if(!current||current.game!=='queens'){showHintNotice(tr('noLogicalHint'));return}
+  let token=++queenHintSearchToken;
+  showHintNotice(tr('hintSearching'));
+  setTimeout(()=>{
+    if(token!==queenHintSearchToken||!current||current.game!=='queens')return;
+    try{
+    let deadline=Date.now()+QUEEN_HINT_BUDGET_MS,h=findQueenLogicalHint();
+    if(!h&&!hintBudgetExpired(deadline))h=findQueenRank1Hint(deadline);
+    if(h?.timeout||(!h&&hintBudgetExpired(deadline))){showHintNotice(tr('hintTimeout'));return}
+    if(!h)h=findQueenRank2Hint(deadline);
+    if(h?.timeout||(!h&&hintBudgetExpired(deadline))){showHintNotice(tr('hintTimeout'));return}
+    if(!h){showNoLogicalHint();return}
+    let isX=h.v===1,move=lang()==='fr'?(isX?`Place un X en ligne ${h.r+1}, colonne ${h.c+1}.`:`Place une reine ♛ en ligne ${h.r+1}, colonne ${h.c+1}.`):(isX?`Mark X at row ${h.r+1}, column ${h.c+1}.`:`Place a queen ♛ at row ${h.r+1}, column ${h.c+1}.`);
+    hintStage('queens',[h.r,h.c],{move,where:lang()==='fr'?`Ce coup est imposé par les marques et reines déjà visibles.`:`This move is forced by the queens and X marks already visible.`,why:h.rank===2?rank2Why(h):h.rank===1?rank1Why(h):h.why,reveal:tr('queenPlaced')},()=>{setQueenCell(h.r,h.c,h.v===1?1:2);drawQ();maybeAutoFinish()})
+    }catch(err){console.error('Queens hint search failed',err);showHintNotice(tr('hintError'))}
+  },0)
+}
 
 // TANGO
 const tangoSolutions={easy:[[0,1,0,1,0,1],[1,0,1,0,1,0],[1,1,0,0,1,0],[0,0,1,1,0,1],[1,0,0,1,0,1],[0,1,1,0,1,0]],medium:[[0,1,0,0,1,1],[1,0,1,1,0,0],[0,0,1,0,1,1],[1,1,0,1,0,0],[0,1,1,0,0,1],[1,0,0,1,1,0]],hard:[[1,0,1,0,0,1],[0,1,0,1,1,0],[1,1,0,0,1,0],[0,0,1,1,0,1],[1,0,1,0,1,0],[0,1,0,1,0,1]]};

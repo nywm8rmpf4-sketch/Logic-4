@@ -301,3 +301,22 @@ body.busy{pointer-events:none}
 .reason-step{display:block;margin-top:7px;padding-left:10px;border-left:3px solid color-mix(in srgb,var(--accent) 35%,transparent)}
 .reason-step.dead{border-left-color:#c45a5a}
 .reason-step.conclusion{border-left-color:#6d9b63;font-weight:600}
+
+/* v2.5.4 — fenêtre d'indice déplaçable */
+.hint-drag-handle{
+  grid-column:1 / -1;
+  margin:-5px -5px 1px;
+  padding:5px 9px 7px;
+  border-bottom:1px solid color-mix(in srgb,var(--muted) 28%,transparent);
+  color:var(--muted);
+  font-size:12px;
+  font-weight:700;
+  text-align:center;
+  cursor:grab;
+  touch-action:none;
+  user-select:none;
+  -webkit-user-select:none;
+  -webkit-touch-callout:none;
+}
+.hint-drag-handle:active{cursor:grabbing}
+.hint-drag-handle span{letter-spacing:-3px;margin-right:5px}
