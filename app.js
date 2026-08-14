@@ -5,7 +5,7 @@
  */
 'use strict';
 const $=s=>document.querySelector(s), app=$('#app'), toast=$('#toast'), timerEl=$('#timer');
-const VERSION='2.6.1', SAVE_KEY='logic4-save-v1';
+const VERSION='2.6.2', SAVE_KEY='logic4-save-v1';
 let current=null, tick=null, startedAt=0, elapsedBase=0, paused=false;
 const I18N={
 fr:{
@@ -1257,11 +1257,73 @@ function analyzeTango(sol,givens,edges){let g=Array.from({length:6},()=>Array(6)
 function analyzePatches(n,ids,clues){let positions=ids.map(id=>clues[id].pos),opts={};for(let id of ids)opts[id]=possiblePatchRects(n,clues[id],positions);let chosen=new Map(),covered=new Set(),steps=0,coverForced=0,guard=0;while(chosen.size<ids.length&&guard++<100){let progress=false;for(let id of ids)if(!chosen.has(id)){let a=opts[id].filter(c=>c.every(x=>!covered.has(x)));if(a.length===1){chosen.set(id,a[0]);a[0].forEach(x=>covered.add(x));steps++;progress=true}}if(progress)continue;for(let cell=0;cell<n*n;cell++)if(!covered.has(cell)){let owners=[];for(let id of ids)if(!chosen.has(id))for(let cells of opts[id])if(cells.includes(cell)&&cells.every(x=>!covered.has(x)))owners.push([id,cells]);let uniq=[...new Set(owners.map(x=>x[0]))];if(uniq.length===1){let id=uniq[0],arr=owners.filter(x=>x[0]===id);if(arr.length===1){chosen.set(id,arr[0][1]);arr[0][1].forEach(x=>covered.add(x));steps++;coverForced++;progress=true;break}}}if(!progress)break}let remain=ids.length-chosen.size,level=remain?2:coverForced?1:0,branch=ids.reduce((s,id)=>s+Math.max(0,opts[id].length-1),0),score=Math.round(steps+coverForced*2+remain*5+branch*.25);return {score,technique:labelTechnique('patches',level),solved:remain===0,remain,level}}
 function queenSearchStats(reg){let n=reg.length,nodes=0,maxBranch=0;function bt(r,cols,zones,prev){nodes++;if(r===n)return true;let cand=[];for(let c=0;c<n;c++){let z=reg[r][c];if(cols.has(c)||zones.has(z)||(r>0&&Math.abs(c-prev)===1))continue;cand.push(c)}maxBranch=Math.max(maxBranch,cand.length);for(let c of cand){let z=reg[r][c];cols.add(c);zones.add(z);if(bt(r+1,cols,zones,c))return true;cols.delete(c);zones.delete(z)}return false}bt(0,new Set(),new Set(),-99);return {nodes,maxBranch}}
 function analyzeQueens(reg){let n=reg.length,regionSizes={};for(let x of reg.flat())regionSizes[x]=(regionSizes[x]||0)+1;let singles=Object.values(regionSizes).filter(x=>x===1).length,stats=queenSearchStats(reg),score=Math.round((stats.nodes-n-1)*2+stats.maxBranch*3+(n-singles)*2);let level=score>220?2:score>70?1:0;return {score,technique:labelTechnique('queens',level),solved:true,remain:0,level,nodes:stats.nodes,singles}}
+
+// v2.6.2 — Queens session anti-repeat.
+// Kept deliberately in memory only: restarting/reloading the application clears it.
+const queenGeneratedSessionByDay=new Map();
+
+function normalizeQueenRegionIds(reg){
+  let ids=new Map(),next=0;
+  return reg.map(row=>row.map(id=>{
+    if(!ids.has(id))ids.set(id,next++);
+    return ids.get(id)
+  }))
+}
+function queenRegionSignature(reg){
+  let g=normalizeQueenRegionIds(reg);
+  return `${g.length}|${g.map(row=>row.join(',')).join(';')}`
+}
+function queenCanonicalSignature(reg){
+  // The 8 symmetries of a square: 4 rotations + their mirrored forms.
+  let signatures=[];
+  for(let k=0;k<8;k++)signatures.push(queenRegionSignature(transformGrid(reg,k)));
+  signatures.sort();
+  return signatures[0]
+}
+function queenSessionSet(day=localDay()){
+  // The requirement is per day; if the app remains open across midnight,
+  // yesterday's set is no longer useful and can be released.
+  for(let d of [...queenGeneratedSessionByDay.keys()])if(d!==day)queenGeneratedSessionByDay.delete(d);
+  if(!queenGeneratedSessionByDay.has(day))queenGeneratedSessionByDay.set(day,new Set());
+  return queenGeneratedSessionByDay.get(day)
+}
+function queenWasGeneratedThisSession(reg,day=localDay()){
+  return queenSessionSet(day).has(queenCanonicalSignature(reg))
+}
+function rememberQueenGeneratedThisSession(reg,day=localDay()){
+  queenSessionSet(day).add(queenCanonicalSignature(reg))
+}
+function collectFreshQueenCandidates(diff,count,day=localDay()){
+  let out=[],batch=new Set(),guard=0,maxTries=Math.max(48,count*12),seen=queenSessionSet(day);
+  while(out.length<count&&guard++<maxTries){
+    try{
+      let g=queenCandidate(diff),sig=queenCanonicalSignature(g.reg);
+      if(seen.has(sig)||batch.has(sig))continue;
+      batch.add(sig);out.push(g)
+    }catch(_){}
+  }
+  if(!out.length)throw new Error(lang()==='fr'
+    ?'Aucune nouvelle grille Queens non équivalente n’a pu être générée dans cette session.'
+    :'No new non-equivalent Queens grid could be generated in this session.');
+  return out
+}
+function queenCandidateForDisplay(diff,dailyRequest=false,day=localDay()){
+  let count=diff==='expert'?16:diff==='hard'?14:6,g;
+  if(dailyRequest){
+    // Daily challenge must remain deterministic for a given date/version.
+    g=targetPick(collectCandidates(()=>queenCandidate(diff),count),diff)
+  }else{
+    g=targetPick(collectFreshQueenCandidates(diff,count,day),diff)
+  }
+  rememberQueenGeneratedThisSession(g.reg,day);
+  return g
+}
+
 function queenCandidate(diff){let g=generateQueensPuzzle(diff);g.rating=analyzeQueens(g.reg);return g}
 function tangoCandidate(diff){let g=generateTangoPuzzle(diff);g.rating=analyzeTango(g.sol,g.givens,g.edges);return g}
 function sudokuCandidate(diff){let sol=randomSudokuSolution(),holes={easy:16,medium:22,hard:27}[diff],empty=makeSudokuHoles(sol,holes);return {sol,empty,rating:analyzeSudoku(sol,empty)}}
 function patchesCandidate(diff){let g=generatePatchesPuzzle(diff);g.rating=analyzePatches(g.n,g.ids,g.clues);return g}
-function queens(diff){let g=targetPick(collectCandidates(()=>queenCandidate(diff),diff==='expert'?16:diff==='hard'?14:6),diff);current={game:'queens',diff,n:g.n,reg:g.reg,sol:g.sol,rating:g.rating,state:Array.from({length:g.n},()=>Array(g.n).fill(0)),generated:true,unique:true,completed:false};renderQueens(current)}
+function queens(diff){let dailyRequest=!!current?.daily,day=current?.dailyDay||localDay(),g=queenCandidateForDisplay(diff,dailyRequest,day);current={game:'queens',diff,n:g.n,reg:g.reg,sol:g.sol,rating:g.rating,state:Array.from({length:g.n},()=>Array(g.n).fill(0)),generated:true,unique:true,completed:false};renderQueens(current)}
 function tango(diff){let g=targetPick(collectCandidates(()=>tangoCandidate(diff),6),diff),state=Array.from({length:6},()=>Array(6).fill(-1));for(let i of g.givens)state[Math.floor(i/6)][i%6]=g.sol[Math.floor(i/6)][i%6];current={game:'tango',diff,n:6,sol:g.sol,givens:g.givens,edges:g.edges,rating:g.rating,state,generated:true,unique:true,completed:false};renderTango(current)}
 function sudoku(diff){let g=targetPick(collectCandidates(()=>sudokuCandidate(diff),8),diff),sol=g.sol,empty=g.empty;current={game:'sudoku',diff,n:6,sol,empty,rating:g.rating,state:sol.map((r,ri)=>r.map((v,c)=>empty.has(ri*6+c)?0:v)),sel:null,generated:true,unique:true,completed:false};renderSudoku(current)}
 function patches(diff){let g=targetPick(collectCandidates(()=>patchesCandidate(diff),diff==='hard'?5:4),diff);const pal=['#f3c6a8','#b9d9c1','#c6d4ed','#e2c3df','#f0dc9d','#c7e0e3','#d5ceb8','#d4e3b4','#edbfc1','#c8c4e8','#e5d0a4','#b7d7d1'];current={game:'patches',diff,n:g.n,reg:g.reg,ids:g.ids,cellsBy:g.cellsBy,clues:g.clues,rating:g.rating,pal,active:g.ids[0],paint:Array.from({length:g.n},()=>Array(g.n).fill(null)),generated:true,unique:true,completed:false};renderPatches(current)}

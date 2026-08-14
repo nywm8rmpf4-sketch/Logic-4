@@ -1,6 +1,24 @@
-# Logic 4 — v2.6.1
+# Logic 4 — v2.6.2
 
 Site statique mobile-first regroupant Queens, Tango, Mini Sudoku 6×6 et Patches.
+
+## Correctif v2.6.2 — pas de répétition des grilles Queens dans la session
+- Lorsqu'une grille Queens ordinaire est affichée, l'application mémorise sa **signature canonique** en mémoire pour la journée courante.
+- Une nouvelle grille Queens ne peut plus être sélectionnée si elle est identique à une grille déjà affichée dans la même session et le même jour.
+- L'équivalence prend en compte les **8 symétries du carré** : rotations 0°, 90°, 180°, 270° et les quatre variantes obtenues par miroir.
+- La comparaison est également indépendante des numéros internes de zones : deux partitions identiques dont les identifiants de zones ont simplement été renommés sont reconnues comme la même grille.
+- L'historique est volontairement **en mémoire uniquement** : il disparaît au redémarrage/rechargement de l'application, conformément au comportement demandé.
+- Si l'application reste ouverte après minuit, l'historique repart automatiquement pour la nouvelle date.
+- Le défi quotidien Queens reste volontairement déterministe : le rouvrir le même jour redonne la même grille quotidienne. En revanche, cette grille est mémorisée afin qu'une partie Queens ordinaire créée ensuite ne puisse pas reproduire cette grille ni une de ses rotations/miroirs.
+- La sélection de difficulté est conservée : plusieurs candidats non équivalents sont générés puis classés avant de choisir celui correspondant au niveau demandé.
+
+### Validation spécifique v2.6.2
+- Vérification de la signature canonique sur les **8 transformations** d'une même grille : toutes produisent la même signature.
+- Vérification après renommage arbitraire des identifiants de zones : même signature.
+- Test de **30 générations successives le même jour** (18 Moyen + 12 Difficile) : 30 signatures canoniques distinctes, aucune répétition ni équivalence par rotation/miroir.
+- Toutes les grilles de ce test conservent une solution unique.
+- Vérification du changement de date : une grille de la veille n'est pas considérée comme déjà produite le lendemain.
+- Vérification du défi quotidien : déterminisme conservé, puis génération ordinaire différente de la grille quotidienne déjà affichée.
 
 ## Correctif v2.6.1 — repère couleur des zones dans les indices Queens
 - Dans toutes les explications Queens, lorsqu'une **zone numérotée** est citée, son numéro est désormais précédé d'un petit rectangle portant **exactement la même couleur que la zone sur le plateau**.
