@@ -1,22 +1,86 @@
-# Logic 4 — v2.8.1
+# QUADLUD — v2.11.0
 
-Site statique mobile-first regroupant Couronnes, Équilibre, Mini 6 6×6 et Mosaïque.
+Application web statique mobile-first regroupant **Couronnes**, **Soleil-Lune**, **Grille 6** et **Rectangles**.
 
-## Correctif v2.8.1 — noms publics distinctifs et nettoyage de publication
-- Les quatre jeux utilisent désormais des **noms publics propres à Logic 4** :
-  - `Couronnes` en français / `Crowns` en anglais ;
-  - `Équilibre` / `Balance` ;
-  - `Mini 6` dans les deux langues ;
-  - `Mosaïque` / `Mosaic`.
-- Les anciens identifiants techniques internes sont volontairement conservés dans le code et les données locales afin de préserver la compatibilité avec les sauvegardes, statistiques et défis existants.
-- Les noms affichés sur l'accueil, dans les titres de jeu, les statistiques, les défis quotidiens, les écrans de victoire et la reprise de partie passent tous par `gameLabel()`, qui fournit maintenant le nom public localisé.
-- Le titre HTML, la description PWA et le README utilisent les nouveaux noms.
-- Les références à des plateformes ou collections de jeux tierces ont été supprimées des fichiers publics.
-- Les mécaniques, générateurs, solutions et formats de sauvegarde restent inchangés : cette version est un **rebranding sans changement de règles**.
-- Cette séparation réduit le risque de confusion de présentation ; elle ne constitue pas à elle seule une recherche d'antériorité de marque sur les nouveaux noms.
+## v2.11.0 — socle Logic Coach + historique Annuler/Refaire
+- Le bouton d’aide est désormais présenté comme **Logic Coach**.
+- Le moteur d’indices produit maintenant un objet de raisonnement structuré séparé du texte affiché : jeu, technique, rang, cible, action et éléments de preuve.
+- Les objets Logic Coach déclarent explicitement `source: visible-state` et ne contiennent aucun champ de solution cachée.
+- Chaque coup modifiant effectivement la grille est enregistré dans un **arbre d’historique** persistant dans la sauvegarde locale existante.
+- **Annuler** permet de revenir jusqu’au début de la partie, y compris de plusieurs coups via la fonction interne `undoMoves(N)`.
+- **Refaire** rejoue les coups annulés dans l’ordre jusqu’au dernier état quitté.
+- Si le joueur revient en arrière puis choisit un autre coup, l’ancienne suite est conservée comme **branche alternative interne** au lieu d’être détruite ; l’interface d’arbre viendra dans le futur mode Exploration.
+- Les gestes complexes sont atomiques : un drag Couronnes compte comme une action, et la création/redimensionnement/suppression d’un rectangle dans Rectangles compte comme une seule action.
+- Les actions enregistrent aussi les cellules réellement modifiées (`changes`) afin de préparer les futures analyses pédagogiques.
+- `Cmd/Ctrl+Z` annule un coup et `Cmd/Ctrl+Shift+Z` le refait sur clavier.
+- Annuler/Refaire est désactivé pendant la pause et après la fin d’une partie.
+- Les 30 langues disposent des nouveaux libellés Annuler, Refaire et Logic Coach.
+- Les anciennes sauvegardes v2.10 sans historique sont migrées automatiquement : leur état courant devient la racine du nouvel historique.
+- Les identifiants internes, clés `logic4-*`, générateurs, défis quotidiens et statistiques existantes restent compatibles.
 
-## Évolution v2.8.0 — Mosaïque : geste rectangle dynamique
-- Le geste Mosaïque est entièrement changé : le glissé ne peint plus les cases traversées une à une.
+### Validation spécifique v2.11.0
+- Test de retour de **N coups** en une seule opération jusqu’à la racine.
+- Test de Refaire sur plusieurs niveaux.
+- Test de branchement : une nouvelle décision après Annuler conserve l’ancienne branche et devient la branche préférée.
+- Test de sérialisation de l’arbre d’historique dans `logic4-save-v1`.
+- Test de migration d’une partie sans historique vers une racine v2.11.
+- Test des objets Logic Coach structurés et absence de champ de solution cachée.
+- Vérification des nouveaux libellés dans les 30 langues.
+- Non-régression des quatre moteurs de jeu, de la génération unique, du Worker, du RTL et de la géométrie Rectangles.
+
+## v2.10.0 — 30 langues, dont les 24 langues officielles de l’Union européenne
+- QUADLUD prend désormais en charge **30 langues au total**.
+- Les **24 langues officielles de l’Union européenne** sont toutes disponibles : allemand, anglais, bulgare, croate, danois, espagnol, estonien, finnois, français, grec, hongrois, irlandais, italien, letton, lituanien, maltais, néerlandais, polonais, portugais, roumain, slovaque, slovène, suédois et tchèque.
+- Les six autres langues déjà présentes sont conservées : chinois simplifié, hindi, arabe, bengali, indonésien et ourdou.
+- Les 20 nouvelles langues européennes disposent chacune des **153 clés d’interface** et des **règles complètes des quatre jeux**.
+- La détection automatique de la langue du navigateur couvre désormais les 30 langues, avec formatage de date adapté à chaque locale.
+- Les langues existantes restent compatibles avec les préférences sauvegardées ; les clés historiques `logic4-*` ne changent pas.
+- Le comportement RTL de l’arabe et de l’ourdou est conservé, tandis que les plateaux restent LTR pour préserver la géométrie des interactions.
+
+### Validation spécifique v2.10.0
+- Vérification des 30 codes de langue, des 30 options du sélecteur et de la détection navigateur.
+- Vérification des **153 clés non vides** pour chacune des 30 langues.
+- Vérification que les 20 nouvelles langues européennes possèdent bien une traduction propre des 153 clés, sans simple absence de clé.
+- Vérification des règles de **Couronnes, Soleil-Lune, Grille 6 et Rectangles** dans les 30 langues.
+- Vérification de la syntaxe JavaScript, des références de version, du Service Worker et des ressources PWA.
+- Réexécution des tests de génération/unicité et de non-régression des quatre jeux avant empaquetage final.
+
+## v2.9.0 — internationalisation 10 langues
+- QUADLUD prend désormais en charge les 10 langues les plus parlées par nombre total de locuteurs selon le classement Ethnologue 2026 : **anglais, mandarin, hindi, espagnol, arabe standard, français, bengali, portugais, indonésien et ourdou**.
+- Le sélecteur de langue affiche chaque langue dans son écriture native : English, 简体中文, हिन्दी, Español, العربية, Français, বাংলা, Português, Bahasa Indonesia, اردو.
+- Les interfaces principales, règles des quatre jeux, statistiques, états de partie, messages d’erreur, commandes, partage et libellés d’indices sont localisés dans les 10 langues.
+- Les libellés de difficulté/technique sont également localisés.
+- L’arabe et l’ourdou utilisent une interface **RTL** ; les plateaux de jeu restent volontairement LTR afin de préserver la correspondance exacte entre coordonnées visuelles et logique interne.
+- Pour les huit nouvelles langues, les indices logiques complexes utilisent une explication localisée synthétique (rang 0 à 3) afin d’éviter l’affichage de fragments anglais issus du moteur de preuve détaillé. Le français et l’anglais conservent les explications de preuve détaillées existantes.
+- Sur une nouvelle installation, la langue du navigateur est détectée si elle fait partie des 10 langues prises en charge. Les préférences existantes restent compatibles grâce à la clé historique `logic4-prefs-v1`.
+- Les règles complètes de Couronnes, Soleil-Lune, Grille 6 et Rectangles sont disponibles dans les 10 langues.
+- Les identifiants internes, sauvegardes, statistiques et graines de défi quotidien sont inchangés afin d’assurer la non-régression.
+
+### Validation spécifique v2.9.0
+- Vérification automatisée des **153 clés de traduction** (130 clés historiques + 23 clés d’interface/indices ajoutées) pour chacune des 10 langues : aucune clé absente ou vide.
+- Vérification des règles complètes des 4 jeux dans les 10 langues.
+- Vérification des libellés de techniques/difficulté dans les 10 langues.
+- Vérification LTR/RTL : arabe et ourdou passent le document en RTL, tandis que les plateaux, le pavé numérique et la palette Rectangles restent LTR pour conserver la géométrie des coordonnées.
+- Vérification de la détection automatique des langues du navigateur prises en charge et du fallback français.
+- Non-régression Couronnes : invariance canonique sous les 8 rotations/miroirs et anti-répétition de session/jour.
+- Non-régression Rectangles : géométrie du rectangle dynamique conservée.
+- Web Worker : les 13 combinaisons jeu/difficulté ont été régénérées et leur unicité revalidée.
+- Syntaxe `app.js`, `precompute-worker.js` et `sw.js` vérifiée avec Node.
+
+## v2.8.2 — identité publique QUADLUD
+- Le nom public de l’application devient **QUADLUD**.
+- Les quatre jeux sont désormais présentés comme :
+  - **Couronnes** / **Crowns** ;
+  - **Soleil-Lune** / **Sun-Moon** ;
+  - **Grille 6** / **Grid 6** ;
+  - **Rectangles** / **Rectangles**.
+- Les identifiants techniques historiques (`queens`, `tango`, `sudoku`, `patches`) restent inchangés afin de préserver les sauvegardes, statistiques, défis quotidiens et le cache de pré-génération.
+- Les clés de stockage locales historiques commençant par `logic4-` sont également conservées pour assurer une migration transparente des données déjà présentes sur l’appareil.
+- Le nom QUADLUD est utilisé dans l’interface, la PWA, le partage des résultats, la page « À propos », la licence et les métadonnées.
+- Les règles, générateurs et solutions ne changent pas dans cette version.
+
+## Évolution v2.8.0 — Rectangles : geste rectangle dynamique
+- Le geste Rectangles est entièrement changé : le glissé ne peint plus les cases traversées une à une.
 - Un `tap & drag` utilise la cellule de départ comme **premier coin** et la cellule courante comme **coin opposé** ; le rectangle complet se redimensionne en direct pendant le mouvement.
 - Le calcul de la cellule sous le doigt utilise la géométrie du plateau, avec clamp aux bords : le rectangle continue donc à se redimensionner proprement même si le doigt déborde légèrement du plateau.
 - L'aperçu est calculé via `requestAnimationFrame` et au maximum une fois par frame, pour éviter les mises à jour DOM inutiles pendant un glissement rapide.
@@ -29,7 +93,7 @@ Site statique mobile-first regroupant Couronnes, Équilibre, Mini 6 6×6 et Mosa
 - Un tap sur une cellule vide contenant un indice permet toujours de créer un rectangle 1×1 ; les règles de taille/forme peuvent ensuite le signaler comme incorrect si nécessaire.
 - Les changements de rectangle conservent la détection de retour arrière/statistiques.
 - Une courte animation de validation accompagne le rectangle au relâchement, désactivée avec `prefers-reduced-motion`.
-- La légende Mosaïque FR/EN a été réécrite pour décrire le nouveau geste.
+- La légende Rectangles FR/EN a été réécrite pour décrire le nouveau geste.
 
 ### Validation spécifique v2.8.0
 - Test d'un glissé `[L1C1 → L2C3]` : création d'un rectangle 2×3 complet, avec sélection automatique de l'indice contenu.
@@ -39,13 +103,13 @@ Site statique mobile-first regroupant Couronnes, Équilibre, Mini 6 6×6 et Mosa
 - Test du tap : le rectangle existant complet est supprimé, pas seulement la cellule touchée.
 - Test du rendu d'aperçu : les quatre côtés du rectangle sont correctement identifiés, y compris dans les glissements en sens inverse.
 - La mécanique repose sur un geste de glissement permettant de dessiner un rectangle contenant exactement une cellule-indice ; les rectangles couvrent la grille sans chevauchement.
-- Les tests d'unicité Mosaïque et les tests du Web Worker/cache de pré-génération sont rejoués avant empaquetage final.
+- Les tests d'unicité Rectangles et les tests du Web Worker/cache de pré-génération sont rejoués avant empaquetage final.
 
-## Correctif v2.7.1 — Mosaïque : affichage et fluidité
-- Le moteur d'affichage de Mosaïque ne redessine plus toute la grille à chaque case peinte pendant un glissé.
+## Correctif v2.7.1 — Rectangles : affichage et fluidité
+- Le moteur d'affichage de Rectangles ne redessine plus toute la grille à chaque case peinte pendant un glissé.
 - Lorsqu'une case change, seules **cette case et ses quatre voisines** sont rafraîchies immédiatement ; le contrôle des erreurs, la sauvegarde et la détection de victoire sont regroupés sur la prochaine frame via `requestAnimationFrame`.
 - Les indices de zones sont créés une seule fois lors du rendu de la grille. `drawP()` ne détruit/recrée plus leur `innerHTML`, ce qui évite scintillements et micro-décalages.
-- Les anciennes bordures épaisses autour de **chaque case peinte** sont supprimées. Mosaïque dessine désormais un contour uniquement sur le **périmètre extérieur réel de chaque zone peinte**, rendant les rectangles plus lisibles.
+- Les anciennes bordures épaisses autour de **chaque case peinte** sont supprimées. Rectangles dessine désormais un contour uniquement sur le **périmètre extérieur réel de chaque zone peinte**, rendant les rectangles plus lisibles.
 - Les indices restent lisibles sur toutes les couleurs grâce à un petit fond translucide stable au-dessus de la couleur de zone.
 - La couleur d'une case change avec une transition courte et progressive afin que le remplissage au doigt soit plus fluide.
 - La palette des zones reste sur **une seule ligne horizontale**, sans défilement vertical ni écrasement ; la zone active est signalée par une transition plus douce.
@@ -57,19 +121,19 @@ Site statique mobile-first regroupant Couronnes, Équilibre, Mini 6 6×6 et Mosa
 - Vérification statique : `paintCell()` n'appelle plus `drawP()` ; les changements pendant le glissé passent par `refreshPatchNeighborhood()` et `schedulePatchAfterPaint()`.
 - Vérification que `drawP()` ne recrée plus les indices.
 - Tests de syntaxe de `app.js`, `precompute-worker.js` et `sw.js`.
-- Réexécution des tests du Web Worker et du cache de pré-génération pour vérifier que la modification de Mosaïque n'introduit pas de régression sur v2.7.0.
+- Réexécution des tests du Web Worker et du cache de pré-génération pour vérifier que la modification de Rectangles n'introduit pas de régression sur v2.7.0.
 - Un test navigateur réel Chromium n'a pas pu être exécuté dans cet environnement car l'accès local HTTP du navigateur est bloqué par l'administration ; la validation visuelle est donc fondée sur les tests DOM/structure et devra être confirmée sur Safari/iPhone.
 
 ## Évolution v2.7.0 — pré-génération des grilles en arrière-plan
-- Après l'affichage de la première grille, Logic 4 démarre un **Web Worker dédié** qui prépare silencieusement les prochaines grilles sans bloquer l'interface.
+- Après l'affichage de la première grille, QUADLUD démarre un **Web Worker dédié** qui prépare silencieusement les prochaines grilles sans bloquer l'interface.
 - La réserve cible est de **2 grilles prêtes par jeu et par niveau de difficulté** :
   - Couronnes : Facile, Moyen, Difficile, Expert ;
-  - Équilibre : Facile, Moyen, Difficile ;
-  - Mini 6 : Facile, Moyen, Difficile ;
-  - Mosaïque : Facile, Moyen, Difficile.
+  - Soleil-Lune : Facile, Moyen, Difficile ;
+  - Grille 6 : Facile, Moyen, Difficile ;
+  - Rectangles : Facile, Moyen, Difficile.
 - La grille du **jeu et niveau actuellement utilisés** est prioritaire. Les autres niveaux du même jeu suivent, puis les niveaux moyens des autres jeux, puis le reste.
 - Couronnes Expert, nettement plus coûteux à générer, est préparé en dernier sauf si le joueur est actuellement en mode Expert.
-- Lors d'un appui sur `Nouvelle` ou d'un changement de difficulté, Logic 4 consomme d'abord une grille déjà prête. Si le cache correspondant est vide, le générateur synchrone historique reste le **fallback**, donc la fonctionnalité n'introduit aucun blocage fonctionnel.
+- Lors d'un appui sur `Nouvelle` ou d'un changement de difficulté, QUADLUD consomme d'abord une grille déjà prête. Si le cache correspondant est vide, le générateur synchrone historique reste le **fallback**, donc la fonctionnalité n'introduit aucun blocage fonctionnel.
 - Une grille consommée est immédiatement retirée du cache et le worker prépare son remplacement.
 - Le worker est **sériel (un seul calcul à la fois)** afin de ne pas multiplier les pics CPU et de conserver la fluidité tactile.
 - Lorsque l'application est masquée, aucun nouveau calcul de fond n'est lancé ; la file reprend quand elle redevient visible.
@@ -86,7 +150,7 @@ Site statique mobile-first regroupant Couronnes, Équilibre, Mini 6 6×6 et Mosa
 - Test d'intégration : les quatre fonctions de jeu consomment une grille précalculée avant d'appeler le générateur synchrone.
 - Le défi quotidien a été vérifié pour ignorer le cache ordinaire.
 - Politique Expert vérifiée : Couronnes Expert est différé en temps normal et devient prioritaire lorsque le joueur joue en Expert.
-- Mesures indicatives dans l'environnement de test pour une grille préparée : Sudoku/Mosaïque quelques millisecondes à quelques dizaines de ms, Équilibre de quelques dizaines à quelques centaines de ms, Couronnes Difficile autour de la seconde dans certains cas ; Couronnes Expert peut être beaucoup plus coûteux, d'où sa priorité adaptée. Ces calculs ont lieu dans le worker et ne bloquent pas le thread d'interface.
+- Mesures indicatives dans l'environnement de test pour une grille préparée : Sudoku/Rectangles quelques millisecondes à quelques dizaines de ms, Soleil-Lune de quelques dizaines à quelques centaines de ms, Couronnes Difficile autour de la seconde dans certains cas ; Couronnes Expert peut être beaucoup plus coûteux, d'où sa priorité adaptée. Ces calculs ont lieu dans le worker et ne bloquent pas le thread d'interface.
 
 ## Correctif v2.6.2 — pas de répétition des grilles Couronnes dans la session
 - Lorsqu'une grille Couronnes ordinaire est affichée, l'application mémorise sa **signature canonique** en mémoire pour la journée courante.
@@ -145,9 +209,9 @@ Site statique mobile-first regroupant Couronnes, Équilibre, Mini 6 6×6 et Mosa
 ## Correctif v2.5.3 — explications pédagogiques de rang 1
 - Les quatre jeux présentent désormais les inférences de rang 1 sous forme de démonstration : **1. Essai → 2. Ce que cela provoque → 3. Pourquoi ça bloque → 4. Conclusion**.
 - Couronnes nomme la case testée puis la ligne, colonne ou zone précise qui perdrait toute possibilité de reine.
-- Équilibre nomme la case qui devient impossible et explique pourquoi lune et soleil y sont rejetés lorsque cette information est disponible.
-- Mini 6 liste les candidats éliminés et précise la case qui resterait sans candidat ou le chiffre qui n'aurait plus de place dans une ligne, colonne ou bloc.
-- Mosaïque liste les zones alternatives rejetées et précise la zone sans rectangle valide ou la case qui ne pourrait plus être couverte.
+- Soleil-Lune nomme la case qui devient impossible et explique pourquoi lune et soleil y sont rejetés lorsque cette information est disponible.
+- Grille 6 liste les candidats éliminés et précise la case qui resterait sans candidat ou le chiffre qui n'aurait plus de place dans une ligne, colonne ou bloc.
+- Rectangles liste les zones alternatives rejetées et précise la zone sans rectangle valide ou la case qui ne pourrait plus être couverte.
 - Le moteur logique n'utilise toujours pas la solution cachée pour produire l'indice.
 
 ## Correctif v2.5.2 — explications Couronnes de rang 2
@@ -161,9 +225,9 @@ Site statique mobile-first regroupant Couronnes, Équilibre, Mini 6 6×6 et Mosa
 
 ## Correctif v2.5.1 — explications de rang 2 plus lisibles
 - Le raisonnement de rang 2 est présenté comme une démonstration numérotée : **1. Hypothèse → 2. Conséquence → 3. Impasse → 4. Conclusion**.
-- Équilibre nomme désormais la case précise qui devient impossible et teste explicitement les deux symboles sur cette case.
+- Soleil-Lune nomme désormais la case précise qui devient impossible et teste explicitement les deux symboles sur cette case.
 - Pour chaque symbole rejeté, l’explication cherche à citer la règle concrète : trois symboles consécutifs, dépassement de l’équilibre 3/3, ou relation `=` / `×` avec une case voisine.
-- La formulation abstraite « on poursuit les possibilités légales » a été supprimée des explications Équilibre de rang 2.
+- La formulation abstraite « on poursuit les possibilités légales » a été supprimée des explications Soleil-Lune de rang 2.
 - Quand une branche de rang 2 échoue au contrôle suivant, l'explication descend jusqu'à la **case réellement bloquée** et détaille séparément pourquoi `☾` et `☀` y sont impossibles, avec la règle concrète et les coordonnées concernées.
 - Le moteur logique n’est pas modifié : ce correctif améliore la trace pédagogique sans changer la décision produite.
 
@@ -173,10 +237,10 @@ Site statique mobile-first regroupant Couronnes, Équilibre, Mini 6 6×6 et Mosa
 - Un candidat survivant au rang 1 est simulé ; le moteur examine ensuite les décisions encore possibles au coup suivant. Si une décision obligatoire se retrouve sans aucune réponse viable, l’hypothèse initiale est éliminée.
 - L’algorithme utilise l’arrêt anticipé : dès qu’une branche viable est trouvée, l’exploration inutile de cette branche s’arrête.
 - L’explication n’emploie pas seulement « contradiction de rang 2 » : elle présente une démonstration pédagogique en quatre étapes **Hypothèse → Conséquence → Impasse → Conclusion**, avec les coordonnées des cases concernées.
-- Équilibre : le moteur peut éliminer un soleil ou une lune qui est légal immédiatement mais qui rend, au niveau suivant, une case sans symbole légal ou l’équilibre 3/3 impossible.
-- Mini 6 : un candidat peut être éliminé s’il laisse ensuite une case sans candidat ou une unité sans emplacement viable.
+- Soleil-Lune : le moteur peut éliminer un soleil ou une lune qui est légal immédiatement mais qui rend, au niveau suivant, une case sans symbole légal ou l’équilibre 3/3 impossible.
+- Grille 6 : un candidat peut être éliminé s’il laisse ensuite une case sans candidat ou une unité sans emplacement viable.
 - Couronnes : une hypothèse `reine` ou `X` peut être éliminée si elle conduit au niveau suivant à une ligne ou une zone sans position de reine viable.
-- Mosaïque : une affectation de zone peut être éliminée si elle conduit au niveau suivant à une case sans zone possible ou à un ensemble de rectangles incompatible.
+- Rectangles : une affectation de zone peut être éliminée si elle conduit au niveau suivant à une case sans zone possible ou à un ensemble de rectangles incompatible.
 - Aucun moteur d’indice de rang 2 n’utilise la solution cachée pour choisir le coup.
 - Les explications restent bilingues et persistantes jusqu’au bouton `Fermer / Close`.
 
@@ -184,10 +248,10 @@ Site statique mobile-first regroupant Couronnes, Équilibre, Mini 6 6×6 et Mosa
 - Le moteur d’indices comporte maintenant deux étages : déduction directe, puis **inférence de rang 1** si aucune règle immédiate ne suffit.
 - Une inférence de rang 1 simule chaque candidat encore légal **sans modifier le plateau**. Un candidat est éliminé s’il crée immédiatement une contradiction ou s’il laisse, au coup suivant, une contrainte obligatoire sans aucun candidat légal.
 - Cette analyse n’utilise jamais la solution cachée pour sélectionner l’indice.
-- **Équilibre** : après simulation d’un soleil ou d’une lune, le moteur vérifie les limites 3/3, les suites de trois, les relations `=` / `×`, puis vérifie que chaque case encore vide conserve au moins un symbole légal. Un coup légal à l’instant T mais qui rend le coup suivant impossible est donc éliminé.
-- **Mini 6** : chaque candidat d’une case est simulé. Il est rejeté s’il crée un doublon, une case sans candidat, ou si un chiffre manquant n’a plus aucune position possible dans une ligne, colonne ou bloc 2×3.
+- **Soleil-Lune** : après simulation d’un soleil ou d’une lune, le moteur vérifie les limites 3/3, les suites de trois, les relations `=` / `×`, puis vérifie que chaque case encore vide conserve au moins un symbole légal. Un coup légal à l’instant T mais qui rend le coup suivant impossible est donc éliminé.
+- **Grille 6** : chaque candidat d’une case est simulé. Il est rejeté s’il crée un doublon, une case sans candidat, ou si un chiffre manquant n’a plus aucune position possible dans une ligne, colonne ou bloc 2×3.
 - **Couronnes** : pour chaque case encore possible, le moteur compare `reine` et `X`. Il rejette un choix s’il crée un conflit ou laisse une ligne, colonne ou zone sans aucune position possible pour sa reine.
-- **Mosaïque** : une attribution de zone est rejetée si elle laisse une zone sans rectangle compatible, un marquage déjà posé sans rectangle possible, ou une case restante qui ne peut plus être couverte par aucune zone.
+- **Rectangles** : une attribution de zone est rejetée si elle laisse une zone sans rectangle compatible, un marquage déjà posé sans rectangle possible, ou une case restante qui ne peut plus être couverte par aucune zone.
 - Si un seul candidat survit, l’indice explique quel candidat opposé conduit à l’impasse et pourquoi le coup conseillé est forcé.
 - Si plusieurs candidats restent compatibles après cette profondeur d’analyse, aucun coup n’est révélé.
 - Les indices restent persistants, bilingues, et le troisième appui applique uniquement le coup déjà démontré.
@@ -197,9 +261,9 @@ Site statique mobile-first regroupant Couronnes, Équilibre, Mini 6 6×6 et Mosa
 - Un indice n’est proposé que s’il peut être déduit des éléments actuellement visibles sur le plateau.
 - Si aucun coup n’est logiquement forcé à cet instant, l’application affiche `Aucun coup directement déductible avec l’état actuel / No move can be directly deduced from the current state` au lieu de révéler la solution.
 - Couronnes : recherche d’une ligne, colonne ou zone n’ayant plus qu’une seule case possible, compte tenu des reines et `X` déjà posés.
-- Équilibre : déductions par équilibre 3/3, règle des trois symboles, ou relation `=` / `×` avec un voisin connu.
-- Mini 6 : candidats uniques puis singles cachés dans une ligne, colonne ou bloc 2×3, calculés uniquement à partir des chiffres visibles.
-- Mosaïque : génération des rectangles encore compatibles avec chaque indice et les cases déjà peintes ; une case n’est proposée que si elle appartient à tous les rectangles possibles d’une zone, ou si un seul rectangle reste possible.
+- Soleil-Lune : déductions par équilibre 3/3, règle des trois symboles, ou relation `=` / `×` avec un voisin connu.
+- Grille 6 : candidats uniques puis singles cachés dans une ligne, colonne ou bloc 2×3, calculés uniquement à partir des chiffres visibles.
+- Rectangles : génération des rectangles encore compatibles avec chaque indice et les cases déjà peintes ; une case n’est proposée que si elle appartient à tous les rectangles possibles d’une zone, ou si un seul rectangle reste possible.
 - Le troisième niveau d’aide applique uniquement le coup déjà démontré par les deux premiers niveaux.
 - Les textes d’explication restent persistants et bilingues.
 
@@ -209,17 +273,17 @@ Site statique mobile-first regroupant Couronnes, Équilibre, Mini 6 6×6 et Mosa
 - Le deuxième niveau conserve le coup conseillé et ajoute **Pourquoi**, avec une justification logique.
 - Le troisième niveau applique le coup tout en conservant l’explication à l’écran jusqu’au bouton `Fermer / Close`.
 - Couronnes : l’indice indique la reine à placer et rappelle les contraintes de ligne, colonne, zone et non-adjacence ; lorsqu’une zone n’a plus qu’une case non barrée, cette raison est explicitement signalée.
-- Équilibre : l’indice indique `☀` ou `☾` et explique, lorsque c’est déductible, l’équilibre 3/3, une relation `=`/`×` ou la règle interdisant trois symboles identiques.
-- Mini 6 : l’indice donne le chiffre exact ; lorsqu’il s’agit d’un candidat unique, il précise que les autres chiffres sont éliminés par la ligne, la colonne et le bloc 2×3.
-- Mosaïque : l’indice donne la zone à attribuer à une case et explique la contrainte de taille et/ou de forme portée par l’indice.
+- Soleil-Lune : l’indice indique `☀` ou `☾` et explique, lorsque c’est déductible, l’équilibre 3/3, une relation `=`/`×` ou la règle interdisant trois symboles identiques.
+- Grille 6 : l’indice donne le chiffre exact ; lorsqu’il s’agit d’un candidat unique, il précise que les autres chiffres sont éliminés par la ligne, la colonne et le bloc 2×3.
+- Rectangles : l’indice donne la zone à attribuer à une case et explique la contrainte de taille et/ou de forme portée par l’indice.
 - Les textes restent bilingues français / anglais et les indices restent persistants jusqu’à fermeture.
 
-## Correctif v2.3.1 — indices persistants et saisie Équilibre
+## Correctif v2.3.1 — indices persistants et saisie Soleil-Lune
 - Les indices ne disparaissent plus automatiquement après 1,4 seconde.
 - Chaque niveau d’indice est maintenant affiché dans une carte persistante avec bouton `Fermer / Close`.
 - La carte reste visible aussi longtemps que nécessaire et ne bloque pas le plateau.
 - Une nouvelle action de jeu ferme automatiquement l’ancien indice afin d’éviter d’encombrer l’écran.
-- Équilibre : lorsqu’une lune est posée au premier tap, cette case est temporairement exclue de la colorisation rouge.
+- Soleil-Lune : lorsqu’une lune est posée au premier tap, cette case est temporairement exclue de la colorisation rouge.
 - La lune provisoire reste visible, mais aucune violation impliquant cette case n’est signalée avant l’action suivante.
 - Au tap suivant, l’ancienne saisie devient définitive ; si la case est transformée en soleil, les règles sont alors évaluées normalement.
 - Le comportement évite les faux signaux rouges liés au cycle de saisie vide → lune → soleil.
@@ -227,15 +291,15 @@ Site statique mobile-first regroupant Couronnes, Équilibre, Mini 6 6×6 et Mosa
 ## Évolution v2.3.0 — coups illégaux et score d’assistance
 - Les quatre jeux signalent désormais immédiatement les **coups illégaux** en colorant en rouge toutes les cases directement concernées par la violation.
 - Couronnes : conflits entre reines sur une même ligne, colonne, zone ou cases adjacentes.
-- Équilibre : plus de 3 symboles identiques dans une ligne/colonne, trois symboles identiques consécutifs ou relation `=` / `×` violée.
-- Mini 6 : doublons dans une ligne, une colonne ou un bloc 2×3.
-- Mosaïque : occupation d’un autre indice, dépassement de taille impossible ou violation immédiate d’une contrainte de forme. Les situations encore réparables sans violer une règle ne sont pas signalées comme illégales.
+- Soleil-Lune : plus de 3 symboles identiques dans une ligne/colonne, trois symboles identiques consécutifs ou relation `=` / `×` violée.
+- Grille 6 : doublons dans une ligne, une colonne ou un bloc 2×3.
+- Rectangles : occupation d’un autre indice, dépassement de taille impossible ou violation immédiate d’une contrainte de forme. Les situations encore réparables sans violer une règle ne sont pas signalées comme illégales.
 - Deux marqueurs d’assistance sont suivis par tentative : `↶` pour un **retour en arrière/correction**, `💡` pour **indice utilisé**.
 - Les marqueurs apparaissent immédiatement à côté du score de difficulté pendant la partie puis sont enregistrés dans l’historique des scores.
 - Le cycle nécessaire de Couronnes `vide → X → reine` n’est pas considéré comme un retour en arrière. En revanche, retirer une reine ou effacer des X par drag l’est.
-- Pour Équilibre, un cycle normal nécessaire pour choisir le symbole n’est pas pénalisé ; revenir d’un symbole posé vers vide est enregistré.
+- Pour Soleil-Lune, un cycle normal nécessaire pour choisir le symbole n’est pas pénalisé ; revenir d’un symbole posé vers vide est enregistré.
 - Pour Sudoku, remplacer ou effacer une valeur déjà saisie est un retour en arrière.
-- Pour Mosaïque, effacer ou repeindre une case déjà attribuée est un retour en arrière.
+- Pour Rectangles, effacer ou repeindre une case déjà attribuée est un retour en arrière.
 - Réinitialiser une partie en cours après avoir joué est enregistré comme retour en arrière. Une nouvelle tentative créée après réinitialisation d’une partie déjà terminée repart avec des indicateurs vierges.
 
 ## Ajustement v2.2.6 — Couronnes Difficile / Expert
@@ -275,9 +339,9 @@ Site statique mobile-first regroupant Couronnes, Équilibre, Mini 6 6×6 et Mosa
 - Ajout d’un bouton `Réinitialiser / Reset` dans chacun des quatre jeux.
 - La réinitialisation conserve la même grille et la même difficulté, restaure uniquement les indices de départ et remet le chronomètre à `00:00`.
 - Couronnes : toutes les reines et tous les `X` sont effacés.
-- Équilibre : seules les cases données au départ sont restaurées.
-- Mini 6 : seuls les chiffres initiaux sont conservés.
-- Mosaïque : toutes les zones peintes sont effacées et la première zone redevient active.
+- Soleil-Lune : seules les cases données au départ sont restaurées.
+- Grille 6 : seuls les chiffres initiaux sont conservés.
+- Rectangles : toutes les zones peintes sont effacées et la première zone redevient active.
 - Si une partie déjà terminée est réinitialisée, une nouvelle tentative statistique est démarrée ; une partie en cours réinitialisée reste la même tentative.
 - Le plateau Couronnes neutralise explicitement le double-clic, le geste de zoom et le menu contextuel du navigateur.
 - Deux taps rapides restent interprétés par le jeu comme deux actions successives : vide → `X` → reine, sans agrandissement du plateau.
@@ -315,7 +379,7 @@ Site statique mobile-first regroupant Couronnes, Équilibre, Mini 6 6×6 et Mosa
 
 ## Amélioration v2.0.4 — victoire automatique
 - La réussite est maintenant détectée automatiquement dès le dernier coup correct, sans appuyer sur `Vérifier`.
-- Le comportement est actif sur Couronnes, Équilibre, Mini 6 et Mosaïque.
+- Le comportement est actif sur Couronnes, Soleil-Lune, Grille 6 et Rectangles.
 - Le bouton `Vérifier` reste disponible pour contrôler une grille incomplète ou incorrecte.
 - Une vraie réussite déclenche une animation en deux temps : propagation sur les cases du plateau, puis particules et écran de victoire.
 - L’affichage volontaire de la `Solution` reste distingué d’une victoire et ne déclenche pas la réussite automatique.
@@ -332,12 +396,12 @@ Site statique mobile-first regroupant Couronnes, Équilibre, Mini 6 6×6 et Mosa
 ## Correctif v2.0.2 — taille fixe des grilles
 - Les quatre plateaux définissent maintenant explicitement un nombre identique de lignes et de colonnes en fractions fixes.
 - Dans Couronnes, l’ajout d’une reine ou d’une croix ne peut plus modifier la hauteur d’une ligne ni redimensionner le plateau.
-- Le correctif est appliqué de manière préventive à Équilibre, Mini 6 et Mosaïque afin que leur géométrie reste également indépendante du contenu des cases.
+- Le correctif est appliqué de manière préventive à Soleil-Lune, Grille 6 et Rectangles afin que leur géométrie reste également indépendante du contenu des cases.
 
 ## Propriété intellectuelle et licence
 Copyright © 2026 Serge Benoliel. All rights reserved.
 
-Logic 4 est un logiciel propriétaire. Toute copie, modification, redistribution, publication, sous-licence, vente, mise à disposition de tiers ou exploitation, totale ou partielle, est interdite sans l’autorisation écrite préalable de Serge Benoliel.
+QUADLUD est un logiciel propriétaire. Toute copie, modification, redistribution, publication, sous-licence, vente, mise à disposition de tiers ou exploitation, totale ou partielle, est interdite sans l’autorisation écrite préalable de Serge Benoliel.
 
 Les conditions détaillées figurent dans le fichier `LICENSE`.
 
@@ -360,14 +424,14 @@ La v2.0 conserve les clés de stockage des sauvegardes, statistiques, défis et 
 - Le bouton Indice devient progressif en trois niveaux : (1) où regarder, (2) quelle logique appliquer, (3) révélation minimale.
 - La case concernée est mise en évidence sans modifier la grille aux deux premiers niveaux.
 - Couronnes : orientation vers ligne/région puis croisement des contraintes de colonnes et régions.
-- Équilibre : orientation vers une case puis rappel ciblé relations =/×, équilibre 3/3 et règle des trois.
-- Mini 6 : orientation puis élimination ligne/colonne/bloc 2×3.
-- Mosaïque : orientation vers une zone puis raisonnement sur taille/forme et rectangles compatibles.
+- Soleil-Lune : orientation vers une case puis rappel ciblé relations =/×, équilibre 3/3 et règle des trois.
+- Grille 6 : orientation puis élimination ligne/colonne/bloc 2×3.
+- Rectangles : orientation vers une zone puis raisonnement sur taille/forme et rectangles compatibles.
 - Le troisième appel sur le même indice révèle seulement une case/reine/chiffre ; la sauvegarde reste cohérente.
 - Les animations d’aide respectent `prefers-reduced-motion`.
 
 ## Nouveautés v1.6.0 — défi quotidien
-- Quatre défis quotidiens : Couronnes, Équilibre, Mini 6 et Mosaïque.
+- Quatre défis quotidiens : Couronnes, Soleil-Lune, Grille 6 et Rectangles.
 - Grilles quotidiennes déterministes : une date + un jeu + la version produisent la même grille sur tous les appareils.
 - Difficulté quotidienne fixée à Moyen afin de rendre les temps comparables.
 - Chronomètre et statistiques habituels conservés pour les défis.
@@ -393,21 +457,21 @@ La v2.0 conserve les clés de stockage des sauvegardes, statistiques, défis et 
 - Cibles tactiles d’au moins ~44 px pour les commandes principales.
 - Retour haptique léger lorsque le navigateur/appareil l’autorise (API Vibration ; absence de vibration sans impact fonctionnel).
 - Retour visuel immédiat à l’appui sur les boutons.
-- Mini 6 : surbrillance de la ligne, colonne et région de la case sélectionnée, ainsi que des chiffres identiques ; pavé numérique collant en bas de l’écran.
-- Mosaïque : peinture au doigt conservée et renforcée avec `touch-action:none` sur le plateau pour limiter le défilement involontaire pendant un glissement.
+- Grille 6 : surbrillance de la ligne, colonne et région de la case sélectionnée, ainsi que des chiffres identiques ; pavé numérique collant en bas de l’écran.
+- Rectangles : peinture au doigt conservée et renforcée avec `touch-action:none` sur le plateau pour limiter le défilement involontaire pendant un glissement.
 - Adaptation portrait, petits écrans, faible hauteur et paysage.
 - Respect de `prefers-reduced-motion`.
 - Overlay « Génération… » pendant la création/sélection d’une nouvelle grille.
-- Navigation clavier ajoutée au Mini 6 sur iPad avec clavier ou ordinateur.
+- Navigation clavier ajoutée au Grille 6 sur iPad avec clavier ou ordinateur.
 - Aucune dépendance supplémentaire : le site reste statique, PWA et à plat pour GitHub Pages.
 
 ## Nouveautés v1.3.0 — difficulté mesurée
 - Chaque grille générée reçoit désormais un score de difficulté calculé après génération.
 - Plusieurs candidats uniques sont générés ; le moteur retient le plus accessible pour Facile, un candidat médian pour Moyen et le plus exigeant pour Difficile.
 - Le score et la technique dominante sont visibles directement sous le titre du jeu.
-- Mini 6 : analyse logique par singles nus et singles cachés ; les blocages non résolus par ces techniques ajoutent une pénalité de complexité.
-- Équilibre : propagation des relations `=` / `×`, règles d’équilibrage 3/3 et interdiction de trois symboles identiques consécutifs ; les cellules non résolues augmentent le score.
-- Mosaïque : analyse des rectangles candidats, rectangles forcés et couvertures forcées ; les ambiguïtés restantes augmentent le score.
+- Grille 6 : analyse logique par singles nus et singles cachés ; les blocages non résolus par ces techniques ajoutent une pénalité de complexité.
+- Soleil-Lune : propagation des relations `=` / `×`, règles d’équilibrage 3/3 et interdiction de trois symboles identiques consécutifs ; les cellules non résolues augmentent le score.
+- Rectangles : analyse des rectangles candidats, rectangles forcés et couvertures forcées ; les ambiguïtés restantes augmentent le score.
 - Couronnes : analyseur de contraintes mesurant les embranchements et le nombre de nœuds nécessaires. Cette mesure est un indicateur de difficulté de résolution, mais ne prétend pas reproduire exactement toutes les stratégies humaines de Couronnes.
 - Les grilles restent acceptées uniquement si elles possèdent exactement une solution.
 
@@ -418,14 +482,14 @@ La v2.0 conserve les clés de stockage des sauvegardes, statistiques, défis et 
 - sauvegarde automatique et reprise de partie
 - nouvelle partie, vérification, indice et solution
 - interactions tactiles iPhone/iPad
-- Mosaïque par toucher/glissement
+- Rectangles par toucher/glissement
 - PWA installable et fonctionnement hors ligne après premier chargement
 - aucune dépendance serveur, aucun framework, aucun CDN
 
 ## Méthode de calibration
 La difficulté ne dépend plus seulement du nombre d’indices. Pour chaque nouvelle partie, plusieurs puzzles valides et uniques sont générés puis analysés. Le moteur sélectionne un puzzle dans la distribution obtenue selon le niveau demandé. Le score reste continu afin d’éviter de présenter comme identiques deux grilles de complexité sensiblement différente.
 
-Les analyseurs logiques de Sudoku, Équilibre et Mosaïque utilisent des règles explicites et déterministes. Couronnes utilise actuellement un analyseur de contraintes avec mesure de recherche ; une simulation plus complète des techniques humaines de Couronnes pourra être enrichie ultérieurement.
+Les analyseurs logiques de Sudoku, Soleil-Lune et Rectangles utilisent des règles explicites et déterministes. Couronnes utilise actuellement un analyseur de contraintes avec mesure de recherche ; une simulation plus complète des techniques humaines de Couronnes pourra être enrichie ultérieurement.
 
 ## Déploiement GitHub Pages sur iPhone
 Tous les fichiers sont à la racine : aucun sous-répertoire. Envoyer directement les fichiers du ZIP dans le dépôt GitHub puis publier la branche principale depuis la racine.
@@ -434,7 +498,7 @@ Tous les fichiers sont à la racine : aucun sous-répertoire. Envoyer directemen
 Avant livraison :
 1. contrôle de syntaxe JavaScript avec Node ;
 2. tests répétés des générateurs sur les trois difficultés ;
-3. recomptage des solutions Couronnes, Équilibre, Mini 6 et Mosaïque ;
+3. recomptage des solutions Couronnes, Soleil-Lune, Grille 6 et Rectangles ;
 4. validation structurelle des régions, rectangles et contraintes de chaque jeu ;
 5. tests des analyseurs de difficulté et comparaison des distributions de scores ;
 6. vérification des références HTML/CSS/JS/PWA et du numéro de version ;
@@ -451,4 +515,4 @@ Avant livraison :
 - v2.0 : finition complète
 - v2.1 optionnelle : éditeur de puzzles
 
-Projet indépendant. L’interface, le code, les générateurs et les grilles sont propres à Logic 4.
+Projet indépendant. L’interface, le code, les générateurs et les grilles sont propres à QUADLUD.

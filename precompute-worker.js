@@ -1,5 +1,5 @@
 /*
- * Logic 4 — background puzzle precomputation worker
+ * QUADLUD — background puzzle precomputation worker
  * Copyright © 2026 Serge Benoliel. All rights reserved.
  * Proprietary software. Copying, modification, redistribution or exploitation
  * without prior written authorization is prohibited.
@@ -37,10 +37,10 @@ self.setInterval=()=>0;
 self.clearInterval=__noop;
 
 // Use the exact same versioned generator implementation as the UI.
-importScripts('./app.js?v=2.8.1');
+importScripts('./app.js?v=2.11.0');
 
 function __queenBackgroundCandidate(diff,forbidden){
-  let count=diff==='expert'?16:diff==='hard'?14:6;
+  let count=diff==='expert'?4:diff==='hard'?14:6;
   let out=[],batch=new Set(),guard=0,maxTries=Math.max(64,count*16),blocked=new Set(forbidden||[]);
   while(out.length<count&&guard++<maxTries){
     try{
