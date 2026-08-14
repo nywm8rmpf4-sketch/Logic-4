@@ -5,7 +5,7 @@
  */
 'use strict';
 const $=s=>document.querySelector(s), app=$('#app'), toast=$('#toast'), timerEl=$('#timer');
-const VERSION='2.5.4', SAVE_KEY='logic4-save-v1';
+const VERSION='2.6.0', SAVE_KEY='logic4-save-v1';
 let current=null, tick=null, startedAt=0, elapsedBase=0, paused=false;
 const I18N={
 fr:{
@@ -24,7 +24,7 @@ fr:{
  autoCross:'Croix automatiques quand je place une reine',queensLegend:'Touchez une case pour faire vide → X → reine. Faites glisser le doigt sur une ligne ou une colonne pour ajouter des X ; commencez sur un X pour les effacer.',
  patchesLegend:'Choisis un indice, puis touche les cases de sa zone. Tu peux aussi faire glisser le doigt pour peindre plusieurs cases.',zone:'Zone',
  aboutTitle:'À propos de Logic 4',version:'Version',copyright:'Copyright',license:'Licence',proprietary:'Logiciel propriétaire — All rights reserved.',legal:'Toute copie, modification, redistribution et exploitation sans autorisation écrite préalable de Serge Benoliel est interdite.',
- restored:'Partie restaurée',generating:'Génération…',rulesTitle:'Règles',where:'Où regarder',logic:'Logique',solutionShown:'Solution affichée',congrats:'Bravo !',gridIncomplete:'Il reste une erreur ou une case à résoudre.',tangoIncomplete:'La grille ne respecte pas encore toutes les règles.',sudokuIncomplete:'Il reste une erreur ou une case vide.',autoCrossOn:'Croix automatiques activées',autoCrossOff:'Croix automatiques désactivées',queenPlaced:'Une reine a été placée.',cellRevealed:'Une case a été révélée.',digitRevealed:'Un chiffre a été révélé.',patchRevealed:'Une case de la zone a été révélée.',finishedShare:'Terminé',dailyLabel:'Défi quotidien',backtrackFlag:'retour en arrière',hintFlag:'indice utilisé',closeHint:'Fermer',hintMove:'Coup conseillé',hintWhy:'Pourquoi',noLogicalHint:'Aucun coup directement déductible avec l’état actuel.',hintTimeout:'La recherche d’indice a atteint la limite de 5 secondes. Aucun indice fiable n’a été trouvé dans ce délai.',hintSearching:'Recherche d’un indice…',hintPaused:'Reprenez la partie pour demander un indice.',hintError:'La recherche d’indice n’a pas pu aboutir. Réessayez après votre prochain coup.',dragHint:'Déplacer',rank1:'inférence de rang 1',rank2:'inférence de rang 2',hypothesis:'Hypothèse',consequence:'Conséquence',deadend:'Impasse',conclusion:'Conclusion',themeLabel:'Thème',soundsOn:'Sons activés',soundsOff:'Sons désactivés',resetDone:'Grille réinitialisée.',patchAll:'Toutes les cases doivent appartenir à une zone.',patchEach:'Chaque indice doit avoir une zone.',patchOwn:'Chaque zone doit contenir son propre indice.',patchTwo:'Une zone ne peut pas contenir deux indices.',patchConnected:'Chaque zone doit être d’un seul tenant.',patchRect:'Chaque zone doit former un rectangle.',patchSize:'La taille d’une zone ne correspond pas à son indice.',patchShape:'La forme d’une zone ne correspond pas à son indice.',
+ restored:'Partie restaurée',generating:'Génération…',rulesTitle:'Règles',where:'Où regarder',logic:'Logique',solutionShown:'Solution affichée',congrats:'Bravo !',gridIncomplete:'Il reste une erreur ou une case à résoudre.',tangoIncomplete:'La grille ne respecte pas encore toutes les règles.',sudokuIncomplete:'Il reste une erreur ou une case vide.',autoCrossOn:'Croix automatiques activées',autoCrossOff:'Croix automatiques désactivées',queenPlaced:'Une reine a été placée.',cellRevealed:'Une case a été révélée.',digitRevealed:'Un chiffre a été révélé.',patchRevealed:'Une case de la zone a été révélée.',finishedShare:'Terminé',dailyLabel:'Défi quotidien',backtrackFlag:'retour en arrière',hintFlag:'indice utilisé',closeHint:'Fermer',hintMove:'Coup conseillé',hintWhy:'Pourquoi',noLogicalHint:'Aucun coup directement déductible avec l’état actuel.',hintTimeout:'La recherche d’indice a atteint la limite de 5 secondes. Aucun indice fiable n’a été trouvé dans ce délai.',hintSearching:'Recherche d’un indice…',hintPaused:'Reprenez la partie pour demander un indice.',hintError:'La recherche d’indice n’a pas pu aboutir. Réessayez après votre prochain coup.',dragHint:'Déplacer',rank1:'inférence de rang 1',rank2:'inférence de rang 2',rank3:'inférence de rang 3',hintNoR0:'Rang 0 : aucune déduction directe.',hintNoR1:'Rang 1 : aucune hypothèse n’aboutit immédiatement à une impasse.',hintNoR2:'Rang 2 : aucune hypothèse n’aboutit à une impasse au niveau suivant.',hintNoR3:'Rang 3 : aucune contradiction forcée n’a été démontrée à trois niveaux.',hypothesis:'Hypothèse',consequence:'Conséquence',deadend:'Impasse',conclusion:'Conclusion',themeLabel:'Thème',soundsOn:'Sons activés',soundsOff:'Sons désactivés',resetDone:'Grille réinitialisée.',patchAll:'Toutes les cases doivent appartenir à une zone.',patchEach:'Chaque indice doit avoir une zone.',patchOwn:'Chaque zone doit contenir son propre indice.',patchTwo:'Une zone ne peut pas contenir deux indices.',patchConnected:'Chaque zone doit être d’un seul tenant.',patchRect:'Chaque zone doit former un rectangle.',patchSize:'La taille d’une zone ne correspond pas à son indice.',patchShape:'La forme d’une zone ne correspond pas à son indice.',
 },
 en:{
  easy:'Easy',medium:'Medium',hard:'Hard',expert:'Expert',
@@ -42,7 +42,7 @@ en:{
  autoCross:'Auto-mark crosses when I place a queen',queensLegend:'Tap a cell to cycle empty → X → queen. Drag along a row or column to add X marks; start on an X to erase them.',
  patchesLegend:'Choose a clue, then tap the cells in its region. You can also drag to paint several cells.',zone:'Region',
  aboutTitle:'About Logic 4',version:'Version',copyright:'Copyright',license:'License',proprietary:'Proprietary software — All rights reserved.',legal:'Copying, modification, redistribution and exploitation without prior written permission from Serge Benoliel are prohibited.',
- restored:'Game restored',generating:'Generating…',rulesTitle:'Rules',where:'Where to look',logic:'Logic',solutionShown:'Solution shown',congrats:'Well done!',gridIncomplete:'There is still an error or an unresolved cell.',tangoIncomplete:'The grid does not yet satisfy all rules.',sudokuIncomplete:'There is still an error or an empty cell.',autoCrossOn:'Auto-crosses enabled',autoCrossOff:'Auto-crosses disabled',queenPlaced:'A queen was placed.',cellRevealed:'A cell was revealed.',digitRevealed:'A digit was revealed.',patchRevealed:'A region cell was revealed.',finishedShare:'Finished',dailyLabel:'Daily challenge',backtrackFlag:'backtracked',hintFlag:'hint used',closeHint:'Close',hintMove:'Suggested move',hintWhy:'Why',noLogicalHint:'No move can be directly deduced from the current state.',hintTimeout:'The hint search reached the 5-second limit. No reliable hint was found within that time.',hintSearching:'Searching for a hint…',hintPaused:'Resume the game to request a hint.',hintError:'The hint search could not complete. Try again after your next move.',dragHint:'Move',rank1:'rank-1 inference',rank2:'rank-2 inference',hypothesis:'Assumption',consequence:'Consequence',deadend:'Dead end',conclusion:'Conclusion',themeLabel:'Theme',soundsOn:'Sounds enabled',soundsOff:'Sounds disabled',resetDone:'Grid reset.',patchAll:'Every cell must belong to a region.',patchEach:'Every clue must have a region.',patchOwn:'Each region must contain its own clue.',patchTwo:'A region cannot contain two clues.',patchConnected:'Each region must be connected.',patchRect:'Each region must form a rectangle.',patchSize:'A region size does not match its clue.',patchShape:'A region shape does not match its clue.',
+ restored:'Game restored',generating:'Generating…',rulesTitle:'Rules',where:'Where to look',logic:'Logic',solutionShown:'Solution shown',congrats:'Well done!',gridIncomplete:'There is still an error or an unresolved cell.',tangoIncomplete:'The grid does not yet satisfy all rules.',sudokuIncomplete:'There is still an error or an empty cell.',autoCrossOn:'Auto-crosses enabled',autoCrossOff:'Auto-crosses disabled',queenPlaced:'A queen was placed.',cellRevealed:'A cell was revealed.',digitRevealed:'A digit was revealed.',patchRevealed:'A region cell was revealed.',finishedShare:'Finished',dailyLabel:'Daily challenge',backtrackFlag:'backtracked',hintFlag:'hint used',closeHint:'Close',hintMove:'Suggested move',hintWhy:'Why',noLogicalHint:'No move can be directly deduced from the current state.',hintTimeout:'The hint search reached the 5-second limit. No reliable hint was found within that time.',hintSearching:'Searching for a hint…',hintPaused:'Resume the game to request a hint.',hintError:'The hint search could not complete. Try again after your next move.',dragHint:'Move',rank1:'rank-1 inference',rank2:'rank-2 inference',rank3:'rank-3 inference',hintNoR0:'Rank 0: no direct deduction.',hintNoR1:'Rank 1: no assumption immediately leads to a dead end.',hintNoR2:'Rank 2: no assumption leads to a dead end on the next level.',hintNoR3:'Rank 3: no forced contradiction was proved within three levels.',hypothesis:'Assumption',consequence:'Consequence',deadend:'Dead end',conclusion:'Conclusion',themeLabel:'Theme',soundsOn:'Sounds enabled',soundsOff:'Sounds disabled',resetDone:'Grid reset.',patchAll:'Every cell must belong to a region.',patchEach:'Every clue must have a region.',patchOwn:'Each region must contain its own clue.',patchTwo:'A region cannot contain two clues.',patchConnected:'Each region must be connected.',patchRect:'Each region must form a rectangle.',patchSize:'A region size does not match its clue.',patchShape:'A region shape does not match its clue.',
 }};
 let DIFF={};
 function lang(){return prefs().lang==='en'?'en':'fr'}
@@ -372,17 +372,30 @@ function queenCellAllowed(r,c){
   }
   return true
 }
+function queenDirectExclusionReason(r,c){
+  for(let rr=0;rr<current.n;rr++)for(let cc=0;cc<current.n;cc++)if(current.state[rr][cc]===2){
+    if(rr===r)return lang()==='fr'?`la ligne ${r+1} contient déjà une reine en ${cellName(rr,cc)}.`:`row ${r+1} already contains a queen at ${cellName(rr,cc)}.`;
+    if(cc===c)return lang()==='fr'?`la colonne ${c+1} contient déjà une reine en ${cellName(rr,cc)}.`:`column ${c+1} already contains a queen at ${cellName(rr,cc)}.`;
+    if(current.reg[rr][cc]===current.reg[r][c])return lang()==='fr'?`la zone ${current.reg[r][c]+1} contient déjà une reine en ${cellName(rr,cc)}.`:`region ${current.reg[r][c]+1} already contains a queen at ${cellName(rr,cc)}.`;
+    if(Math.abs(rr-r)<=1&&Math.abs(cc-c)<=1)return lang()==='fr'?`${cellName(r,c)} est adjacente à la reine de ${cellName(rr,cc)}.`:`${cellName(r,c)} is adjacent to the queen at ${cellName(rr,cc)}.`;
+  }
+  return null
+}
 function findQueenLogicalHint(){
   let n=current.n,cands=Array.from({length:n},(_,r)=>Array.from({length:n},(_,c)=>queenCellAllowed(r,c)));
+  // First expose direct X deductions if auto-cross is disabled or some X is missing.
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.state[r][c]===0&&!cands[r][c]){
+    let why=queenDirectExclusionReason(r,c);if(why)return {r,c,v:1,rank:0,why}
+  }
   function forcedFrom(cells,reasonFr,reasonEn){
     let open=cells.filter(([r,c])=>cands[r][c]&&current.state[r][c]!==2),q=cells.filter(([r,c])=>current.state[r][c]===2);
-    if(!q.length&&open.length===1)return {r:open[0][0],c:open[0][1],why:lang()==='fr'?reasonFr:reasonEn}
+    if(!q.length&&open.length===1)return {r:open[0][0],c:open[0][1],v:2,rank:0,why:lang()==='fr'?reasonFr:reasonEn}
     return null
   }
-  for(let r=0;r<n;r++){let h=forcedFrom(Array.from({length:n},(_,c)=>[r,c]),`toutes les autres cases de la ligne ${r+1} sont exclues.`,`all other cells in row ${r+1} are excluded.`);if(h)return h}
+  for(let r=0;r<n;r++){let h=forcedFrom(Array.from({length:n},(_,c)=>[r,c]),`toutes les autres cases de la ligne ${r+1} sont exclues`,`all other cells in row ${r+1} are excluded; only one queen position remains.`);if(h)return h}
   for(let c=0;c<n;c++){let h=forcedFrom(Array.from({length:n},(_,r)=>[r,c]),`toutes les autres cases de la colonne ${c+1} sont exclues.`,`all other cells in column ${c+1} are excluded.`);if(h)return h}
   let ids=[...new Set(current.reg.flat())];
-  for(let id of ids){let cells=[];for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.reg[r][c]===id)cells.push([r,c]);let h=forcedFrom(cells,`toutes les autres cases de la zone ${id+1} sont exclues.`,`all other cells in region ${id+1} are excluded.`);if(h)return h}
+  for(let id of ids){let cells=[];for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.reg[r][c]===id)cells.push([r,c]);let h=forcedFrom(cells,`toutes les autres cases de la zone ${id+1} sont exclues : cette zone n’a plus qu’une seule place possible pour sa reine.`,`all other cells in region ${id+1} are excluded; only one queen position remains.`);if(h)return h}
   return null
 }
 
@@ -636,12 +649,26 @@ function pieceName(kind,v){
   if(kind==='queens')return v===2?(lang()==='fr'?'reine ♛':'queen ♛'):'X';
   return lang()==='fr'?`zone ${v+1}`:`region ${v+1}`
 }
+function rank1Why(h){
+  return `<span class="reason-step"><b>1. ${lang()==='fr'?'Essai':'Try'} :</b> ${h.hypothesis}</span>`+
+         `<span class="reason-step"><b>2. ${lang()==='fr'?'Ce que cela provoque':'What happens'} :</b> ${h.consequence}</span>`+
+         `<span class="reason-step dead"><b>3. ${lang()==='fr'?'Pourquoi ça bloque':'Why it fails'} :</b> ${h.deadend}</span>`+
+         `<span class="reason-step conclusion"><b>4. ${tr('conclusion')} :</b> ${h.conclusion}</span>`
+}
 function rank2Why(h){
   return `<span class="reason-step"><b>1. ${tr('hypothesis')} :</b> ${h.hypothesis}</span>`+
          `<span class="reason-step"><b>2. ${tr('consequence')} :</b> ${h.consequence}</span>`+
          `<span class="reason-step dead"><b>3. ${tr('deadend')} :</b> ${h.deadend}</span>`+
          `<span class="reason-step conclusion"><b>4. ${tr('conclusion')} :</b> ${h.conclusion}</span>`
 }
+function rank3Why(h){
+  return `<span class="reason-step"><b>1. ${tr('hypothesis')} :</b> ${h.hypothesis}</span>`+
+         `<span class="reason-step"><b>2. ${lang()==='fr'?'Première conséquence':'First consequence'} :</b> ${h.consequence}</span>`+
+         `<span class="reason-step"><b>3. ${lang()==='fr'?'Deuxième vérification':'Second check'} :</b> ${h.secondStep}</span>`+
+         `<span class="reason-step dead"><b>4. ${tr('deadend')} :</b> ${h.deadend}</span>`+
+         `<span class="reason-step conclusion"><b>5. ${tr('conclusion')} :</b> ${h.conclusion}</span>`
+}
+
 
 // TANGO rank 2
 
@@ -828,6 +855,76 @@ function queenUnitViableWithRank1(){
   }
   return null
 }
+
+function queenUnitName(u){
+  return lang()==='fr'?(u.type==='row'?`la ligne ${u.i+1}`:u.type==='col'?`la colonne ${u.i+1}`:`la zone ${u.i+1}`):(u.type==='row'?`row ${u.i+1}`:u.type==='col'?`column ${u.i+1}`:`region ${u.i+1}`)
+}
+function queenUnresolvedUnits(){
+  let n=current.n,out=[];
+  for(let r=0;r<n;r++)if(!current.state[r].some(v=>v===2)){let cells=[];for(let c=0;c<n;c++)if(current.state[r][c]===0&&queenCellAllowed(r,c))cells.push([r,c]);out.push({type:'row',i:r,cells})}
+  for(let c=0;c<n;c++){let has=false,cells=[];for(let r=0;r<n;r++){if(current.state[r][c]===2)has=true;else if(current.state[r][c]===0&&queenCellAllowed(r,c))cells.push([r,c])}if(!has)out.push({type:'col',i:c,cells})}
+  for(let id of [...new Set(current.reg.flat())]){let has=false,cells=[];for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.reg[r][c]===id){if(current.state[r][c]===2)has=true;else if(current.state[r][c]===0&&queenCellAllowed(r,c))cells.push([r,c])}if(!has)out.push({type:'region',i:id,cells})}
+  out.sort((a,b)=>a.cells.length-b.cells.length);return out
+}
+function queenImmediateContradictionDetail(){
+  if(queenIllegalCells().size)return lang()==='fr'?'deux reines entrent immédiatement en conflit.':'two queens immediately conflict.';
+  for(let u of queenUnresolvedUnits())if(!u.cells.length)return lang()==='fr'?`${queenUnitName(u)} n’a plus aucune case disponible pour sa reine.`:`${queenUnitName(u)} has no cell left for its queen.`;
+  return lang()==='fr'?'les contraintes deviennent immédiatement impossibles.':'the constraints immediately become impossible.';
+}
+function queenBoundedContradiction(depth,deadline){
+  if(hintBudgetExpired(deadline))return queenHintTimeout();
+  if(queenStateContradiction())return {bad:true,reason:queenImmediateContradictionDetail()};
+  if(depth<=0)return null;
+  let units=queenUnresolvedUnits().filter(u=>u.cells.length);
+  // Most-constrained units first. Testing at most the first 4 keeps the proof bounded and responsive.
+  for(let u of units.slice(0,4)){
+    if(hintBudgetExpired(deadline))return queenHintTimeout();
+    let failures=[],allBad=true;
+    for(let [r,c] of u.cells){
+      if(hintBudgetExpired(deadline))return queenHintTimeout();
+      let child=withTempCurrent(x=>{x.state[r][c]=2},()=>queenBoundedContradiction(depth-1,deadline));
+      if(child?.timeout)return child;
+      if(!child?.bad){allBad=false;break}
+      failures.push({r,c,child})
+    }
+    if(allBad&&failures.length===u.cells.length)return {bad:true,unit:u,failures}
+  }
+  return null
+}
+function queenRank3BranchSummary(w){
+  if(!w)return '';
+  if(w.reason)return w.reason;
+  let unit=queenUnitName(w.unit),items=(w.failures||[]).slice(0,5).map(f=>{
+    let child=f.child,why=child?.reason||(child?.unit?(lang()==='fr'?`${queenUnitName(child.unit)} devient à son tour impossible.`:`${queenUnitName(child.unit)} then becomes impossible.`):(lang()==='fr'?'la branche conduit à une impasse.':'the branch reaches a dead end.'));
+    return `• ${cellName(f.r,f.c)} : ${why}`
+  });
+  return (lang()==='fr'?`${unit} doit recevoir une reine. Testons ses positions possibles :`:`${unit} must receive a queen. Test its possible positions:`)+`<br>${items.join('<br>')}`
+}
+function findQueenRank3Hint(deadline=Infinity){
+  let n=current.n;
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++){
+    if(hintBudgetExpired(deadline))return queenHintTimeout();
+    if(current.state[r][c]!==0||!queenCellAllowed(r,c))continue;
+    let candidates=[1,2],results={};
+    for(let v of candidates){
+      if(hintBudgetExpired(deadline))return queenHintTimeout();
+      let w=withTempCurrent(x=>{x.state[r][c]=v},()=>queenBoundedContradiction(2,deadline));
+      if(w?.timeout)return w;results[v]=w
+    }
+    let bad=candidates.filter(v=>results[v]?.bad),good=candidates.filter(v=>!results[v]?.bad);
+    if(good.length===1&&bad.length===1){
+      let v=good[0],rej=bad[0],w=results[rej],first=w.unit?queenUnitName(w.unit):(lang()==='fr'?'une contrainte obligatoire':'a required constraint');
+      return {r,c,v,rank:3,
+        hypothesis:lang()==='fr'?`essayons ${rej===2?'une reine ♛':'un X'} en ${cellName(r,c)}.`:`try ${rej===2?'a queen ♛':'an X'} at ${cellName(r,c)}.`,
+        consequence:lang()==='fr'?`cette hypothèse oblige ensuite à résoudre ${first}.`:`this assumption then forces us to resolve ${first}.`,
+        secondStep:queenRank3BranchSummary(w),
+        deadend:lang()==='fr'?`toutes les continuations testées à ce niveau conduisent à une impasse. L’hypothèse de départ est donc impossible.`:`every continuation tested at this level reaches a dead end. The initial assumption is impossible.`,
+        conclusion:lang()==='fr'?`${cellName(r,c)} doit donc contenir ${v===2?'une reine ♛':'un X'}.`:`${cellName(r,c)} must therefore contain ${v===2?'a queen ♛':'an X'}.`,
+        why:null}
+    }
+  }
+  return null
+}
 function findQueenRank2Hint(deadline=Infinity){
   let n=current.n;
   for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(hintBudgetExpired(deadline))return queenHintTimeout();else if(current.state[r][c]===0&&queenCellAllowed(r,c)){
@@ -978,6 +1075,19 @@ b.onpointerup=endDrag;b.onpointercancel=e=>{if(!dragging||e.pointerId!==pointerI
 drawQ();$('#queenAutoCross').onchange=e=>{setQueenAutoCross(e.target.checked);if(e.target.checked){for(let r=0;r<current.n;r++)for(let col=0;col<current.n;col++)if(current.state[r][col]===2)applyQueenAutoCross(r,col);drawQ();saveCurrent();showToast(tr('autoCrossOn'))}else showToast(tr('autoCrossOff'))};$('#checkBtn').onclick=checkQ;$('#hintBtn').onclick=hintQ;$('#solutionBtn').onclick=()=>{if(paused)return;current.state=current.state.map((row,r)=>row.map((_,col)=>col===current.sol[r]?2:1));drawQ();finish(tr('solutionShown'),'revealed')}}
 function drawQ(){let b=$('#qboard');if(current?.game==='queens'&&current.completed&&solvedQ())b.classList.add('queens-win');[...b.children].forEach((d,i)=>{let r=Math.floor(i/current.n),c=i%current.n,v=current.state[r][c];d.innerHTML=v===2?'<span class="queen">♛</span>':v===1?'<span class="mark">×</span>':'';d.classList.remove('error')});applyIllegalClasses(b,queenIllegalCells(),current.n);updateScoreFlags()}
 function checkQ(){if(solvedQ())finish(`${tr('congrats')} Queens`);else status(tr('gridIncomplete'),false)}
+
+function queenHintNoResultMessage(elapsedMs){
+  let e=(elapsedMs/1000).toFixed(2).replace('.',lang()==='fr'?',':'.');
+  return lang()==='fr'
+    ?`<b>Aucun indice trouvé jusqu’au rang 3.</b><br>${tr('hintNoR0')}<br>${tr('hintNoR1')}<br>${tr('hintNoR2')}<br>${tr('hintNoR3')}<br><small>Recherche terminée en ${e} s. Cela ne signifie pas que la grille est bloquée : seulement qu’aucun coup n’est forcé à cette profondeur.</small>`
+    :`<b>No hint found through rank 3.</b><br>${tr('hintNoR0')}<br>${tr('hintNoR1')}<br>${tr('hintNoR2')}<br>${tr('hintNoR3')}<br><small>Search completed in ${e} s. This does not mean the puzzle is stuck; only that no move is forced at this depth.</small>`
+}
+function queenHintTimeoutMessage(stage,elapsedMs){
+  let e=(elapsedMs/1000).toFixed(2).replace('.',lang()==='fr'?',':'.');
+  return lang()==='fr'
+    ?`<b>Recherche arrêtée après ${e} s.</b><br>Les rangs précédents ont été testés sans trouver d’indice. La limite de 5 secondes a été atteinte pendant le <b>rang ${stage}</b> ; ce niveau n’a donc pas été exploré complètement. Aucun indice non démontré n’est affiché.`
+    :`<b>Search stopped after ${e} s.</b><br>Earlier ranks were tested without finding a hint. The 5-second limit was reached during <b>rank ${stage}</b>, so that level was not fully explored. No unproved hint is shown.`
+}
 let queenHintSearchToken=0;
 function hintQ(){
   if(paused){showHintNotice(tr('hintPaused'));return}
@@ -986,16 +1096,24 @@ function hintQ(){
   showHintNotice(tr('hintSearching'));
   setTimeout(()=>{
     if(token!==queenHintSearchToken||!current||current.game!=='queens')return;
+    let started=Date.now(),stage=0;
     try{
-    let deadline=Date.now()+QUEEN_HINT_BUDGET_MS,h=findQueenLogicalHint();
-    if(!h&&!hintBudgetExpired(deadline))h=findQueenRank1Hint(deadline);
-    if(h?.timeout||(!h&&hintBudgetExpired(deadline))){showHintNotice(tr('hintTimeout'));return}
-    if(!h)h=findQueenRank2Hint(deadline);
-    if(h?.timeout||(!h&&hintBudgetExpired(deadline))){showHintNotice(tr('hintTimeout'));return}
-    if(!h){showNoLogicalHint();return}
-    let isX=h.v===1,move=lang()==='fr'?(isX?`Place un X en ligne ${h.r+1}, colonne ${h.c+1}.`:`Place une reine ♛ en ligne ${h.r+1}, colonne ${h.c+1}.`):(isX?`Mark X at row ${h.r+1}, column ${h.c+1}.`:`Place a queen ♛ at row ${h.r+1}, column ${h.c+1}.`);
-    hintStage('queens',[h.r,h.c],{move,where:lang()==='fr'?`Ce coup est imposé par les marques et reines déjà visibles.`:`This move is forced by the queens and X marks already visible.`,why:h.rank===2?rank2Why(h):h.rank===1?rank1Why(h):h.why,reveal:tr('queenPlaced')},()=>{setQueenCell(h.r,h.c,h.v===1?1:2);drawQ();maybeAutoFinish()})
-    }catch(err){console.error('Queens hint search failed',err);showHintNotice(tr('hintError'))}
+      let deadline=started+QUEEN_HINT_BUDGET_MS,h=findQueenLogicalHint();
+      if(!h){stage=1;h=findQueenRank1Hint(deadline)}
+      if(h?.timeout||hintBudgetExpired(deadline)){showHintNotice(queenHintTimeoutMessage(stage||1,Date.now()-started));return}
+      if(!h){stage=2;h=findQueenRank2Hint(deadline)}
+      if(h?.timeout||hintBudgetExpired(deadline)){showHintNotice(queenHintTimeoutMessage(stage,Date.now()-started));return}
+      if(!h){stage=3;h=findQueenRank3Hint(deadline)}
+      if(h?.timeout||hintBudgetExpired(deadline)){showHintNotice(queenHintTimeoutMessage(stage,Date.now()-started));return}
+      if(!h){showHintNotice(queenHintNoResultMessage(Date.now()-started));return}
+      let isX=h.v===1,move=lang()==='fr'?(isX?`Place un X en ligne ${h.r+1}, colonne ${h.c+1}.`:`Place une reine ♛ en ligne ${h.r+1}, colonne ${h.c+1}.`):(isX?`Mark X at row ${h.r+1}, column ${h.c+1}.`:`Place a queen ♛ at row ${h.r+1}, column ${h.c+1}.`);
+      let why=h.rank===3?rank3Why(h):h.rank===2?rank2Why(h):h.rank===1?rank1Why(h):h.why;
+      hintStage('queens',[h.r,h.c],{move,where:lang()==='fr'?`Indice de rang ${h.rank||0}, déduit uniquement de l’état visible.`:`Rank ${h.rank||0} hint, deduced only from the visible state.`,why,reveal:tr('queenPlaced')},()=>{setQueenCell(h.r,h.c,h.v===1?1:2);drawQ();maybeAutoFinish()})
+    }catch(err){
+      console.error('Queens hint search failed',err);
+      let detail=String(err?.message||err||'').slice(0,120);
+      showHintNotice(lang()==='fr'?`<b>Erreur pendant la recherche d’indice${stage?` (rang ${stage})`:''}.</b><br>${detail||'Le calcul n’a pas pu être terminé.'}<br>Aucun indice non vérifié n’est affiché.`:`<b>Error during hint search${stage?` (rank ${stage})`:''}.</b><br>${detail||'The calculation could not be completed.'}<br>No unverified hint is shown.`)
+    }
   },0)
 }
 

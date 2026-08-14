@@ -1,6 +1,25 @@
-# Logic 4 — v2.5.4
+# Logic 4 — v2.6.0
 
 Site statique mobile-first regroupant Queens, Tango, Mini Sudoku 6×6 et Patches.
+
+## Évolution v2.6.0 — diagnostic d’indices Queens et rang 3
+- Le moteur Queens suit maintenant explicitement : **rang 0 → rang 1 → rang 2 → rang 3** dans un budget global maximum de **5 secondes**.
+- Rang 0 renforcé : il détecte non seulement une ligne/colonne/zone avec une seule position de reine, mais aussi les `X` directement imposés par une reine déjà visible.
+- Correction d’une régression d’affichage : le moteur pouvait trouver correctement un indice de rang 1 puis échouer lors de sa mise en forme (`rank1Why` absent), donnant l’impression que le bouton Indice ne réagissait pas. Le renderer rang 1 est restauré et couvert par un test d’intégration du bouton.
+- Les indices de rang 0 portent désormais explicitement `rank: 0` et la pièce (`reine` ou `X`) à poser.
+- Le rang 3 effectue une recherche bornée supplémentaire : après une hypothèse, il teste une première unité contrainte puis un niveau supplémentaire de continuations. Une hypothèse n’est éliminée que si toutes les branches testées conduisent à une contradiction démontrée.
+- Les explications de rang 3 utilisent cinq étapes : **Hypothèse → Première conséquence → Deuxième vérification → Impasse → Conclusion**.
+- Si aucun indice n’est trouvé, le message indique précisément que les rangs 0, 1, 2 et 3 ont été testés et explique qu’aucun coup n’est forcé à cette profondeur.
+- Si le budget de 5 secondes est dépassé, le message indique **le rang pendant lequel la recherche a été interrompue** et précise que ce rang n’a pas été exploré complètement.
+- En cas d’exception interne, le message indique le rang concerné et la raison technique disponible ; aucun indice non vérifié n’est affiché.
+- La fenêtre d’indice reste déplaçable au doigt grâce à la poignée `Déplacer / Move`.
+
+### Validation spécifique v2.6.0
+- 120 grilles Queens **Difficile** testées au tout premier coup : **120/120** ont produit un indice correct, dont 50 de rang 0 et 70 de rang 1 ; 0 absence de réponse, 0 timeout, 0 faux indice.
+- Vérification particulière des zones singleton : toutes les grilles Difficile testées contenant une zone de surface 1 ont été détectées correctement au rang 0.
+- 800 états Queens Difficile/Expert testés directement avec le moteur rang 2 : **800/800 indices corrects**, 0 faux indice.
+- Les mêmes 800 états testés directement avec le moteur rang 3 : **800/800 indices corrects**, 0 faux indice, 0 timeout ; temps maximal observé ≈ 60 ms dans l’environnement de test.
+- La chaîne normale conserve l’arrêt anticipé : si un rang inférieur trouve un indice, les rangs supérieurs ne sont pas exécutés.
 
 ## Correctif v2.5.4 — réponse du bouton Indice Queens et fenêtre mobile
 - Queens dispose maintenant d’un budget explicite de **5 000 ms** pour la recherche d’un indice.
