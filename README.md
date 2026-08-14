@@ -1,6 +1,34 @@
-# Logic 4 — v2.6.2
+# Logic 4 — v2.7.0
 
 Site statique mobile-first regroupant Queens, Tango, Mini Sudoku 6×6 et Patches.
+
+## Évolution v2.7.0 — pré-génération des grilles en arrière-plan
+- Après l'affichage de la première grille, Logic 4 démarre un **Web Worker dédié** qui prépare silencieusement les prochaines grilles sans bloquer l'interface.
+- La réserve cible est de **2 grilles prêtes par jeu et par niveau de difficulté** :
+  - Queens : Facile, Moyen, Difficile, Expert ;
+  - Tango : Facile, Moyen, Difficile ;
+  - Mini Sudoku : Facile, Moyen, Difficile ;
+  - Patches : Facile, Moyen, Difficile.
+- La grille du **jeu et niveau actuellement utilisés** est prioritaire. Les autres niveaux du même jeu suivent, puis les niveaux moyens des autres jeux, puis le reste.
+- Queens Expert, nettement plus coûteux à générer, est préparé en dernier sauf si le joueur est actuellement en mode Expert.
+- Lors d'un appui sur `Nouvelle` ou d'un changement de difficulté, Logic 4 consomme d'abord une grille déjà prête. Si le cache correspondant est vide, le générateur synchrone historique reste le **fallback**, donc la fonctionnalité n'introduit aucun blocage fonctionnel.
+- Une grille consommée est immédiatement retirée du cache et le worker prépare son remplacement.
+- Le worker est **sériel (un seul calcul à la fois)** afin de ne pas multiplier les pics CPU et de conserver la fluidité tactile.
+- Lorsque l'application est masquée, aucun nouveau calcul de fond n'est lancé ; la file reprend quand elle redevient visible.
+- Le worker réutilise **les mêmes fonctions de génération et d'analyse que `app.js`** via `importScripts`, ce qui évite une seconde implémentation divergente des règles et niveaux de difficulté.
+- Le défi quotidien reste déterministe et **n'utilise pas** le cache ordinaire.
+- Pour Queens, les grilles pré-générées respectent le mécanisme anti-répétition v2.6.2 : une signature canonique est réservée dans le cache, puis transférée vers l'historique de la journée au moment où la grille est réellement affichée. Une grille déjà vue, ou équivalente par rotation/miroir, n'est jamais mise en cache.
+- Le cache de pré-génération est en mémoire uniquement : il est naturellement vidé au redémarrage/rechargement de l'application et au changement de date.
+- `precompute-worker.js` est ajouté au cache du Service Worker pour que la pré-génération fonctionne aussi hors ligne après le premier chargement.
+
+### Validation spécifique v2.7.0
+- Le worker a généré avec succès les **13 combinaisons jeu/niveau**, et chaque grille produite a été revalidée pour l'unicité de sa solution.
+- Test spécifique Queens : le worker refuse correctement une signature déjà interdite et produit une grille non équivalente.
+- Test du gestionnaire de cache : priorité `jeu/niveau courant`, stockage, consommation, transfert anti-répétition Queens et remise à zéro au changement de date.
+- Test d'intégration : les quatre fonctions de jeu consomment une grille précalculée avant d'appeler le générateur synchrone.
+- Le défi quotidien a été vérifié pour ignorer le cache ordinaire.
+- Politique Expert vérifiée : Queens Expert est différé en temps normal et devient prioritaire lorsque le joueur joue en Expert.
+- Mesures indicatives dans l'environnement de test pour une grille préparée : Sudoku/Patches quelques millisecondes à quelques dizaines de ms, Tango de quelques dizaines à quelques centaines de ms, Queens Difficile autour de la seconde dans certains cas ; Queens Expert peut être beaucoup plus coûteux, d'où sa priorité adaptée. Ces calculs ont lieu dans le worker et ne bloquent pas le thread d'interface.
 
 ## Correctif v2.6.2 — pas de répétition des grilles Queens dans la session
 - Lorsqu'une grille Queens ordinaire est affichée, l'application mémorise sa **signature canonique** en mémoire pour la journée courante.

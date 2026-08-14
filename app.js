@@ -5,7 +5,7 @@
  */
 'use strict';
 const $=s=>document.querySelector(s), app=$('#app'), toast=$('#toast'), timerEl=$('#timer');
-const VERSION='2.6.2', SAVE_KEY='logic4-save-v1';
+const VERSION='2.7.0', SAVE_KEY='logic4-save-v1';
 let current=null, tick=null, startedAt=0, elapsedBase=0, paused=false;
 const I18N={
 fr:{
@@ -231,7 +231,7 @@ function dailyView(){
 }
 function launchDaily(game,day=localDay()){
   closePreviousAttempt();clearSaved();stopTimer();paused=false;setBusy(true);current={game,diff:'medium',daily:true,dailyDay:day};
-  requestAnimationFrame(()=>{try{withSeed(`logic4-v1.6:${day}:${game}`,()=>{if(game==='queens')queens('medium');if(game==='tango')tango('medium');if(game==='sudoku')sudoku('medium');if(game==='patches')patches('medium')});current.daily=true;current.dailyDay=day;statsStart(current);startTimer(true,0,false);saveCurrent();haptic(8)}finally{setBusy(false)}})
+  requestAnimationFrame(()=>{try{withSeed(`logic4-v1.6:${day}:${game}`,()=>{if(game==='queens')queens('medium');if(game==='tango')tango('medium');if(game==='sudoku')sudoku('medium');if(game==='patches')patches('medium')});current.daily=true;current.dailyDay=day;statsStart(current);startTimer(true,0,false);saveCurrent();haptic(8)}finally{setBusy(false);startBackgroundPrecompute(game,'medium')}})
 }
 const coarsePointer=()=>window.matchMedia&&window.matchMedia('(pointer:coarse)').matches;
 function haptic(ms=12){try{if(navigator.vibrate)navigator.vibrate(ms)}catch(_){}}
@@ -330,8 +330,109 @@ function resetCurrent(){
   stopTimer(false);elapsedBase=0;startedAt=0;paused=false;startTimer(true,0,false);
   saveCurrent();updatePauseButton();status('',true);showToast(tr('resetDone'));haptic(8)
 }
-function launch(game,diff){if(game!=='queens'&&diff==='expert')diff='hard';closePreviousAttempt();clearSaved();stopTimer();paused=false;setBusy(true);current={game,diff};requestAnimationFrame(()=>{try{if(game==='queens')queens(diff);if(game==='tango')tango(diff);if(game==='sudoku')sudoku(diff);if(game==='patches')patches(diff);statsStart(current);startTimer(true,0,false);saveCurrent();haptic(8)}finally{setBusy(false)}})}
-function resumeSaved(){let s=getSaved();if(!s)return home();stopTimer();let c=s.current;c.givens=c.givens?new Set(c.givens):c.givens;c.empty=c.empty?new Set(c.empty):c.empty;current=c;if(c.game==='queens')renderQueens(c);if(c.game==='tango')renderTango(c);if(c.game==='sudoku')renderSudoku(c);if(c.game==='patches')renderPatches(c);startTimer(true,s.elapsed||0,!!s.paused);updatePauseButton();showToast(tr('restored'))}
+
+// ===== v2.7.0 — background precomputation =====
+const PRECOMPUTE_TARGET=2;
+const PRECOMPUTE_COMBOS=[
+  ['queens','easy'],['queens','medium'],['queens','hard'],['queens','expert'],
+  ['tango','easy'],['tango','medium'],['tango','hard'],
+  ['sudoku','easy'],['sudoku','medium'],['sudoku','hard'],
+  ['patches','easy'],['patches','medium'],['patches','hard']
+];
+const precomputeCache=new Map();
+const precomputeReservedQueens=new Set();
+let precomputeWorker=null,precomputeBusy=false,precomputeRequestId=0,precomputeDay=null,precomputePreferred=null,precomputeStarted=false;
+
+function precomputeKey(game,diff){return `${game}:${diff}`}
+function precomputeBucket(game,diff){
+  let k=precomputeKey(game,diff);if(!precomputeCache.has(k))precomputeCache.set(k,[]);return precomputeCache.get(k)
+}
+function resetPrecomputeDay(day=localDay()){
+  if(precomputeDay===day)return;
+  precomputeDay=day;precomputeCache.clear();precomputeReservedQueens.clear()
+}
+function precomputeForbiddenQueens(day=localDay()){
+  resetPrecomputeDay(day);
+  let out=new Set(precomputeReservedQueens);
+  try{for(let sig of queenSessionSet(day))out.add(sig)}catch(_){}
+  return [...out]
+}
+function ensurePrecomputeWorker(){
+  if(precomputeWorker)return precomputeWorker;
+  if(typeof Worker==='undefined')return null;
+  try{
+    let w=new Worker('./precompute-worker.js?v=2.7.0');
+    w.onmessage=e=>{
+      let m=e.data||{};precomputeBusy=false;
+      if(m.ok&&m.day===precomputeDay&&m.candidate){
+        let bucket=precomputeBucket(m.game,m.diff);
+        if(bucket.length<PRECOMPUTE_TARGET){
+          if(m.game==='queens'){
+            let sig=m.candidate.__queenSignature||queenCanonicalSignature(m.candidate.reg);
+            let displayed=false;try{displayed=queenSessionSet(m.day).has(sig)}catch(_){}
+            if(!displayed&&!precomputeReservedQueens.has(sig)){m.candidate.__queenSignature=sig;precomputeReservedQueens.add(sig);bucket.push(m.candidate)}
+          }else bucket.push(m.candidate)
+        }
+      }
+      setTimeout(()=>schedulePrecompute(),80)
+    };
+    w.onerror=()=>{precomputeBusy=false;try{w.terminate()}catch(_){};precomputeWorker=null};
+    precomputeWorker=w;return w
+  }catch(_){return null}
+}
+function precomputeOrder(){
+  let preferred=precomputePreferred,all=PRECOMPUTE_COMBOS.slice();
+  if(!preferred)return all.filter(x=>!(x[0]==='queens'&&x[1]==='expert')).concat(all.filter(x=>x[0]==='queens'&&x[1]==='expert'));
+  let exact=[],same=[],medium=[],rest=[],deferredExpert=[];
+  for(let x of all){
+    if(x[0]===preferred.game&&x[1]===preferred.diff)exact.push(x);
+    else if(x[0]==='queens'&&x[1]==='expert')deferredExpert.push(x);
+    else if(x[0]===preferred.game)same.push(x);
+    else if(x[1]==='medium')medium.push(x);
+    else rest.push(x)
+  }
+  return exact.concat(same,medium,rest,deferredExpert)
+}
+function schedulePrecompute(game=null,diff=null){
+  if(game&&diff)precomputePreferred={game,diff};
+  if(!precomputeStarted||document.hidden||precomputeBusy)return;
+  let day=localDay();resetPrecomputeDay(day);
+  let w=ensurePrecomputeWorker();if(!w)return;
+  for(let [g,d] of precomputeOrder()){
+    if(precomputeBucket(g,d).length>=PRECOMPUTE_TARGET)continue;
+    precomputeBusy=true;
+    let id=++precomputeRequestId;
+    w.postMessage({cmd:'generate',id,game:g,diff:d,day,forbiddenQueens:g==='queens'?precomputeForbiddenQueens(day):[]});
+    return
+  }
+}
+function startBackgroundPrecompute(game=current?.game,diff=current?.diff){
+  precomputeStarted=true;if(game&&diff)precomputePreferred={game,diff};
+  resetPrecomputeDay(localDay());setTimeout(()=>schedulePrecompute(),120)
+}
+function takePrecomputed(game,diff,day=localDay()){
+  resetPrecomputeDay(day);
+  let bucket=precomputeBucket(game,diff);
+  while(bucket.length){
+    let g=bucket.shift();
+    if(game==='queens'){
+      let sig=g.__queenSignature||queenCanonicalSignature(g.reg);
+      precomputeReservedQueens.delete(sig);
+      let already=false;try{already=queenSessionSet(day).has(sig)}catch(_){}
+      if(already)continue;
+      rememberQueenGeneratedThisSession(g.reg,day)
+    }
+    return g
+  }
+  return null
+}
+function precomputeStatus(){
+  let out={};for(let [g,d] of PRECOMPUTE_COMBOS)out[precomputeKey(g,d)]=precomputeBucket(g,d).length;return out
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&precomputeStarted)setTimeout(()=>schedulePrecompute(),150)});
+
+function launch(game,diff){if(game!=='queens'&&diff==='expert')diff='hard';closePreviousAttempt();clearSaved();stopTimer();paused=false;setBusy(true);current={game,diff};requestAnimationFrame(()=>{try{if(game==='queens')queens(diff);if(game==='tango')tango(diff);if(game==='sudoku')sudoku(diff);if(game==='patches')patches(diff);statsStart(current);startTimer(true,0,false);saveCurrent();haptic(8)}finally{setBusy(false);startBackgroundPrecompute(game,diff)}})}
+function resumeSaved(){let s=getSaved();if(!s)return home();stopTimer();let c=s.current;c.givens=c.givens?new Set(c.givens):c.givens;c.empty=c.empty?new Set(c.empty):c.empty;current=c;if(c.game==='queens')renderQueens(c);if(c.game==='tango')renderTango(c);if(c.game==='sudoku')renderSudoku(c);if(c.game==='patches')renderPatches(c);startTimer(true,s.elapsed||0,!!s.paused);updatePauseButton();showToast(tr('restored'));startBackgroundPrecompute(c.game,c.diff)}
 
 
 function sudokuCandidatesAt(r,c){
@@ -1323,7 +1424,7 @@ function queenCandidate(diff){let g=generateQueensPuzzle(diff);g.rating=analyzeQ
 function tangoCandidate(diff){let g=generateTangoPuzzle(diff);g.rating=analyzeTango(g.sol,g.givens,g.edges);return g}
 function sudokuCandidate(diff){let sol=randomSudokuSolution(),holes={easy:16,medium:22,hard:27}[diff],empty=makeSudokuHoles(sol,holes);return {sol,empty,rating:analyzeSudoku(sol,empty)}}
 function patchesCandidate(diff){let g=generatePatchesPuzzle(diff);g.rating=analyzePatches(g.n,g.ids,g.clues);return g}
-function queens(diff){let dailyRequest=!!current?.daily,day=current?.dailyDay||localDay(),g=queenCandidateForDisplay(diff,dailyRequest,day);current={game:'queens',diff,n:g.n,reg:g.reg,sol:g.sol,rating:g.rating,state:Array.from({length:g.n},()=>Array(g.n).fill(0)),generated:true,unique:true,completed:false};renderQueens(current)}
-function tango(diff){let g=targetPick(collectCandidates(()=>tangoCandidate(diff),6),diff),state=Array.from({length:6},()=>Array(6).fill(-1));for(let i of g.givens)state[Math.floor(i/6)][i%6]=g.sol[Math.floor(i/6)][i%6];current={game:'tango',diff,n:6,sol:g.sol,givens:g.givens,edges:g.edges,rating:g.rating,state,generated:true,unique:true,completed:false};renderTango(current)}
-function sudoku(diff){let g=targetPick(collectCandidates(()=>sudokuCandidate(diff),8),diff),sol=g.sol,empty=g.empty;current={game:'sudoku',diff,n:6,sol,empty,rating:g.rating,state:sol.map((r,ri)=>r.map((v,c)=>empty.has(ri*6+c)?0:v)),sel:null,generated:true,unique:true,completed:false};renderSudoku(current)}
-function patches(diff){let g=targetPick(collectCandidates(()=>patchesCandidate(diff),diff==='hard'?5:4),diff);const pal=['#f3c6a8','#b9d9c1','#c6d4ed','#e2c3df','#f0dc9d','#c7e0e3','#d5ceb8','#d4e3b4','#edbfc1','#c8c4e8','#e5d0a4','#b7d7d1'];current={game:'patches',diff,n:g.n,reg:g.reg,ids:g.ids,cellsBy:g.cellsBy,clues:g.clues,rating:g.rating,pal,active:g.ids[0],paint:Array.from({length:g.n},()=>Array(g.n).fill(null)),generated:true,unique:true,completed:false};renderPatches(current)}
+function queens(diff){let dailyRequest=!!current?.daily,day=current?.dailyDay||localDay(),g=!dailyRequest?takePrecomputed('queens',diff,day):null;if(!g)g=queenCandidateForDisplay(diff,dailyRequest,day);current={game:'queens',diff,n:g.n,reg:g.reg,sol:g.sol,rating:g.rating,state:Array.from({length:g.n},()=>Array(g.n).fill(0)),generated:true,unique:true,completed:false};renderQueens(current)}
+function tango(diff){let dailyRequest=!!current?.daily,g=!dailyRequest?takePrecomputed('tango',diff):null;if(!g)g=targetPick(collectCandidates(()=>tangoCandidate(diff),6),diff);let state=Array.from({length:6},()=>Array(6).fill(-1));for(let i of g.givens)state[Math.floor(i/6)][i%6]=g.sol[Math.floor(i/6)][i%6];current={game:'tango',diff,n:6,sol:g.sol,givens:g.givens,edges:g.edges,rating:g.rating,state,generated:true,unique:true,completed:false};renderTango(current)}
+function sudoku(diff){let dailyRequest=!!current?.daily,g=!dailyRequest?takePrecomputed('sudoku',diff):null;if(!g)g=targetPick(collectCandidates(()=>sudokuCandidate(diff),8),diff);let sol=g.sol,empty=g.empty;current={game:'sudoku',diff,n:6,sol,empty,rating:g.rating,state:sol.map((r,ri)=>r.map((v,c)=>empty.has(ri*6+c)?0:v)),sel:null,generated:true,unique:true,completed:false};renderSudoku(current)}
+function patches(diff){let dailyRequest=!!current?.daily,g=!dailyRequest?takePrecomputed('patches',diff):null;if(!g)g=targetPick(collectCandidates(()=>patchesCandidate(diff),diff==='hard'?5:4),diff);const pal=['#f3c6a8','#b9d9c1','#c6d4ed','#e2c3df','#f0dc9d','#c7e0e3','#d5ceb8','#d4e3b4','#edbfc1','#c8c4e8','#e5d0a4','#b7d7d1'];current={game:'patches',diff,n:g.n,reg:g.reg,ids:g.ids,cellsBy:g.cellsBy,clues:g.clues,rating:g.rating,pal,active:g.ids[0],paint:Array.from({length:g.n},()=>Array(g.n).fill(null)),generated:true,unique:true,completed:false};renderPatches(current)}
