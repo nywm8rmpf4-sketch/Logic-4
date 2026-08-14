@@ -5,7 +5,7 @@
  */
 'use strict';
 const $=s=>document.querySelector(s), app=$('#app'), toast=$('#toast'), timerEl=$('#timer');
-const VERSION='2.7.0', SAVE_KEY='logic4-save-v1';
+const VERSION='2.7.1', SAVE_KEY='logic4-save-v1';
 let current=null, tick=null, startedAt=0, elapsedBase=0, paused=false;
 const I18N={
 fr:{
@@ -361,7 +361,7 @@ function ensurePrecomputeWorker(){
   if(precomputeWorker)return precomputeWorker;
   if(typeof Worker==='undefined')return null;
   try{
-    let w=new Worker('./precompute-worker.js?v=2.7.0');
+    let w=new Worker('./precompute-worker.js?v=2.7.1');
     w.onmessage=e=>{
       let m=e.data||{};precomputeBusy=false;
       if(m.ok&&m.day===precomputeDay&&m.candidate){
@@ -1255,9 +1255,120 @@ medium:{n:6,reg:[[0,0,1,1,1,2],[0,3,3,1,2,2],[0,3,4,4,4,2],[5,3,4,6,6,6],[5,5,7,
 hard:{n:7,reg:[[0,0,1,1,1,2,2],[0,3,3,1,2,2,4],[0,3,5,5,5,4,4],[6,3,5,7,7,7,4],[6,6,5,8,7,9,9],[6,10,10,8,8,9,11],[10,10,8,8,11,11,11]]}};
 function patchShape(cells){let rs=cells.map(x=>x[0]),cs=cells.map(x=>x[1]),h=Math.max(...rs)-Math.min(...rs)+1,w=Math.max(...cs)-Math.min(...cs)+1,rect=h*w===cells.length;if(!rect)return 'libre';if(h===w)return 'carré';return h>w?'vertical':'horizontal'}
 function patches(diff){let def=patchDefs[diff],reg=transformGrid(def.reg,Math.floor(Math.random()*8)),n=reg.length,ids=[...new Set(reg.flat())],cellsBy={};ids.forEach(id=>cellsBy[id]=[]);for(let r=0;r<n;r++)for(let c=0;c<n;c++)cellsBy[reg[r][c]].push([r,c]);let clues={};ids.forEach(id=>{let cells=cellsBy[id],p=cells[Math.floor(cells.length/2)],mode=diff==='easy'?'both':diff==='medium'?(Math.random()<.5?'size':'shape'):(Math.random()<.45?'shape':Math.random()<.8?'size':'none');clues[id]={pos:p,size:cells.length,shape:patchShape(cells),mode}});const pal=['#f3c6a8','#b9d9c1','#c6d4ed','#e2c3df','#f0dc9d','#c7e0e3','#d5ceb8','#d4e3b4','#edbfc1','#c8c4e8','#e5d0a4','#b7d7d1'];current={game:'patches',diff,n,reg,ids,cellsBy,clues,pal,active:ids[0],paint:Array.from({length:n},()=>Array(n).fill(null)),completed:false};renderPatches(current)}
-function renderPatches(c){shell('Patches',lang()==='fr'?`${c.n}×${c.n} · générée · reconstruis les zones`:`${c.n}×${c.n} · generated · rebuild regions`,c.diff,`<div class="patch-palette" id="patchPalette"></div><div class="board-wrap"><div class="board" id="pboard" style="grid-template-columns:repeat(${c.n},minmax(0,1fr));grid-template-rows:repeat(${c.n},minmax(0,1fr))"></div></div><div class="legend">${tr('patchesLegend')}</div>`,gameRules('patches'));let pp=$('#patchPalette');c.ids.forEach(id=>{let bt=document.createElement('button');bt.className='patch-chip';bt.style.background=c.pal[id%c.pal.length];bt.dataset.id=id;bt.textContent=`${tr('zone')} ${id+1}`;bt.onclick=touchSave(()=>{current.active=+bt.dataset.id;drawP()});pp.appendChild(bt)});let b=$('#pboard'),painting=false,paintValue=true,pointerId=null;function paintCell(r,col){if(paused)return;let target=paintValue?current.active:null;if(current.paint[r][col]!==target){if(current.paint[r][col]!==null&&(target===null||target!==current.paint[r][col]))markBacktrack();current.paint[r][col]=target;drawP();saveCurrent();updateScoreFlags();maybeAutoFinish()}}function paintAtPoint(x,y){let el=document.elementFromPoint(x,y)?.closest('.patch-cell');if(el&&b.contains(el))paintCell(+el.dataset.r,+el.dataset.c)}for(let r=0;r<c.n;r++)for(let col=0;col<c.n;col++){let d=document.createElement('div');d.className='cell patch-cell';d.dataset.r=r;d.dataset.c=col;d.onpointerdown=e=>{if(paused)return;e.preventDefault();painting=true;pointerId=e.pointerId;paintValue=current.paint[r][col]!==current.active;haptic(7);try{b.setPointerCapture(pointerId)}catch(_){}paintCell(r,col)};b.appendChild(d)}b.onpointermove=e=>{if(painting&&e.pointerId===pointerId){e.preventDefault();paintAtPoint(e.clientX,e.clientY)}};let endPaint=e=>{if(e.pointerId===pointerId){painting=false;try{b.releasePointerCapture(pointerId)}catch(_){}pointerId=null}};b.onpointerup=endPaint;b.onpointercancel=endPaint;drawP();$('#checkBtn').onclick=checkP;$('#hintBtn').onclick=hintP;$('#solutionBtn').onclick=()=>{if(paused)return;current.paint=current.reg.map(r=>[...r]);drawP();finish(tr('solutionShown'),'revealed')}}
-function clueHTML(cl){let parts=[];if(cl.mode==='both'||cl.mode==='size')parts.push(`<b>${cl.size}</b>`);if(cl.mode==='both'||cl.mode==='shape')parts.push(`<span>${cl.shape==='carré'?'□':cl.shape==='vertical'?'▯':cl.shape==='horizontal'?'▭':'✣'}</span>`);if(cl.mode==='none')parts.push('<b>?</b>');return `<span class="patch-clue">${parts.join('')}</span>`}
-function drawP(){let b=$('#pboard');[...b.children].forEach((d,i)=>{let r=Math.floor(i/current.n),c=i%current.n,p=current.paint[r][c];d.style.background=p===null?'#fff':current.pal[p%current.pal.length];d.classList.toggle('paint',p!==null);d.innerHTML='';d.classList.remove('clue');for(let id of current.ids){let [rr,cc]=current.clues[id].pos;if(rr===r&&cc===c){d.classList.add('clue');d.innerHTML=clueHTML(current.clues[id]);break}}});$('#patchPalette').querySelectorAll('.patch-chip').forEach(x=>x.classList.toggle('active',+x.dataset.id===current.active));applyIllegalClasses(b,patchIllegalCells(),current.n);updateScoreFlags()}
+let patchPaintFrame=0;
+function patchClueIdAt(r,c){
+  if(!current?.clues||!current?.ids)return null;
+  for(let id of current.ids){let pos=current.clues[id]?.pos;if(pos&&pos[0]===r&&pos[1]===c)return id}
+  return null
+}
+function patchCellEl(r,c){let b=$('#pboard');return b?.children?.[r*current.n+c]||null}
+function updatePatchCellVisual(r,c){
+  if(!current||current.game!=='patches'||r<0||c<0||r>=current.n||c>=current.n)return;
+  let d=patchCellEl(r,c);if(!d)return;
+  let id=current.paint[r][c],clueId=d.dataset.clueId===''||d.dataset.clueId==null?null:+d.dataset.clueId;
+  let fill=id==null?(clueId==null?'#fff':'#f7f1e5'):current.pal[id%current.pal.length];
+  d.style.setProperty('--patch-fill',fill);
+  d.classList.toggle('paint',id!=null);
+  d.classList.remove('patch-edge-t','patch-edge-r','patch-edge-b','patch-edge-l');
+  if(id!=null){
+    if(r===0||current.paint[r-1][c]!==id)d.classList.add('patch-edge-t');
+    if(c===current.n-1||current.paint[r][c+1]!==id)d.classList.add('patch-edge-r');
+    if(r===current.n-1||current.paint[r+1][c]!==id)d.classList.add('patch-edge-b');
+    if(c===0||current.paint[r][c-1]!==id)d.classList.add('patch-edge-l')
+  }
+}
+function refreshPatchNeighborhood(r,c){
+  updatePatchCellVisual(r,c);
+  updatePatchCellVisual(r-1,c);updatePatchCellVisual(r+1,c);
+  updatePatchCellVisual(r,c-1);updatePatchCellVisual(r,c+1)
+}
+function drawPatchPalette(){
+  let pp=$('#patchPalette');if(!pp)return;
+  pp.querySelectorAll('.patch-chip').forEach(x=>{
+    let active=+x.dataset.id===current.active;
+    x.classList.toggle('active',active);
+    x.setAttribute('aria-pressed',active?'true':'false')
+  })
+}
+function schedulePatchAfterPaint(){
+  if(patchPaintFrame)return;
+  patchPaintFrame=requestAnimationFrame(()=>{
+    patchPaintFrame=0;
+    let b=$('#pboard');if(!b||!current||current.game!=='patches')return;
+    applyIllegalClasses(b,patchIllegalCells(),current.n);
+    updateScoreFlags();saveCurrent();maybeAutoFinish()
+  })
+}
+function renderPatches(c){
+  shell('Patches',lang()==='fr'?`${c.n}×${c.n} · générée · reconstruis les zones`:`${c.n}×${c.n} · generated · rebuild regions`,c.diff,
+    `<div class="patch-palette" id="patchPalette" role="toolbar" aria-label="${lang()==='fr'?'Choix de la zone':'Region selection'}"></div><div class="board-wrap patch-board-wrap"><div class="board" id="pboard" style="grid-template-columns:repeat(${c.n},minmax(0,1fr));grid-template-rows:repeat(${c.n},minmax(0,1fr))"></div></div><div class="legend">${tr('patchesLegend')}</div>`,
+    gameRules('patches'));
+  let pp=$('#patchPalette');
+  c.ids.forEach(id=>{
+    let bt=document.createElement('button');
+    bt.className='patch-chip';bt.style.setProperty('--chip-color',c.pal[id%c.pal.length]);
+    bt.style.background=c.pal[id%c.pal.length];bt.dataset.id=id;
+    bt.textContent=`${tr('zone')} ${id+1}`;bt.setAttribute('aria-pressed','false');
+    bt.onclick=touchSave(()=>{current.active=+bt.dataset.id;drawPatchPalette();haptic(5)});
+    pp.appendChild(bt)
+  });
+  let clueAt=new Map(c.ids.map(id=>[c.clues[id].pos.join(','),id]));
+  let b=$('#pboard'),painting=false,paintValue=true,pointerId=null,lastHit=null;
+  function paintCell(r,col){
+    if(paused)return;
+    let target=paintValue?current.active:null;
+    if(current.paint[r][col]===target)return;
+    if(current.paint[r][col]!==null&&(target===null||target!==current.paint[r][col]))markBacktrack();
+    current.paint[r][col]=target;
+    refreshPatchNeighborhood(r,col);
+    schedulePatchAfterPaint()
+  }
+  function paintAtPoint(x,y){
+    let el=document.elementFromPoint(x,y)?.closest?.('.patch-cell');
+    if(el&&b.contains(el)){
+      let key=el.dataset.r+','+el.dataset.c;
+      if(key!==lastHit){lastHit=key;paintCell(+el.dataset.r,+el.dataset.c)}
+    }
+  }
+  for(let r=0;r<c.n;r++)for(let col=0;col<c.n;col++){
+    let d=document.createElement('div');d.className='cell patch-cell';d.dataset.r=r;d.dataset.c=col;
+    let clueId=clueAt.get(r+','+col);
+    if(clueId!=null){d.classList.add('clue');d.dataset.clueId=clueId;d.innerHTML=clueHTML(c.clues[clueId])}
+    else d.dataset.clueId='';
+    d.onpointerdown=e=>{
+      if(paused)return;e.preventDefault();painting=true;pointerId=e.pointerId;lastHit=null;
+      paintValue=current.paint[r][col]!==current.active;haptic(6);
+      try{b.setPointerCapture(pointerId)}catch(_){}
+      paintCell(r,col);lastHit=r+','+col
+    };
+    b.appendChild(d)
+  }
+  b.onpointermove=e=>{if(painting&&e.pointerId===pointerId){e.preventDefault();paintAtPoint(e.clientX,e.clientY)}};
+  let endPaint=e=>{
+    if(e.pointerId!==pointerId)return;
+    painting=false;lastHit=null;
+    try{b.releasePointerCapture(pointerId)}catch(_){}
+    pointerId=null;schedulePatchAfterPaint()
+  };
+  b.onpointerup=endPaint;b.onpointercancel=endPaint;
+  drawP();
+  $('#checkBtn').onclick=checkP;$('#hintBtn').onclick=hintP;
+  $('#solutionBtn').onclick=()=>{if(paused)return;current.paint=current.reg.map(r=>[...r]);drawP();finish(tr('solutionShown'),'revealed')}
+}
+function clueHTML(cl){
+  let parts=[];
+  if(cl.mode==='both'||cl.mode==='size')parts.push(`<b>${cl.size}</b>`);
+  if(cl.mode==='both'||cl.mode==='shape')parts.push(`<span>${cl.shape==='carré'?'□':cl.shape==='vertical'?'▯':cl.shape==='horizontal'?'▭':'✣'}</span>`);
+  if(cl.mode==='none')parts.push('<b>?</b>');
+  return `<span class="patch-clue">${parts.join('')}</span>`
+}
+function drawP(){
+  let b=$('#pboard');if(!b||!current||current.game!=='patches')return;
+  for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)updatePatchCellVisual(r,c);
+  drawPatchPalette();
+  applyIllegalClasses(b,patchIllegalCells(),current.n);
+  updateScoreFlags()
+}
 function checkP(){let n=current.n,all=current.paint.every(row=>row.every(v=>v!==null));if(!all){status(tr('patchAll'),false);return}let cluePositions=new Map(current.ids.map(id=>[current.clues[id].pos.join(','),id]));for(let id of current.ids){let cells=[];for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.paint[r][c]===id)cells.push([r,c]);if(!cells.length){status(tr('patchEach'),false);return}let own=current.clues[id].pos;if(!cells.some(([r,c])=>r===own[0]&&c===own[1])){status(tr('patchOwn'),false);return}let other=cells.some(([r,c])=>cluePositions.has(r+','+c)&&cluePositions.get(r+','+c)!==id);if(other){status(tr('patchTwo'),false);return}let seen=new Set([cells[0].join(',')]),q=[cells[0]],set=new Set(cells.map(x=>x.join(',')));while(q.length){let [r,c]=q.pop();for(let [rr,cc] of [[r+1,c],[r-1,c],[r,c+1],[r,c-1]]){let k=rr+','+cc;if(set.has(k)&&!seen.has(k)){seen.add(k);q.push([rr,cc])}}}if(seen.size!==cells.length){status(tr('patchConnected'),false);return}let cl=current.clues[id],sh=patchShape(cells);if(sh==='libre'){status(tr('patchRect'),false);return}if((cl.mode==='both'||cl.mode==='size')&&cells.length!==cl.size){status(tr('patchSize'),false);return}if((cl.mode==='both'||cl.mode==='shape')&&sh!==cl.shape){status(tr('patchShape'),false);return}}finish(`${tr('congrats')} Patches`)}
 function hintP(){if(paused)return;let h=findPatchLogicalHint()||findPatchRank1Hint()||findPatchRank2Hint();if(!h)return showNoLogicalHint();let move=lang()==='fr'?`Attribue la case ligne ${h.r+1}, colonne ${h.c+1} à la zone ${h.id+1}.`:`Assign row ${h.r+1}, column ${h.c+1} to region ${h.id+1}.`;hintStage('patches',[h.r,h.c],{move,where:lang()==='fr'?`Le coup est déduit uniquement des indices et cases déjà peintes.`:`The move is deduced only from the clues and cells already painted.`,why:h.rank===2?rank2Why(h):h.rank===1?rank1Why(h):h.why,reveal:tr('patchRevealed')},()=>{current.paint[h.r][h.c]=h.id;drawP();maybeAutoFinish()})}
 // ===== v1.2 generators: generated puzzles + uniqueness checks =====

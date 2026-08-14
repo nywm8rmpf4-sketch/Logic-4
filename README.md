@@ -1,6 +1,25 @@
-# Logic 4 — v2.7.0
+# Logic 4 — v2.7.1
 
 Site statique mobile-first regroupant Queens, Tango, Mini Sudoku 6×6 et Patches.
+
+## Correctif v2.7.1 — Patches : affichage et fluidité
+- Le moteur d'affichage de Patches ne redessine plus toute la grille à chaque case peinte pendant un glissé.
+- Lorsqu'une case change, seules **cette case et ses quatre voisines** sont rafraîchies immédiatement ; le contrôle des erreurs, la sauvegarde et la détection de victoire sont regroupés sur la prochaine frame via `requestAnimationFrame`.
+- Les indices de zones sont créés une seule fois lors du rendu de la grille. `drawP()` ne détruit/recrée plus leur `innerHTML`, ce qui évite scintillements et micro-décalages.
+- Les anciennes bordures épaisses autour de **chaque case peinte** sont supprimées. Patches dessine désormais un contour uniquement sur le **périmètre extérieur réel de chaque zone peinte**, rendant les rectangles plus lisibles.
+- Les indices restent lisibles sur toutes les couleurs grâce à un petit fond translucide stable au-dessus de la couleur de zone.
+- La couleur d'une case change avec une transition courte et progressive afin que le remplissage au doigt soit plus fluide.
+- La palette des zones reste sur **une seule ligne horizontale**, sans défilement vertical ni écrasement ; la zone active est signalée par une transition plus douce.
+- Les animations respectent toujours `prefers-reduced-motion`.
+- Les erreurs restent prioritaires visuellement : une case illégale conserve le surlignage rouge et n'est pas masquée par le contour de zone.
+
+### Validation spécifique v2.7.1
+- Test du rafraîchissement local : les contours haut/droite/bas/gauche sont recalculés correctement quand une case change de zone ou est effacée.
+- Vérification statique : `paintCell()` n'appelle plus `drawP()` ; les changements pendant le glissé passent par `refreshPatchNeighborhood()` et `schedulePatchAfterPaint()`.
+- Vérification que `drawP()` ne recrée plus les indices.
+- Tests de syntaxe de `app.js`, `precompute-worker.js` et `sw.js`.
+- Réexécution des tests du Web Worker et du cache de pré-génération pour vérifier que la modification de Patches n'introduit pas de régression sur v2.7.0.
+- Un test navigateur réel Chromium n'a pas pu être exécuté dans cet environnement car l'accès local HTTP du navigateur est bloqué par l'administration ; la validation visuelle est donc fondée sur les tests DOM/structure et devra être confirmée sur Safari/iPhone.
 
 ## Évolution v2.7.0 — pré-génération des grilles en arrière-plan
 - Après l'affichage de la première grille, Logic 4 démarre un **Web Worker dédié** qui prépare silencieusement les prochaines grilles sans bloquer l'interface.
