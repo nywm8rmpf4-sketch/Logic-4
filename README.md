@@ -1,6 +1,13 @@
-# Logic 4 — v2.6.0
+# Logic 4 — v2.6.1
 
 Site statique mobile-first regroupant Queens, Tango, Mini Sudoku 6×6 et Patches.
+
+## Correctif v2.6.1 — repère couleur des zones dans les indices Queens
+- Dans toutes les explications Queens, lorsqu'une **zone numérotée** est citée, son numéro est désormais précédé d'un petit rectangle portant **exactement la même couleur que la zone sur le plateau**.
+- Le repère est utilisé pour les déductions directes (rang 0) ainsi que pour les explications de rang 1, 2 et 3 lorsqu'une zone intervient dans le raisonnement.
+- La palette Queens a été centralisée dans une constante unique : le plateau et les repères des explications utilisent donc la même source de couleurs, évitant toute divergence.
+- Le numéro de zone reste affiché à côté du rectangle, afin de conserver une référence textuelle en plus du repère visuel.
+- Le repère possède un contour discret pour rester identifiable en thème clair comme sombre.
 
 ## Évolution v2.6.0 — diagnostic d’indices Queens et rang 3
 - Le moteur Queens suit maintenant explicitement : **rang 0 → rang 1 → rang 2 → rang 3** dans un budget global maximum de **5 secondes**.

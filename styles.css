@@ -320,3 +320,22 @@ body.busy{pointer-events:none}
 }
 .hint-drag-handle:active{cursor:grabbing}
 .hint-drag-handle span{letter-spacing:-3px;margin-right:5px}
+
+/* v2.6.1 — repère couleur des zones Queens dans les explications d'indices */
+.queen-zone-ref{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  white-space:nowrap;
+  font-weight:700;
+}
+.queen-zone-swatch{
+  display:inline-block;
+  width:23px;
+  height:14px;
+  flex:0 0 23px;
+  border:1px solid rgba(35,35,35,.42);
+  border-radius:3px;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.32);
+  vertical-align:-2px;
+}

@@ -5,7 +5,7 @@
  */
 'use strict';
 const $=s=>document.querySelector(s), app=$('#app'), toast=$('#toast'), timerEl=$('#timer');
-const VERSION='2.6.0', SAVE_KEY='logic4-save-v1';
+const VERSION='2.6.1', SAVE_KEY='logic4-save-v1';
 let current=null, tick=null, startedAt=0, elapsedBase=0, paused=false;
 const I18N={
 fr:{
@@ -365,6 +365,11 @@ function patchReason(r,c,id,cl){
 
 function showNoLogicalHint(){showHintNotice(tr('noLogicalHint'));saveCurrent()}
 
+const QUEEN_REGION_COLORS=['#f6d68a','#c9dca5','#b9d8e9','#d9c4e8','#f3b8ad','#b5dbc9','#e7c9a3','#c6c7e9','#c4dfd7'];
+function queenZoneBadge(id){
+  let color=QUEEN_REGION_COLORS[id%QUEEN_REGION_COLORS.length],label=lang()==='fr'?'zone':'region';
+  return `<span class="queen-zone-ref"><span class="queen-zone-swatch" style="background:${color}" aria-hidden="true"></span>${label} ${id+1}</span>`
+}
 function queenCellAllowed(r,c){
   if(current.state[r][c]===1)return false;
   for(let rr=0;rr<current.n;rr++)for(let cc=0;cc<current.n;cc++)if(current.state[rr][cc]===2){
@@ -376,7 +381,7 @@ function queenDirectExclusionReason(r,c){
   for(let rr=0;rr<current.n;rr++)for(let cc=0;cc<current.n;cc++)if(current.state[rr][cc]===2){
     if(rr===r)return lang()==='fr'?`la ligne ${r+1} contient déjà une reine en ${cellName(rr,cc)}.`:`row ${r+1} already contains a queen at ${cellName(rr,cc)}.`;
     if(cc===c)return lang()==='fr'?`la colonne ${c+1} contient déjà une reine en ${cellName(rr,cc)}.`:`column ${c+1} already contains a queen at ${cellName(rr,cc)}.`;
-    if(current.reg[rr][cc]===current.reg[r][c])return lang()==='fr'?`la zone ${current.reg[r][c]+1} contient déjà une reine en ${cellName(rr,cc)}.`:`region ${current.reg[r][c]+1} already contains a queen at ${cellName(rr,cc)}.`;
+    if(current.reg[rr][cc]===current.reg[r][c])return lang()==='fr'?`${queenZoneBadge(current.reg[r][c])} contient déjà une reine en ${cellName(rr,cc)}.`:`${queenZoneBadge(current.reg[r][c])} already contains a queen at ${cellName(rr,cc)}.`;
     if(Math.abs(rr-r)<=1&&Math.abs(cc-c)<=1)return lang()==='fr'?`${cellName(r,c)} est adjacente à la reine de ${cellName(rr,cc)}.`:`${cellName(r,c)} is adjacent to the queen at ${cellName(rr,cc)}.`;
   }
   return null
@@ -395,7 +400,7 @@ function findQueenLogicalHint(){
   for(let r=0;r<n;r++){let h=forcedFrom(Array.from({length:n},(_,c)=>[r,c]),`toutes les autres cases de la ligne ${r+1} sont exclues`,`all other cells in row ${r+1} are excluded; only one queen position remains.`);if(h)return h}
   for(let c=0;c<n;c++){let h=forcedFrom(Array.from({length:n},(_,r)=>[r,c]),`toutes les autres cases de la colonne ${c+1} sont exclues.`,`all other cells in column ${c+1} are excluded.`);if(h)return h}
   let ids=[...new Set(current.reg.flat())];
-  for(let id of ids){let cells=[];for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.reg[r][c]===id)cells.push([r,c]);let h=forcedFrom(cells,`toutes les autres cases de la zone ${id+1} sont exclues : cette zone n’a plus qu’une seule place possible pour sa reine.`,`all other cells in region ${id+1} are excluded; only one queen position remains.`);if(h)return h}
+  for(let id of ids){let cells=[];for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.reg[r][c]===id)cells.push([r,c]);let h=forcedFrom(cells,`toutes les autres cases de ${queenZoneBadge(id)} sont exclues : cette zone n’a plus qu’une seule place possible pour sa reine.`,`all other cells in ${queenZoneBadge(id)} are excluded; only one queen position remains.`);if(h)return h}
   return null
 }
 
@@ -498,7 +503,7 @@ function findQueenRank1Hint(deadline=Infinity){
         let n=current.n;
         for(let rr=0;rr<n;rr++){let q=current.state[rr].some(z=>z===2),open=[];for(let cc=0;cc<n;cc++)if(current.state[rr][cc]===0&&queenCellAllowed(rr,cc))open.push([rr,cc]);if(!q&&!open.length)return {text:lang()==='fr'?`la ligne ${rr+1} n'aurait plus aucune case disponible pour sa reine.`:`row ${rr+1} would have no cell left for its queen.`}}
         for(let cc=0;cc<n;cc++){let q=false,open=[];for(let rr=0;rr<n;rr++){if(current.state[rr][cc]===2)q=true;else if(current.state[rr][cc]===0&&queenCellAllowed(rr,cc))open.push([rr,cc])}if(!q&&!open.length)return {text:lang()==='fr'?`la colonne ${cc+1} n'aurait plus aucune case disponible pour sa reine.`:`column ${cc+1} would have no cell left for its queen.`}}
-        for(let id of [...new Set(current.reg.flat())]){let q=false,open=[];for(let rr=0;rr<n;rr++)for(let cc=0;cc<n;cc++)if(current.reg[rr][cc]===id){if(current.state[rr][cc]===2)q=true;else if(current.state[rr][cc]===0&&queenCellAllowed(rr,cc))open.push([rr,cc])}if(!q&&!open.length)return {text:lang()==='fr'?`la zone ${id+1} n'aurait plus aucune case disponible pour sa reine.`:`region ${id+1} would have no cell left for its queen.`}}
+        for(let id of [...new Set(current.reg.flat())]){let q=false,open=[];for(let rr=0;rr<n;rr++)for(let cc=0;cc<n;cc++)if(current.reg[rr][cc]===id){if(current.state[rr][cc]===2)q=true;else if(current.state[rr][cc]===0&&queenCellAllowed(rr,cc))open.push([rr,cc])}if(!q&&!open.length)return {text:lang()==='fr'?`${queenZoneBadge(id)} n'aurait plus aucune case disponible pour sa reine.`:`${queenZoneBadge(id)} would have no cell left for its queen.`}}
         return null
       });
       let badText=w&&w.text?w.text:(lang()==='fr'?'une ligne, une colonne ou une zone deviendrait impossible.':'a row, column, or region would become impossible.');
@@ -800,7 +805,7 @@ function queenPlacementRejectReason(r,c){
   for(let rr=0;rr<current.n;rr++)for(let cc=0;cc<current.n;cc++)if(current.state[rr][cc]===2){
     if(rr===r)return lang()==='fr'?`la ligne ${r+1} contient déjà une reine en ${cellName(rr,cc)}.`:`row ${r+1} already contains a queen at ${cellName(rr,cc)}.`;
     if(cc===c)return lang()==='fr'?`la colonne ${c+1} contient déjà une reine en ${cellName(rr,cc)}.`:`column ${c+1} already contains a queen at ${cellName(rr,cc)}.`;
-    if(current.reg[rr][cc]===current.reg[r][c])return lang()==='fr'?`la zone ${current.reg[r][c]+1} contient déjà une reine en ${cellName(rr,cc)}.`:`region ${current.reg[r][c]+1} already contains a queen at ${cellName(rr,cc)}.`;
+    if(current.reg[rr][cc]===current.reg[r][c])return lang()==='fr'?`${queenZoneBadge(current.reg[r][c])} contient déjà une reine en ${cellName(rr,cc)}.`:`${queenZoneBadge(current.reg[r][c])} already contains a queen at ${cellName(rr,cc)}.`;
     if(Math.abs(rr-r)<=1&&Math.abs(cc-c)<=1)return lang()==='fr'?`${cellName(r,c)} touche diagonalement la reine de ${cellName(rr,cc)}.`:`${cellName(r,c)} touches the queen at ${cellName(rr,cc)} diagonally.`;
   }
   return null
@@ -823,7 +828,7 @@ function queenRank1PlacementFailure(r,c){
     }
     for(let id of [...new Set(current.reg.flat())]){
       let has=false,cells=[];for(let rr=0;rr<n;rr++)for(let cc=0;cc<n;cc++)if(current.reg[rr][cc]===id){if(current.state[rr][cc]===2)has=true;else if(current.state[rr][cc]===0&&queenCellAllowed(rr,cc))cells.push([rr,cc])}
-      if(!has&&!cells.length)return {type:'region',i:id,text:lang()==='fr'?`la zone ${id+1} n'aurait alors plus aucune case où placer sa reine.`:`region ${id+1} would then have no cell left for its queen.`}
+      if(!has&&!cells.length)return {type:'region',i:id,text:lang()==='fr'?`${queenZoneBadge(id)} n'aurait alors plus aucune case où placer sa reine.`:`${queenZoneBadge(id)} would then have no cell left for its queen.`}
     }
     return null
   })
@@ -857,7 +862,9 @@ function queenUnitViableWithRank1(){
 }
 
 function queenUnitName(u){
-  return lang()==='fr'?(u.type==='row'?`la ligne ${u.i+1}`:u.type==='col'?`la colonne ${u.i+1}`:`la zone ${u.i+1}`):(u.type==='row'?`row ${u.i+1}`:u.type==='col'?`column ${u.i+1}`:`region ${u.i+1}`)
+  return lang()==='fr'
+    ?(u.type==='row'?`la ligne ${u.i+1}`:u.type==='col'?`la colonne ${u.i+1}`:`la ${queenZoneBadge(u.i)}`)
+    :(u.type==='row'?`row ${u.i+1}`:u.type==='col'?`column ${u.i+1}`:`the ${queenZoneBadge(u.i)}`)
 }
 function queenUnresolvedUnits(){
   let n=current.n,out=[];
@@ -938,9 +945,7 @@ function findQueenRank2Hint(deadline=Infinity){
     }
     let good=surviving.filter(v=>!bad.includes(v));
     if(good.length===1&&bad.length){
-      let v=good[0],rej=bad[0],w=witness[rej],unit=lang()==='fr'
-        ?(w.type==='row'?`la ligne ${w.i+1}`:w.type==='col'?`la colonne ${w.i+1}`:`la zone ${w.i+1}`)
-        :(w.type==='row'?`row ${w.i+1}`:w.type==='col'?`column ${w.i+1}`:`region ${w.i+1}`);
+      let v=good[0],rej=bad[0],w=witness[rej],unit=queenUnitName(w);
       let details=(w.failures||[]).map(f=>`• ${cellName(f.r,f.c)} : ${f.text}`).join('<br>');
       if(!details)details=lang()==='fr'?`aucune case n'y reste disponible pour une reine.`:`no cell remains available there for a queen.`;
       return {r,c,v,rank:2,
@@ -1057,7 +1062,7 @@ function queenDragRange(sr,sc,er,ec,axis){
   }
   return out
 }
-function renderQueens(c){const colors=['#f6d68a','#c9dca5','#b9d8e9','#d9c4e8','#f3b8ad','#b5dbc9','#e7c9a3','#c6c7e9','#c4dfd7'];shell('Queens',`${c.n}×${c.n} · ${DIFF[c.diff]} · ${tr('generated')}`,c.diff,`<div class="queen-options"><label class="switch-row"><input type="checkbox" id="queenAutoCross" ${queenAutoCrossEnabled()?'checked':''}><span>${tr('autoCross')}</span></label></div><div class="board-wrap"><div class="board" id="qboard" style="grid-template-columns:repeat(${c.n},minmax(0,1fr));grid-template-rows:repeat(${c.n},minmax(0,1fr))"></div></div><div class="legend">${tr('queensLegend')}</div>`,gameRules('queens'));let b=$('#qboard'),dragging=false,pointerId=null,startCell=null,dragAxis=null,dragged=false,dragMode='add',visited=new Set();
+function renderQueens(c){const colors=QUEEN_REGION_COLORS;shell('Queens',`${c.n}×${c.n} · ${DIFF[c.diff]} · ${tr('generated')}`,c.diff,`<div class="queen-options"><label class="switch-row"><input type="checkbox" id="queenAutoCross" ${queenAutoCrossEnabled()?'checked':''}><span>${tr('autoCross')}</span></label></div><div class="board-wrap"><div class="board" id="qboard" style="grid-template-columns:repeat(${c.n},minmax(0,1fr));grid-template-rows:repeat(${c.n},minmax(0,1fr))"></div></div><div class="legend">${tr('queensLegend')}</div>`,gameRules('queens'));let b=$('#qboard'),dragging=false,pointerId=null,startCell=null,dragAxis=null,dragged=false,dragMode='add',visited=new Set();
 function boardCellAt(x,y){let rect=b.getBoundingClientRect(),rx=x-rect.left,ry=y-rect.top;if(rx<0||ry<0||rx>=rect.width||ry>=rect.height)return null;let col=Math.min(c.n-1,Math.max(0,Math.floor(rx/rect.width*c.n))),r=Math.min(c.n-1,Math.max(0,Math.floor(ry/rect.height*c.n)));return b.children[r*c.n+col]||null}
 function applyDragCell(r,col){let k=r+','+col;if(visited.has(k)||current.state[r][col]===2)return;visited.add(k);current.hintFlow=null;clearHintFocus();let v=dragMode==='remove'?0:1;if(current.state[r][col]!==v){if(current.state[r][col]===1&&v===0)markBacktrack();current.state[r][col]=v;dragged=true}}
 function applyDragTo(hit){if(!startCell||!hit)return;let sr=+startCell.dataset.r,sc=+startCell.dataset.c,hr=+hit.dataset.r,hc=+hit.dataset.c;if(!dragAxis&&(hr!==sr||hc!==sc))dragAxis=Math.abs(hc-sc)>=Math.abs(hr-sr)?'row':'col';if(!dragAxis)return;let er=dragAxis==='row'?sr:hr,ec=dragAxis==='col'?sc:hc;for(let [r,col] of queenDragRange(sr,sc,er,ec,dragAxis))applyDragCell(r,col);drawQ()}
