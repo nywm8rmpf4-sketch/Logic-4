@@ -5,7 +5,7 @@
  */
 'use strict';
 const $=s=>document.querySelector(s), app=$('#app'), toast=$('#toast'), timerEl=$('#timer');
-const VERSION='2.7.1', SAVE_KEY='logic4-save-v1';
+const VERSION='2.8.0', SAVE_KEY='logic4-save-v1';
 let current=null, tick=null, startedAt=0, elapsedBase=0, paused=false;
 const I18N={
 fr:{
@@ -22,7 +22,7 @@ fr:{
  statsLocal:'Progression enregistrée uniquement sur cet appareil.',solved:'résolues',success:'réussite',avgTime:'temps moyen',streak:'série de jours',byGame:'Par jeu',history:'Historique récent',record:'record',average:'moyen',none:'Aucune partie terminée pour le moment.',
  solvedStatus:'Résolu',revealedStatus:'Solution vue',abandonedStatus:'Abandonné',finishedStatus:'Terminé',
  autoCross:'Croix automatiques quand je place une reine',queensLegend:'Touchez une case pour faire vide → X → reine. Faites glisser le doigt sur une ligne ou une colonne pour ajouter des X ; commencez sur un X pour les effacer.',
- patchesLegend:'Choisis un indice, puis touche les cases de sa zone. Tu peux aussi faire glisser le doigt pour peindre plusieurs cases.',zone:'Zone',
+ patchesLegend:'Fais glisser le doigt d’un coin à l’autre pour dessiner ou redimensionner un rectangle. La zone est choisie automatiquement quand le rectangle contient un seul indice. Un tap sur un rectangle existant le supprime.',zone:'Zone',
  aboutTitle:'À propos de Logic 4',version:'Version',copyright:'Copyright',license:'Licence',proprietary:'Logiciel propriétaire — All rights reserved.',legal:'Toute copie, modification, redistribution et exploitation sans autorisation écrite préalable de Serge Benoliel est interdite.',
  restored:'Partie restaurée',generating:'Génération…',rulesTitle:'Règles',where:'Où regarder',logic:'Logique',solutionShown:'Solution affichée',congrats:'Bravo !',gridIncomplete:'Il reste une erreur ou une case à résoudre.',tangoIncomplete:'La grille ne respecte pas encore toutes les règles.',sudokuIncomplete:'Il reste une erreur ou une case vide.',autoCrossOn:'Croix automatiques activées',autoCrossOff:'Croix automatiques désactivées',queenPlaced:'Une reine a été placée.',cellRevealed:'Une case a été révélée.',digitRevealed:'Un chiffre a été révélé.',patchRevealed:'Une case de la zone a été révélée.',finishedShare:'Terminé',dailyLabel:'Défi quotidien',backtrackFlag:'retour en arrière',hintFlag:'indice utilisé',closeHint:'Fermer',hintMove:'Coup conseillé',hintWhy:'Pourquoi',noLogicalHint:'Aucun coup directement déductible avec l’état actuel.',hintTimeout:'La recherche d’indice a atteint la limite de 5 secondes. Aucun indice fiable n’a été trouvé dans ce délai.',hintSearching:'Recherche d’un indice…',hintPaused:'Reprenez la partie pour demander un indice.',hintError:'La recherche d’indice n’a pas pu aboutir. Réessayez après votre prochain coup.',dragHint:'Déplacer',rank1:'inférence de rang 1',rank2:'inférence de rang 2',rank3:'inférence de rang 3',hintNoR0:'Rang 0 : aucune déduction directe.',hintNoR1:'Rang 1 : aucune hypothèse n’aboutit immédiatement à une impasse.',hintNoR2:'Rang 2 : aucune hypothèse n’aboutit à une impasse au niveau suivant.',hintNoR3:'Rang 3 : aucune contradiction forcée n’a été démontrée à trois niveaux.',hypothesis:'Hypothèse',consequence:'Conséquence',deadend:'Impasse',conclusion:'Conclusion',themeLabel:'Thème',soundsOn:'Sons activés',soundsOff:'Sons désactivés',resetDone:'Grille réinitialisée.',patchAll:'Toutes les cases doivent appartenir à une zone.',patchEach:'Chaque indice doit avoir une zone.',patchOwn:'Chaque zone doit contenir son propre indice.',patchTwo:'Une zone ne peut pas contenir deux indices.',patchConnected:'Chaque zone doit être d’un seul tenant.',patchRect:'Chaque zone doit former un rectangle.',patchSize:'La taille d’une zone ne correspond pas à son indice.',patchShape:'La forme d’une zone ne correspond pas à son indice.',
 },
@@ -40,7 +40,7 @@ en:{
  statsLocal:'Progress is stored only on this device.',solved:'solved',success:'success',avgTime:'average time',streak:'day streak',byGame:'By game',history:'Recent history',record:'record',average:'average',none:'No completed game yet.',
  solvedStatus:'Solved',revealedStatus:'Solution viewed',abandonedStatus:'Abandoned',finishedStatus:'Finished',
  autoCross:'Auto-mark crosses when I place a queen',queensLegend:'Tap a cell to cycle empty → X → queen. Drag along a row or column to add X marks; start on an X to erase them.',
- patchesLegend:'Choose a clue, then tap the cells in its region. You can also drag to paint several cells.',zone:'Region',
+ patchesLegend:'Drag from one corner to the opposite corner to draw or resize a rectangle. The region is selected automatically when the rectangle contains one clue. Tap an existing rectangle to remove it.',zone:'Region',
  aboutTitle:'About Logic 4',version:'Version',copyright:'Copyright',license:'License',proprietary:'Proprietary software — All rights reserved.',legal:'Copying, modification, redistribution and exploitation without prior written permission from Serge Benoliel are prohibited.',
  restored:'Game restored',generating:'Generating…',rulesTitle:'Rules',where:'Where to look',logic:'Logic',solutionShown:'Solution shown',congrats:'Well done!',gridIncomplete:'There is still an error or an unresolved cell.',tangoIncomplete:'The grid does not yet satisfy all rules.',sudokuIncomplete:'There is still an error or an empty cell.',autoCrossOn:'Auto-crosses enabled',autoCrossOff:'Auto-crosses disabled',queenPlaced:'A queen was placed.',cellRevealed:'A cell was revealed.',digitRevealed:'A digit was revealed.',patchRevealed:'A region cell was revealed.',finishedShare:'Finished',dailyLabel:'Daily challenge',backtrackFlag:'backtracked',hintFlag:'hint used',closeHint:'Close',hintMove:'Suggested move',hintWhy:'Why',noLogicalHint:'No move can be directly deduced from the current state.',hintTimeout:'The hint search reached the 5-second limit. No reliable hint was found within that time.',hintSearching:'Searching for a hint…',hintPaused:'Resume the game to request a hint.',hintError:'The hint search could not complete. Try again after your next move.',dragHint:'Move',rank1:'rank-1 inference',rank2:'rank-2 inference',rank3:'rank-3 inference',hintNoR0:'Rank 0: no direct deduction.',hintNoR1:'Rank 1: no assumption immediately leads to a dead end.',hintNoR2:'Rank 2: no assumption leads to a dead end on the next level.',hintNoR3:'Rank 3: no forced contradiction was proved within three levels.',hypothesis:'Assumption',consequence:'Consequence',deadend:'Dead end',conclusion:'Conclusion',themeLabel:'Theme',soundsOn:'Sounds enabled',soundsOff:'Sounds disabled',resetDone:'Grid reset.',patchAll:'Every cell must belong to a region.',patchEach:'Every clue must have a region.',patchOwn:'Each region must contain its own clue.',patchTwo:'A region cannot contain two clues.',patchConnected:'Each region must be connected.',patchRect:'Each region must form a rectangle.',patchSize:'A region size does not match its clue.',patchShape:'A region shape does not match its clue.',
 }};
@@ -55,8 +55,8 @@ const GAME_RULES={
  en:`<b>Goal:</b> fill all 36 cells with suns ☀ and moons ☾.<br><br><b>Balance:</b> every row and column contains exactly 3 suns and 3 moons.<br><br><b>Runs:</b> three identical consecutive symbols are forbidden horizontally and vertically.<br><br><b>Relations:</b> “=” means the two adjacent cells are identical; “×” means they are different.`},
  sudoku:{fr:`<b>But :</b> compléter la grille 6×6 avec les chiffres 1 à 6.<br><br><b>Lignes :</b> chaque chiffre apparaît exactement une fois dans chaque ligne.<br><br><b>Colonnes :</b> chaque chiffre apparaît exactement une fois dans chaque colonne.<br><br><b>Blocs :</b> chaque région 2×3 contient également une fois chacun des chiffres 1 à 6. Les chiffres donnés au départ ne peuvent pas être modifiés.`,
  en:`<b>Goal:</b> complete the 6×6 grid using digits 1 to 6.<br><br><b>Rows:</b> each digit appears exactly once in every row.<br><br><b>Columns:</b> each digit appears exactly once in every column.<br><br><b>Boxes:</b> every 2×3 region also contains digits 1 to 6 exactly once. Starting clues cannot be changed.`},
- patches:{fr:`<b>But :</b> découper toute la grille en rectangles ou carrés sans chevauchement.<br><br><b>Indices :</b> chaque zone contient exactement une case-indice. Un indice peut préciser la surface, la forme (carré, vertical ou horizontal), les deux, ou parfois ne donner qu'une information minimale.<br><br><b>Validité :</b> chaque case appartient à une seule zone, chaque zone est d'un seul tenant et forme un rectangle, et aucune zone ne peut contenir deux indices.`,
- en:`<b>Goal:</b> partition the entire grid into non-overlapping rectangles or squares.<br><br><b>Clues:</b> each region contains exactly one clue cell. A clue may specify area, shape (square, vertical or horizontal), both, or sometimes only minimal information.<br><br><b>Validity:</b> every cell belongs to exactly one region, each region is connected and rectangular, and no region may contain two clues.`}
+ patches:{fr:`<b>But :</b> découper toute la grille en rectangles ou carrés sans chevauchement.<br><br><b>Interaction :</b> fais glisser le doigt d’un coin à l’autre pour dessiner le rectangle. Fais glisser à nouveau depuis un rectangle existant pour le redimensionner. Un simple tap sur un rectangle le supprime.<br><br><b>Indices :</b> chaque zone contient exactement une case-indice. Un indice peut préciser la surface, la forme (carré, vertical ou horizontal), les deux, ou parfois ne donner qu'une information minimale.<br><br><b>Validité :</b> chaque case appartient à une seule zone, chaque zone est d'un seul tenant et forme un rectangle, et aucune zone ne peut contenir deux indices.`,
+ en:`<b>Goal:</b> partition the entire grid into non-overlapping rectangles or squares.<br><br><b>Interaction:</b> drag from one corner to the opposite corner to draw a rectangle. Drag again from an existing patch to resize it. Tap an existing patch to remove it.<br><br><b>Clues:</b> each region contains exactly one clue cell. A clue may specify area, shape (square, vertical or horizontal), both, or sometimes only minimal information.<br><br><b>Validity:</b> every cell belongs to exactly one region, each region is connected and rectangular, and no region may contain two clues.`}
 };
 function gameRules(g){return GAME_RULES[g]?.[lang()]||''}
 
@@ -361,7 +361,7 @@ function ensurePrecomputeWorker(){
   if(precomputeWorker)return precomputeWorker;
   if(typeof Worker==='undefined')return null;
   try{
-    let w=new Worker('./precompute-worker.js?v=2.7.1');
+    let w=new Worker('./precompute-worker.js?v=2.8.0');
     w.onmessage=e=>{
       let m=e.data||{};precomputeBusy=false;
       if(m.ok&&m.day===precomputeDay&&m.candidate){
@@ -1255,13 +1255,35 @@ medium:{n:6,reg:[[0,0,1,1,1,2],[0,3,3,1,2,2],[0,3,4,4,4,2],[5,3,4,6,6,6],[5,5,7,
 hard:{n:7,reg:[[0,0,1,1,1,2,2],[0,3,3,1,2,2,4],[0,3,5,5,5,4,4],[6,3,5,7,7,7,4],[6,6,5,8,7,9,9],[6,10,10,8,8,9,11],[10,10,8,8,11,11,11]]}};
 function patchShape(cells){let rs=cells.map(x=>x[0]),cs=cells.map(x=>x[1]),h=Math.max(...rs)-Math.min(...rs)+1,w=Math.max(...cs)-Math.min(...cs)+1,rect=h*w===cells.length;if(!rect)return 'libre';if(h===w)return 'carré';return h>w?'vertical':'horizontal'}
 function patches(diff){let def=patchDefs[diff],reg=transformGrid(def.reg,Math.floor(Math.random()*8)),n=reg.length,ids=[...new Set(reg.flat())],cellsBy={};ids.forEach(id=>cellsBy[id]=[]);for(let r=0;r<n;r++)for(let c=0;c<n;c++)cellsBy[reg[r][c]].push([r,c]);let clues={};ids.forEach(id=>{let cells=cellsBy[id],p=cells[Math.floor(cells.length/2)],mode=diff==='easy'?'both':diff==='medium'?(Math.random()<.5?'size':'shape'):(Math.random()<.45?'shape':Math.random()<.8?'size':'none');clues[id]={pos:p,size:cells.length,shape:patchShape(cells),mode}});const pal=['#f3c6a8','#b9d9c1','#c6d4ed','#e2c3df','#f0dc9d','#c7e0e3','#d5ceb8','#d4e3b4','#edbfc1','#c8c4e8','#e5d0a4','#b7d7d1'];current={game:'patches',diff,n,reg,ids,cellsBy,clues,pal,active:ids[0],paint:Array.from({length:n},()=>Array(n).fill(null)),completed:false};renderPatches(current)}
-let patchPaintFrame=0;
+let patchPaintFrame=0,patchDragFrame=0,patchDragPending=null;
 function patchClueIdAt(r,c){
   if(!current?.clues||!current?.ids)return null;
   for(let id of current.ids){let pos=current.clues[id]?.pos;if(pos&&pos[0]===r&&pos[1]===c)return id}
   return null
 }
 function patchCellEl(r,c){let b=$('#pboard');return b?.children?.[r*current.n+c]||null}
+function patchRect(a,b){
+  let r0=Math.min(a[0],b[0]),r1=Math.max(a[0],b[0]),c0=Math.min(a[1],b[1]),c1=Math.max(a[1],b[1]),cells=[];
+  for(let r=r0;r<=r1;r++)for(let c=c0;c<=c1;c++)cells.push([r,c]);
+  return {r0,r1,c0,c1,cells}
+}
+function patchRectClues(rect){
+  let out=[];
+  for(let id of current.ids){let [r,c]=current.clues[id].pos;if(r>=rect.r0&&r<=rect.r1&&c>=rect.c0&&c<=rect.c1)out.push(id)}
+  return out
+}
+function patchRectOverlapsOther(rect,id){
+  return rect.cells.some(([r,c])=>current.paint[r][c]!=null&&current.paint[r][c]!==id)
+}
+function patchPointToCell(x,y,b=$('#pboard')){
+  if(!b||!current)return null;
+  let q=b.getBoundingClientRect(),n=current.n;
+  if(!q.width||!q.height)return null;
+  let xx=Math.max(q.left,Math.min(x,q.right-0.01)),yy=Math.max(q.top,Math.min(y,q.bottom-0.01));
+  let c=Math.max(0,Math.min(n-1,Math.floor((xx-q.left)/q.width*n)));
+  let r=Math.max(0,Math.min(n-1,Math.floor((yy-q.top)/q.height*n)));
+  return [r,c]
+}
 function updatePatchCellVisual(r,c){
   if(!current||current.game!=='patches'||r<0||c<0||r>=current.n||c>=current.n)return;
   let d=patchCellEl(r,c);if(!d)return;
@@ -1277,11 +1299,6 @@ function updatePatchCellVisual(r,c){
     if(c===0||current.paint[r][c-1]!==id)d.classList.add('patch-edge-l')
   }
 }
-function refreshPatchNeighborhood(r,c){
-  updatePatchCellVisual(r,c);
-  updatePatchCellVisual(r-1,c);updatePatchCellVisual(r+1,c);
-  updatePatchCellVisual(r,c-1);updatePatchCellVisual(r,c+1)
-}
 function drawPatchPalette(){
   let pp=$('#patchPalette');if(!pp)return;
   pp.querySelectorAll('.patch-chip').forEach(x=>{
@@ -1289,6 +1306,71 @@ function drawPatchPalette(){
     x.classList.toggle('active',active);
     x.setAttribute('aria-pressed',active?'true':'false')
   })
+}
+function clearPatchPreview(){
+  let b=$('#pboard');if(!b)return;
+  b.classList.remove('patch-rect-dragging','patch-preview-invalid');
+  for(let d of b.children){
+    d.classList.remove('patch-preview','patch-preview-t','patch-preview-r','patch-preview-b','patch-preview-l','patch-preview-invalid-cell');
+    d.style.removeProperty('--patch-preview-fill')
+  }
+}
+function patchPreviewInfo(anchor,end,fallbackId,lockedId=null){
+  let rect=patchRect(anchor,end),clues=patchRectClues(rect);
+  let id=lockedId!=null?lockedId:(clues.length===1?clues[0]:fallbackId);
+  let clueOK=clues.length===1&&(lockedId==null||clues[0]===lockedId);
+  let valid=clueOK&&!patchRectOverlapsOther(rect,id);
+  return {rect,clues,id,valid,lockedId}
+}
+function renderPatchPreview(anchor,end,fallbackId,lockedId=null){
+  let b=$('#pboard');if(!b)return null;
+  clearPatchPreview();
+  let info=patchPreviewInfo(anchor,end,fallbackId,lockedId),color=current.pal[info.id%current.pal.length];
+  b.classList.add('patch-rect-dragging');
+  if(!info.valid)b.classList.add('patch-preview-invalid');
+  if(info.clues.length===1&&current.active!==info.id){current.active=info.id;drawPatchPalette()}
+  for(let [r,c] of info.rect.cells){
+    let d=patchCellEl(r,c);if(!d)continue;
+    d.classList.add('patch-preview');d.style.setProperty('--patch-preview-fill',color);
+    if(r===info.rect.r0)d.classList.add('patch-preview-t');
+    if(r===info.rect.r1)d.classList.add('patch-preview-b');
+    if(c===info.rect.c0)d.classList.add('patch-preview-l');
+    if(c===info.rect.c1)d.classList.add('patch-preview-r');
+    if(!info.valid)d.classList.add('patch-preview-invalid-cell')
+  }
+  return info
+}
+function schedulePatchDragPreview(anchor,end,fallbackId,lockedId=null){
+  patchDragPending={anchor:[...anchor],end:[...end],fallbackId,lockedId};
+  if(patchDragFrame)return;
+  patchDragFrame=requestAnimationFrame(()=>{
+    patchDragFrame=0;
+    let p=patchDragPending;patchDragPending=null;
+    if(p)renderPatchPreview(p.anchor,p.end,p.fallbackId,p.lockedId)
+  })
+}
+function commitPatchRectangle(anchor,end,fallbackId,lockedId=null){
+  let info=patchPreviewInfo(anchor,end,fallbackId,lockedId);
+  clearPatchPreview();
+  if(!info.valid){haptic(18);return false}
+  let id=info.id,hadOld=current.paint.some(row=>row.some(v=>v===id));
+  let rectKeys=new Set(info.rect.cells.map(([r,c])=>r+','+c));
+  let overwrite=info.rect.cells.some(([r,c])=>current.paint[r][c]!=null&&current.paint[r][c]!==id);
+  if(hadOld||overwrite)markBacktrack();
+  for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(current.paint[r][c]===id&&!rectKeys.has(r+','+c))current.paint[r][c]=null;
+  for(let [r,c] of info.rect.cells)current.paint[r][c]=id;
+  current.active=id;drawP();saveCurrent();updateScoreFlags();maybeAutoFinish();haptic(8);
+  let b=$('#pboard');if(b&&!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){
+    for(let [r,c] of info.rect.cells){let d=patchCellEl(r,c);d?.classList.add('patch-commit')}
+    setTimeout(()=>{for(let [r,c] of info.rect.cells)patchCellEl(r,c)?.classList.remove('patch-commit')},180)
+  }
+  return true
+}
+function removePatchRectangle(id){
+  let changed=false;
+  for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(current.paint[r][c]===id){current.paint[r][c]=null;changed=true}
+  if(!changed)return false;
+  markBacktrack();current.active=id;drawP();saveCurrent();updateScoreFlags();haptic(7);return true
 }
 function schedulePatchAfterPaint(){
   if(patchPaintFrame)return;
@@ -1313,47 +1395,45 @@ function renderPatches(c){
     pp.appendChild(bt)
   });
   let clueAt=new Map(c.ids.map(id=>[c.clues[id].pos.join(','),id]));
-  let b=$('#pboard'),painting=false,paintValue=true,pointerId=null,lastHit=null;
-  function paintCell(r,col){
-    if(paused)return;
-    let target=paintValue?current.active:null;
-    if(current.paint[r][col]===target)return;
-    if(current.paint[r][col]!==null&&(target===null||target!==current.paint[r][col]))markBacktrack();
-    current.paint[r][col]=target;
-    refreshPatchNeighborhood(r,col);
-    schedulePatchAfterPaint()
-  }
-  function paintAtPoint(x,y){
-    let el=document.elementFromPoint(x,y)?.closest?.('.patch-cell');
-    if(el&&b.contains(el)){
-      let key=el.dataset.r+','+el.dataset.c;
-      if(key!==lastHit){lastHit=key;paintCell(+el.dataset.r,+el.dataset.c)}
-    }
-  }
+  let b=$('#pboard'),drag=null;
   for(let r=0;r<c.n;r++)for(let col=0;col<c.n;col++){
     let d=document.createElement('div');d.className='cell patch-cell';d.dataset.r=r;d.dataset.c=col;
     let clueId=clueAt.get(r+','+col);
     if(clueId!=null){d.classList.add('clue');d.dataset.clueId=clueId;d.innerHTML=clueHTML(c.clues[clueId])}
     else d.dataset.clueId='';
     d.onpointerdown=e=>{
-      if(paused)return;e.preventDefault();painting=true;pointerId=e.pointerId;lastHit=null;
-      paintValue=current.paint[r][col]!==current.active;haptic(6);
-      try{b.setPointerCapture(pointerId)}catch(_){}
-      paintCell(r,col);lastHit=r+','+col
+      if(paused)return;e.preventDefault();
+      let existing=current.paint[r][col],startClue=patchClueIdAt(r,col),fallback=startClue??existing??current.active;
+      if(startClue!=null&&current.active!==startClue){current.active=startClue;drawPatchPalette()}
+      drag={pointerId:e.pointerId,anchor:[r,col],end:[r,col],fallbackId:fallback,lockedId:existing,startExisting:existing,moved:false};
+      try{b.setPointerCapture(e.pointerId)}catch(_){}
+      if(existing==null)renderPatchPreview(drag.anchor,drag.end,drag.fallbackId,drag.lockedId);haptic(5)
     };
     b.appendChild(d)
   }
-  b.onpointermove=e=>{if(painting&&e.pointerId===pointerId){e.preventDefault();paintAtPoint(e.clientX,e.clientY)}};
-  let endPaint=e=>{
-    if(e.pointerId!==pointerId)return;
-    painting=false;lastHit=null;
-    try{b.releasePointerCapture(pointerId)}catch(_){}
-    pointerId=null;schedulePatchAfterPaint()
+  b.onpointermove=e=>{
+    if(!drag||e.pointerId!==drag.pointerId)return;e.preventDefault();
+    let cell=patchPointToCell(e.clientX,e.clientY,b);if(!cell)return;
+    if(cell[0]===drag.end[0]&&cell[1]===drag.end[1])return;
+    drag.end=cell;drag.moved=drag.moved||cell[0]!==drag.anchor[0]||cell[1]!==drag.anchor[1];
+    schedulePatchDragPreview(drag.anchor,drag.end,drag.fallbackId,drag.lockedId)
   };
-  b.onpointerup=endPaint;b.onpointercancel=endPaint;
+  let finishDrag=(e,cancel=false)=>{
+    if(!drag||e.pointerId!==drag.pointerId)return;
+    try{b.releasePointerCapture(drag.pointerId)}catch(_){}
+    let done=drag;drag=null;
+    if(cancel){clearPatchPreview();return}
+    let finalCell=patchPointToCell(e.clientX,e.clientY,b);if(finalCell){done.end=finalCell;done.moved=done.moved||finalCell[0]!==done.anchor[0]||finalCell[1]!==done.anchor[1]};
+    if(patchDragPending){patchDragPending=null}
+    if(patchDragFrame){try{cancelAnimationFrame(patchDragFrame)}catch(_){};patchDragFrame=0}
+    if(!done.moved&&done.startExisting!=null){clearPatchPreview();removePatchRectangle(done.startExisting);return}
+    commitPatchRectangle(done.anchor,done.end,done.fallbackId,done.lockedId)
+  };
+  b.onpointerup=e=>finishDrag(e,false);
+  b.onpointercancel=e=>finishDrag(e,true);
   drawP();
   $('#checkBtn').onclick=checkP;$('#hintBtn').onclick=hintP;
-  $('#solutionBtn').onclick=()=>{if(paused)return;current.paint=current.reg.map(r=>[...r]);drawP();finish(tr('solutionShown'),'revealed')}
+  $('#solutionBtn').onclick=()=>{if(paused)return;clearPatchPreview();current.paint=current.reg.map(r=>[...r]);drawP();finish(tr('solutionShown'),'revealed')}
 }
 function clueHTML(cl){
   let parts=[];

@@ -462,3 +462,62 @@ body.busy{pointer-events:none}
     transition:none!important;
   }
 }
+
+
+/* v2.8.0 — Patches : rectangle interactif type LinkedIn */
+#pboard.patch-rect-dragging{
+  cursor:crosshair;
+}
+#pboard .patch-cell.patch-preview{
+  background:color-mix(in srgb,var(--patch-preview-fill) 76%,#fff 24%)!important;
+  transition:background-color .075s linear,transform .075s ease;
+  z-index:5;
+}
+#pboard .patch-cell.patch-preview::before{
+  content:"";
+  position:absolute;
+  inset:-1px;
+  z-index:6;
+  pointer-events:none;
+  border:0 solid rgba(26,29,27,.92);
+  transition:border-width .055s linear,border-color .075s linear;
+}
+#pboard .patch-cell.patch-preview-t::before{border-top-width:3px}
+#pboard .patch-cell.patch-preview-r::before{border-right-width:3px}
+#pboard .patch-cell.patch-preview-b::before{border-bottom-width:3px}
+#pboard .patch-cell.patch-preview-l::before{border-left-width:3px}
+#pboard.patch-preview-invalid .patch-cell.patch-preview{
+  background:#f6c9c9!important;
+}
+#pboard.patch-preview-invalid .patch-cell.patch-preview::before{
+  border-color:#c83737;
+}
+#pboard .patch-cell.patch-preview .patch-clue{
+  z-index:8;
+}
+#pboard .patch-cell.patch-commit{
+  animation:patchRectCommit .17s cubic-bezier(.2,.78,.28,1);
+}
+@keyframes patchRectCommit{
+  0%{transform:scale(.965)}
+  60%{transform:scale(1.018)}
+  100%{transform:scale(1)}
+}
+@media(pointer:coarse){
+  #pboard .patch-cell.patch-preview::before{
+    border-width:0;
+  }
+  #pboard .patch-cell.patch-preview-t::before{border-top-width:3px}
+  #pboard .patch-cell.patch-preview-r::before{border-right-width:3px}
+  #pboard .patch-cell.patch-preview-b::before{border-bottom-width:3px}
+  #pboard .patch-cell.patch-preview-l::before{border-left-width:3px}
+}
+@media(prefers-reduced-motion:reduce){
+  #pboard .patch-cell.patch-preview,
+  #pboard .patch-cell.patch-preview::before{
+    transition:none!important;
+  }
+  #pboard .patch-cell.patch-commit{
+    animation:none!important;
+  }
+}

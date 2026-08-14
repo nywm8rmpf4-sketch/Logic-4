@@ -1,6 +1,32 @@
-# Logic 4 — v2.7.1
+# Logic 4 — v2.8.0
 
 Site statique mobile-first regroupant Queens, Tango, Mini Sudoku 6×6 et Patches.
+
+## Évolution v2.8.0 — Patches : geste rectangle type LinkedIn
+- Le geste Patches est entièrement changé : le glissé ne peint plus les cases traversées une à une.
+- Un `tap & drag` utilise la cellule de départ comme **premier coin** et la cellule courante comme **coin opposé** ; le rectangle complet se redimensionne en direct pendant le mouvement.
+- Le calcul de la cellule sous le doigt utilise la géométrie du plateau, avec clamp aux bords : le rectangle continue donc à se redimensionner proprement même si le doigt déborde légèrement du plateau.
+- L'aperçu est calculé via `requestAnimationFrame` et au maximum une fois par frame, pour éviter les mises à jour DOM inutiles pendant un glissement rapide.
+- Le rectangle d'aperçu possède un contour continu sur ses quatre côtés et la couleur de la zone concernée.
+- Si le rectangle contient **exactement un indice**, cette zone est sélectionnée automatiquement, comme dans le mécanisme de Patches LinkedIn.
+- Si le rectangle ne contient aucun indice, en contient plusieurs, ou chevauche une autre zone déjà dessinée, l'aperçu devient rouge et le rectangle n'est pas validé au relâchement.
+- Redimensionner une zone remplace son ancien rectangle par le nouveau : les anciennes cases de cette même zone situées hors du nouveau rectangle sont effacées automatiquement.
+- Si le drag commence dans un rectangle existant, le redimensionnement reste **verrouillé sur cette zone** : croiser l'indice d'une autre zone ne peut pas changer silencieusement l'identité du rectangle.
+- Un simple **tap sur un rectangle existant supprime le rectangle entier**, conformément au comportement décrit par LinkedIn.
+- Un tap sur une cellule vide contenant un indice permet toujours de créer un rectangle 1×1 ; les règles de taille/forme peuvent ensuite le signaler comme incorrect si nécessaire.
+- Les changements de rectangle conservent la détection de retour arrière/statistiques.
+- Une courte animation de validation accompagne le rectangle au relâchement, désactivée avec `prefers-reduced-motion`.
+- La légende Patches FR/EN a été réécrite pour décrire le nouveau geste.
+
+### Validation spécifique v2.8.0
+- Test d'un glissé `[L1C1 → L2C3]` : création d'un rectangle 2×3 complet, avec sélection automatique de l'indice contenu.
+- Test de redimensionnement : un rectangle existant est remplacé par la nouvelle géométrie et ne laisse aucune case résiduelle.
+- Test de chevauchement : une tentative recouvrant une autre zone est refusée.
+- Test de conversion coordonnées écran → cellule : la sélection suit correctement le doigt et se bloque sur les cellules de bord lorsque le doigt dépasse légèrement.
+- Test du tap : le rectangle existant complet est supprimé, pas seulement la cellule touchée.
+- Test du rendu d'aperçu : les quatre côtés du rectangle sont correctement identifiés, y compris dans les glissements en sens inverse.
+- La mécanique est fondée sur la règle officielle LinkedIn : faire glisser sur la grille pour dessiner une forme contenant une cellule-indice ; le jeu est constitué de rectangles/squares couvrant la grille sans chevauchement.
+- Les tests d'unicité Patches et les tests du Web Worker/cache de pré-génération sont rejoués avant empaquetage final.
 
 ## Correctif v2.7.1 — Patches : affichage et fluidité
 - Le moteur d'affichage de Patches ne redessine plus toute la grille à chaque case peinte pendant un glissé.
