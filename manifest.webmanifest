@@ -2,7 +2,7 @@
   "id": "./",
   "name": "Logic 4 — Jeux de logique",
   "short_name": "Logic 4",
-  "description": "Logic 4 — Queens, Tango, Mini Sudoku and Patches. Bilingual French/English offline PWA.",
+  "description": "Logic 4 — Couronnes/Crowns, Équilibre/Balance, Mini 6 et Mosaïque/Mosaic. PWA bilingue français/anglais, utilisable hors ligne.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
@@ -27,7 +27,7 @@
       "purpose": "any maskable"
     }
   ],
-  "version": "2.8.0",
+  "version": "2.8.1",
   "copyright": "Copyright © 2026 Serge Benoliel. All rights reserved.",
   "license": "Proprietary — see LICENSE"
 }

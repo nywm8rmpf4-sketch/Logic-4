@@ -1,22 +1,35 @@
-# Logic 4 — v2.8.0
+# Logic 4 — v2.8.1
 
-Site statique mobile-first regroupant Queens, Tango, Mini Sudoku 6×6 et Patches.
+Site statique mobile-first regroupant Couronnes, Équilibre, Mini 6 6×6 et Mosaïque.
 
-## Évolution v2.8.0 — Patches : geste rectangle type LinkedIn
-- Le geste Patches est entièrement changé : le glissé ne peint plus les cases traversées une à une.
+## Correctif v2.8.1 — noms publics distinctifs et nettoyage de publication
+- Les quatre jeux utilisent désormais des **noms publics propres à Logic 4** :
+  - `Couronnes` en français / `Crowns` en anglais ;
+  - `Équilibre` / `Balance` ;
+  - `Mini 6` dans les deux langues ;
+  - `Mosaïque` / `Mosaic`.
+- Les anciens identifiants techniques internes sont volontairement conservés dans le code et les données locales afin de préserver la compatibilité avec les sauvegardes, statistiques et défis existants.
+- Les noms affichés sur l'accueil, dans les titres de jeu, les statistiques, les défis quotidiens, les écrans de victoire et la reprise de partie passent tous par `gameLabel()`, qui fournit maintenant le nom public localisé.
+- Le titre HTML, la description PWA et le README utilisent les nouveaux noms.
+- Les références à des plateformes ou collections de jeux tierces ont été supprimées des fichiers publics.
+- Les mécaniques, générateurs, solutions et formats de sauvegarde restent inchangés : cette version est un **rebranding sans changement de règles**.
+- Cette séparation réduit le risque de confusion de présentation ; elle ne constitue pas à elle seule une recherche d'antériorité de marque sur les nouveaux noms.
+
+## Évolution v2.8.0 — Mosaïque : geste rectangle dynamique
+- Le geste Mosaïque est entièrement changé : le glissé ne peint plus les cases traversées une à une.
 - Un `tap & drag` utilise la cellule de départ comme **premier coin** et la cellule courante comme **coin opposé** ; le rectangle complet se redimensionne en direct pendant le mouvement.
 - Le calcul de la cellule sous le doigt utilise la géométrie du plateau, avec clamp aux bords : le rectangle continue donc à se redimensionner proprement même si le doigt déborde légèrement du plateau.
 - L'aperçu est calculé via `requestAnimationFrame` et au maximum une fois par frame, pour éviter les mises à jour DOM inutiles pendant un glissement rapide.
 - Le rectangle d'aperçu possède un contour continu sur ses quatre côtés et la couleur de la zone concernée.
-- Si le rectangle contient **exactement un indice**, cette zone est sélectionnée automatiquement, comme dans le mécanisme de Patches LinkedIn.
+- Si le rectangle contient **exactement un indice**, cette zone est sélectionnée automatiquement.
 - Si le rectangle ne contient aucun indice, en contient plusieurs, ou chevauche une autre zone déjà dessinée, l'aperçu devient rouge et le rectangle n'est pas validé au relâchement.
 - Redimensionner une zone remplace son ancien rectangle par le nouveau : les anciennes cases de cette même zone situées hors du nouveau rectangle sont effacées automatiquement.
 - Si le drag commence dans un rectangle existant, le redimensionnement reste **verrouillé sur cette zone** : croiser l'indice d'une autre zone ne peut pas changer silencieusement l'identité du rectangle.
-- Un simple **tap sur un rectangle existant supprime le rectangle entier**, conformément au comportement décrit par LinkedIn.
+- Un simple **tap sur un rectangle existant supprime le rectangle entier**.
 - Un tap sur une cellule vide contenant un indice permet toujours de créer un rectangle 1×1 ; les règles de taille/forme peuvent ensuite le signaler comme incorrect si nécessaire.
 - Les changements de rectangle conservent la détection de retour arrière/statistiques.
 - Une courte animation de validation accompagne le rectangle au relâchement, désactivée avec `prefers-reduced-motion`.
-- La légende Patches FR/EN a été réécrite pour décrire le nouveau geste.
+- La légende Mosaïque FR/EN a été réécrite pour décrire le nouveau geste.
 
 ### Validation spécifique v2.8.0
 - Test d'un glissé `[L1C1 → L2C3]` : création d'un rectangle 2×3 complet, avec sélection automatique de l'indice contenu.
@@ -25,14 +38,14 @@ Site statique mobile-first regroupant Queens, Tango, Mini Sudoku 6×6 et Patches
 - Test de conversion coordonnées écran → cellule : la sélection suit correctement le doigt et se bloque sur les cellules de bord lorsque le doigt dépasse légèrement.
 - Test du tap : le rectangle existant complet est supprimé, pas seulement la cellule touchée.
 - Test du rendu d'aperçu : les quatre côtés du rectangle sont correctement identifiés, y compris dans les glissements en sens inverse.
-- La mécanique est fondée sur la règle officielle LinkedIn : faire glisser sur la grille pour dessiner une forme contenant une cellule-indice ; le jeu est constitué de rectangles/squares couvrant la grille sans chevauchement.
-- Les tests d'unicité Patches et les tests du Web Worker/cache de pré-génération sont rejoués avant empaquetage final.
+- La mécanique repose sur un geste de glissement permettant de dessiner un rectangle contenant exactement une cellule-indice ; les rectangles couvrent la grille sans chevauchement.
+- Les tests d'unicité Mosaïque et les tests du Web Worker/cache de pré-génération sont rejoués avant empaquetage final.
 
-## Correctif v2.7.1 — Patches : affichage et fluidité
-- Le moteur d'affichage de Patches ne redessine plus toute la grille à chaque case peinte pendant un glissé.
+## Correctif v2.7.1 — Mosaïque : affichage et fluidité
+- Le moteur d'affichage de Mosaïque ne redessine plus toute la grille à chaque case peinte pendant un glissé.
 - Lorsqu'une case change, seules **cette case et ses quatre voisines** sont rafraîchies immédiatement ; le contrôle des erreurs, la sauvegarde et la détection de victoire sont regroupés sur la prochaine frame via `requestAnimationFrame`.
 - Les indices de zones sont créés une seule fois lors du rendu de la grille. `drawP()` ne détruit/recrée plus leur `innerHTML`, ce qui évite scintillements et micro-décalages.
-- Les anciennes bordures épaisses autour de **chaque case peinte** sont supprimées. Patches dessine désormais un contour uniquement sur le **périmètre extérieur réel de chaque zone peinte**, rendant les rectangles plus lisibles.
+- Les anciennes bordures épaisses autour de **chaque case peinte** sont supprimées. Mosaïque dessine désormais un contour uniquement sur le **périmètre extérieur réel de chaque zone peinte**, rendant les rectangles plus lisibles.
 - Les indices restent lisibles sur toutes les couleurs grâce à un petit fond translucide stable au-dessus de la couleur de zone.
 - La couleur d'une case change avec une transition courte et progressive afin que le remplissage au doigt soit plus fluide.
 - La palette des zones reste sur **une seule ligne horizontale**, sans défilement vertical ni écrasement ; la zone active est signalée par une transition plus douce.
@@ -44,45 +57,45 @@ Site statique mobile-first regroupant Queens, Tango, Mini Sudoku 6×6 et Patches
 - Vérification statique : `paintCell()` n'appelle plus `drawP()` ; les changements pendant le glissé passent par `refreshPatchNeighborhood()` et `schedulePatchAfterPaint()`.
 - Vérification que `drawP()` ne recrée plus les indices.
 - Tests de syntaxe de `app.js`, `precompute-worker.js` et `sw.js`.
-- Réexécution des tests du Web Worker et du cache de pré-génération pour vérifier que la modification de Patches n'introduit pas de régression sur v2.7.0.
+- Réexécution des tests du Web Worker et du cache de pré-génération pour vérifier que la modification de Mosaïque n'introduit pas de régression sur v2.7.0.
 - Un test navigateur réel Chromium n'a pas pu être exécuté dans cet environnement car l'accès local HTTP du navigateur est bloqué par l'administration ; la validation visuelle est donc fondée sur les tests DOM/structure et devra être confirmée sur Safari/iPhone.
 
 ## Évolution v2.7.0 — pré-génération des grilles en arrière-plan
 - Après l'affichage de la première grille, Logic 4 démarre un **Web Worker dédié** qui prépare silencieusement les prochaines grilles sans bloquer l'interface.
 - La réserve cible est de **2 grilles prêtes par jeu et par niveau de difficulté** :
-  - Queens : Facile, Moyen, Difficile, Expert ;
-  - Tango : Facile, Moyen, Difficile ;
-  - Mini Sudoku : Facile, Moyen, Difficile ;
-  - Patches : Facile, Moyen, Difficile.
+  - Couronnes : Facile, Moyen, Difficile, Expert ;
+  - Équilibre : Facile, Moyen, Difficile ;
+  - Mini 6 : Facile, Moyen, Difficile ;
+  - Mosaïque : Facile, Moyen, Difficile.
 - La grille du **jeu et niveau actuellement utilisés** est prioritaire. Les autres niveaux du même jeu suivent, puis les niveaux moyens des autres jeux, puis le reste.
-- Queens Expert, nettement plus coûteux à générer, est préparé en dernier sauf si le joueur est actuellement en mode Expert.
+- Couronnes Expert, nettement plus coûteux à générer, est préparé en dernier sauf si le joueur est actuellement en mode Expert.
 - Lors d'un appui sur `Nouvelle` ou d'un changement de difficulté, Logic 4 consomme d'abord une grille déjà prête. Si le cache correspondant est vide, le générateur synchrone historique reste le **fallback**, donc la fonctionnalité n'introduit aucun blocage fonctionnel.
 - Une grille consommée est immédiatement retirée du cache et le worker prépare son remplacement.
 - Le worker est **sériel (un seul calcul à la fois)** afin de ne pas multiplier les pics CPU et de conserver la fluidité tactile.
 - Lorsque l'application est masquée, aucun nouveau calcul de fond n'est lancé ; la file reprend quand elle redevient visible.
 - Le worker réutilise **les mêmes fonctions de génération et d'analyse que `app.js`** via `importScripts`, ce qui évite une seconde implémentation divergente des règles et niveaux de difficulté.
 - Le défi quotidien reste déterministe et **n'utilise pas** le cache ordinaire.
-- Pour Queens, les grilles pré-générées respectent le mécanisme anti-répétition v2.6.2 : une signature canonique est réservée dans le cache, puis transférée vers l'historique de la journée au moment où la grille est réellement affichée. Une grille déjà vue, ou équivalente par rotation/miroir, n'est jamais mise en cache.
+- Pour Couronnes, les grilles pré-générées respectent le mécanisme anti-répétition v2.6.2 : une signature canonique est réservée dans le cache, puis transférée vers l'historique de la journée au moment où la grille est réellement affichée. Une grille déjà vue, ou équivalente par rotation/miroir, n'est jamais mise en cache.
 - Le cache de pré-génération est en mémoire uniquement : il est naturellement vidé au redémarrage/rechargement de l'application et au changement de date.
 - `precompute-worker.js` est ajouté au cache du Service Worker pour que la pré-génération fonctionne aussi hors ligne après le premier chargement.
 
 ### Validation spécifique v2.7.0
 - Le worker a généré avec succès les **13 combinaisons jeu/niveau**, et chaque grille produite a été revalidée pour l'unicité de sa solution.
-- Test spécifique Queens : le worker refuse correctement une signature déjà interdite et produit une grille non équivalente.
-- Test du gestionnaire de cache : priorité `jeu/niveau courant`, stockage, consommation, transfert anti-répétition Queens et remise à zéro au changement de date.
+- Test spécifique Couronnes : le worker refuse correctement une signature déjà interdite et produit une grille non équivalente.
+- Test du gestionnaire de cache : priorité `jeu/niveau courant`, stockage, consommation, transfert anti-répétition Couronnes et remise à zéro au changement de date.
 - Test d'intégration : les quatre fonctions de jeu consomment une grille précalculée avant d'appeler le générateur synchrone.
 - Le défi quotidien a été vérifié pour ignorer le cache ordinaire.
-- Politique Expert vérifiée : Queens Expert est différé en temps normal et devient prioritaire lorsque le joueur joue en Expert.
-- Mesures indicatives dans l'environnement de test pour une grille préparée : Sudoku/Patches quelques millisecondes à quelques dizaines de ms, Tango de quelques dizaines à quelques centaines de ms, Queens Difficile autour de la seconde dans certains cas ; Queens Expert peut être beaucoup plus coûteux, d'où sa priorité adaptée. Ces calculs ont lieu dans le worker et ne bloquent pas le thread d'interface.
+- Politique Expert vérifiée : Couronnes Expert est différé en temps normal et devient prioritaire lorsque le joueur joue en Expert.
+- Mesures indicatives dans l'environnement de test pour une grille préparée : Sudoku/Mosaïque quelques millisecondes à quelques dizaines de ms, Équilibre de quelques dizaines à quelques centaines de ms, Couronnes Difficile autour de la seconde dans certains cas ; Couronnes Expert peut être beaucoup plus coûteux, d'où sa priorité adaptée. Ces calculs ont lieu dans le worker et ne bloquent pas le thread d'interface.
 
-## Correctif v2.6.2 — pas de répétition des grilles Queens dans la session
-- Lorsqu'une grille Queens ordinaire est affichée, l'application mémorise sa **signature canonique** en mémoire pour la journée courante.
-- Une nouvelle grille Queens ne peut plus être sélectionnée si elle est identique à une grille déjà affichée dans la même session et le même jour.
+## Correctif v2.6.2 — pas de répétition des grilles Couronnes dans la session
+- Lorsqu'une grille Couronnes ordinaire est affichée, l'application mémorise sa **signature canonique** en mémoire pour la journée courante.
+- Une nouvelle grille Couronnes ne peut plus être sélectionnée si elle est identique à une grille déjà affichée dans la même session et le même jour.
 - L'équivalence prend en compte les **8 symétries du carré** : rotations 0°, 90°, 180°, 270° et les quatre variantes obtenues par miroir.
 - La comparaison est également indépendante des numéros internes de zones : deux partitions identiques dont les identifiants de zones ont simplement été renommés sont reconnues comme la même grille.
 - L'historique est volontairement **en mémoire uniquement** : il disparaît au redémarrage/rechargement de l'application, conformément au comportement demandé.
 - Si l'application reste ouverte après minuit, l'historique repart automatiquement pour la nouvelle date.
-- Le défi quotidien Queens reste volontairement déterministe : le rouvrir le même jour redonne la même grille quotidienne. En revanche, cette grille est mémorisée afin qu'une partie Queens ordinaire créée ensuite ne puisse pas reproduire cette grille ni une de ses rotations/miroirs.
+- Le défi quotidien Couronnes reste volontairement déterministe : le rouvrir le même jour redonne la même grille quotidienne. En revanche, cette grille est mémorisée afin qu'une partie Couronnes ordinaire créée ensuite ne puisse pas reproduire cette grille ni une de ses rotations/miroirs.
 - La sélection de difficulté est conservée : plusieurs candidats non équivalents sont générés puis classés avant de choisir celui correspondant au niveau demandé.
 
 ### Validation spécifique v2.6.2
@@ -93,15 +106,15 @@ Site statique mobile-first regroupant Queens, Tango, Mini Sudoku 6×6 et Patches
 - Vérification du changement de date : une grille de la veille n'est pas considérée comme déjà produite le lendemain.
 - Vérification du défi quotidien : déterminisme conservé, puis génération ordinaire différente de la grille quotidienne déjà affichée.
 
-## Correctif v2.6.1 — repère couleur des zones dans les indices Queens
-- Dans toutes les explications Queens, lorsqu'une **zone numérotée** est citée, son numéro est désormais précédé d'un petit rectangle portant **exactement la même couleur que la zone sur le plateau**.
+## Correctif v2.6.1 — repère couleur des zones dans les indices Couronnes
+- Dans toutes les explications Couronnes, lorsqu'une **zone numérotée** est citée, son numéro est désormais précédé d'un petit rectangle portant **exactement la même couleur que la zone sur le plateau**.
 - Le repère est utilisé pour les déductions directes (rang 0) ainsi que pour les explications de rang 1, 2 et 3 lorsqu'une zone intervient dans le raisonnement.
-- La palette Queens a été centralisée dans une constante unique : le plateau et les repères des explications utilisent donc la même source de couleurs, évitant toute divergence.
+- La palette Couronnes a été centralisée dans une constante unique : le plateau et les repères des explications utilisent donc la même source de couleurs, évitant toute divergence.
 - Le numéro de zone reste affiché à côté du rectangle, afin de conserver une référence textuelle en plus du repère visuel.
 - Le repère possède un contour discret pour rester identifiable en thème clair comme sombre.
 
-## Évolution v2.6.0 — diagnostic d’indices Queens et rang 3
-- Le moteur Queens suit maintenant explicitement : **rang 0 → rang 1 → rang 2 → rang 3** dans un budget global maximum de **5 secondes**.
+## Évolution v2.6.0 — diagnostic d’indices Couronnes et rang 3
+- Le moteur Couronnes suit maintenant explicitement : **rang 0 → rang 1 → rang 2 → rang 3** dans un budget global maximum de **5 secondes**.
 - Rang 0 renforcé : il détecte non seulement une ligne/colonne/zone avec une seule position de reine, mais aussi les `X` directement imposés par une reine déjà visible.
 - Correction d’une régression d’affichage : le moteur pouvait trouver correctement un indice de rang 1 puis échouer lors de sa mise en forme (`rank1Why` absent), donnant l’impression que le bouton Indice ne réagissait pas. Le renderer rang 1 est restauré et couvert par un test d’intégration du bouton.
 - Les indices de rang 0 portent désormais explicitement `rank: 0` et la pièce (`reine` ou `X`) à poser.
@@ -113,14 +126,14 @@ Site statique mobile-first regroupant Queens, Tango, Mini Sudoku 6×6 et Patches
 - La fenêtre d’indice reste déplaçable au doigt grâce à la poignée `Déplacer / Move`.
 
 ### Validation spécifique v2.6.0
-- 120 grilles Queens **Difficile** testées au tout premier coup : **120/120** ont produit un indice correct, dont 50 de rang 0 et 70 de rang 1 ; 0 absence de réponse, 0 timeout, 0 faux indice.
+- 120 grilles Couronnes **Difficile** testées au tout premier coup : **120/120** ont produit un indice correct, dont 50 de rang 0 et 70 de rang 1 ; 0 absence de réponse, 0 timeout, 0 faux indice.
 - Vérification particulière des zones singleton : toutes les grilles Difficile testées contenant une zone de surface 1 ont été détectées correctement au rang 0.
-- 800 états Queens Difficile/Expert testés directement avec le moteur rang 2 : **800/800 indices corrects**, 0 faux indice.
+- 800 états Couronnes Difficile/Expert testés directement avec le moteur rang 2 : **800/800 indices corrects**, 0 faux indice.
 - Les mêmes 800 états testés directement avec le moteur rang 3 : **800/800 indices corrects**, 0 faux indice, 0 timeout ; temps maximal observé ≈ 60 ms dans l’environnement de test.
 - La chaîne normale conserve l’arrêt anticipé : si un rang inférieur trouve un indice, les rangs supérieurs ne sont pas exécutés.
 
-## Correctif v2.5.4 — réponse du bouton Indice Queens et fenêtre mobile
-- Queens dispose maintenant d’un budget explicite de **5 000 ms** pour la recherche d’un indice.
+## Correctif v2.5.4 — réponse du bouton Indice Couronnes et fenêtre mobile
+- Couronnes dispose maintenant d’un budget explicite de **5 000 ms** pour la recherche d’un indice.
 - Dès l’appui sur `Indice`, un message `Recherche d’un indice…` est affiché avant de lancer le calcul, afin que l’action soit toujours visible.
 - La recherche distingue les issues et affiche un message dans tous les cas : **indice trouvé**, **aucun indice déductible**, **limite de 5 secondes atteinte**, **partie en pause**, ou **erreur interne de recherche**.
 - Les recherches de rang 1 et de rang 2 contrôlent le budget pendant leur parcours et abandonnent proprement si le délai est dépassé.
@@ -131,14 +144,14 @@ Site statique mobile-first regroupant Queens, Tango, Mini Sudoku 6×6 et Patches
 
 ## Correctif v2.5.3 — explications pédagogiques de rang 1
 - Les quatre jeux présentent désormais les inférences de rang 1 sous forme de démonstration : **1. Essai → 2. Ce que cela provoque → 3. Pourquoi ça bloque → 4. Conclusion**.
-- Queens nomme la case testée puis la ligne, colonne ou zone précise qui perdrait toute possibilité de reine.
-- Tango nomme la case qui devient impossible et explique pourquoi lune et soleil y sont rejetés lorsque cette information est disponible.
-- Mini Sudoku liste les candidats éliminés et précise la case qui resterait sans candidat ou le chiffre qui n'aurait plus de place dans une ligne, colonne ou bloc.
-- Patches liste les zones alternatives rejetées et précise la zone sans rectangle valide ou la case qui ne pourrait plus être couverte.
+- Couronnes nomme la case testée puis la ligne, colonne ou zone précise qui perdrait toute possibilité de reine.
+- Équilibre nomme la case qui devient impossible et explique pourquoi lune et soleil y sont rejetés lorsque cette information est disponible.
+- Mini 6 liste les candidats éliminés et précise la case qui resterait sans candidat ou le chiffre qui n'aurait plus de place dans une ligne, colonne ou bloc.
+- Mosaïque liste les zones alternatives rejetées et précise la zone sans rectangle valide ou la case qui ne pourrait plus être couverte.
 - Le moteur logique n'utilise toujours pas la solution cachée pour produire l'indice.
 
-## Correctif v2.5.2 — explications Queens de rang 2
-- Les explications Queens de rang 2 suivent maintenant concrètement la grille.
+## Correctif v2.5.2 — explications Couronnes de rang 2
+- Les explications Couronnes de rang 2 suivent maintenant concrètement la grille.
 - L'indice commence par tester explicitement `reine ♛` ou `X` dans la case étudiée.
 - Il nomme ensuite la **ligne, colonne ou zone précise** qui devient problématique.
 - Les emplacements de reine encore apparemment possibles dans cette unité sont listés un par un.
@@ -148,9 +161,9 @@ Site statique mobile-first regroupant Queens, Tango, Mini Sudoku 6×6 et Patches
 
 ## Correctif v2.5.1 — explications de rang 2 plus lisibles
 - Le raisonnement de rang 2 est présenté comme une démonstration numérotée : **1. Hypothèse → 2. Conséquence → 3. Impasse → 4. Conclusion**.
-- Tango nomme désormais la case précise qui devient impossible et teste explicitement les deux symboles sur cette case.
+- Équilibre nomme désormais la case précise qui devient impossible et teste explicitement les deux symboles sur cette case.
 - Pour chaque symbole rejeté, l’explication cherche à citer la règle concrète : trois symboles consécutifs, dépassement de l’équilibre 3/3, ou relation `=` / `×` avec une case voisine.
-- La formulation abstraite « on poursuit les possibilités légales » a été supprimée des explications Tango de rang 2.
+- La formulation abstraite « on poursuit les possibilités légales » a été supprimée des explications Équilibre de rang 2.
 - Quand une branche de rang 2 échoue au contrôle suivant, l'explication descend jusqu'à la **case réellement bloquée** et détaille séparément pourquoi `☾` et `☀` y sont impossibles, avec la règle concrète et les coordonnées concernées.
 - Le moteur logique n’est pas modifié : ce correctif améliore la trace pédagogique sans changer la décision produite.
 
@@ -160,10 +173,10 @@ Site statique mobile-first regroupant Queens, Tango, Mini Sudoku 6×6 et Patches
 - Un candidat survivant au rang 1 est simulé ; le moteur examine ensuite les décisions encore possibles au coup suivant. Si une décision obligatoire se retrouve sans aucune réponse viable, l’hypothèse initiale est éliminée.
 - L’algorithme utilise l’arrêt anticipé : dès qu’une branche viable est trouvée, l’exploration inutile de cette branche s’arrête.
 - L’explication n’emploie pas seulement « contradiction de rang 2 » : elle présente une démonstration pédagogique en quatre étapes **Hypothèse → Conséquence → Impasse → Conclusion**, avec les coordonnées des cases concernées.
-- Tango : le moteur peut éliminer un soleil ou une lune qui est légal immédiatement mais qui rend, au niveau suivant, une case sans symbole légal ou l’équilibre 3/3 impossible.
-- Mini Sudoku : un candidat peut être éliminé s’il laisse ensuite une case sans candidat ou une unité sans emplacement viable.
-- Queens : une hypothèse `reine` ou `X` peut être éliminée si elle conduit au niveau suivant à une ligne ou une zone sans position de reine viable.
-- Patches : une affectation de zone peut être éliminée si elle conduit au niveau suivant à une case sans zone possible ou à un ensemble de rectangles incompatible.
+- Équilibre : le moteur peut éliminer un soleil ou une lune qui est légal immédiatement mais qui rend, au niveau suivant, une case sans symbole légal ou l’équilibre 3/3 impossible.
+- Mini 6 : un candidat peut être éliminé s’il laisse ensuite une case sans candidat ou une unité sans emplacement viable.
+- Couronnes : une hypothèse `reine` ou `X` peut être éliminée si elle conduit au niveau suivant à une ligne ou une zone sans position de reine viable.
+- Mosaïque : une affectation de zone peut être éliminée si elle conduit au niveau suivant à une case sans zone possible ou à un ensemble de rectangles incompatible.
 - Aucun moteur d’indice de rang 2 n’utilise la solution cachée pour choisir le coup.
 - Les explications restent bilingues et persistantes jusqu’au bouton `Fermer / Close`.
 
@@ -171,10 +184,10 @@ Site statique mobile-first regroupant Queens, Tango, Mini Sudoku 6×6 et Patches
 - Le moteur d’indices comporte maintenant deux étages : déduction directe, puis **inférence de rang 1** si aucune règle immédiate ne suffit.
 - Une inférence de rang 1 simule chaque candidat encore légal **sans modifier le plateau**. Un candidat est éliminé s’il crée immédiatement une contradiction ou s’il laisse, au coup suivant, une contrainte obligatoire sans aucun candidat légal.
 - Cette analyse n’utilise jamais la solution cachée pour sélectionner l’indice.
-- **Tango** : après simulation d’un soleil ou d’une lune, le moteur vérifie les limites 3/3, les suites de trois, les relations `=` / `×`, puis vérifie que chaque case encore vide conserve au moins un symbole légal. Un coup légal à l’instant T mais qui rend le coup suivant impossible est donc éliminé.
-- **Mini Sudoku** : chaque candidat d’une case est simulé. Il est rejeté s’il crée un doublon, une case sans candidat, ou si un chiffre manquant n’a plus aucune position possible dans une ligne, colonne ou bloc 2×3.
-- **Queens** : pour chaque case encore possible, le moteur compare `reine` et `X`. Il rejette un choix s’il crée un conflit ou laisse une ligne, colonne ou zone sans aucune position possible pour sa reine.
-- **Patches** : une attribution de zone est rejetée si elle laisse une zone sans rectangle compatible, un marquage déjà posé sans rectangle possible, ou une case restante qui ne peut plus être couverte par aucune zone.
+- **Équilibre** : après simulation d’un soleil ou d’une lune, le moteur vérifie les limites 3/3, les suites de trois, les relations `=` / `×`, puis vérifie que chaque case encore vide conserve au moins un symbole légal. Un coup légal à l’instant T mais qui rend le coup suivant impossible est donc éliminé.
+- **Mini 6** : chaque candidat d’une case est simulé. Il est rejeté s’il crée un doublon, une case sans candidat, ou si un chiffre manquant n’a plus aucune position possible dans une ligne, colonne ou bloc 2×3.
+- **Couronnes** : pour chaque case encore possible, le moteur compare `reine` et `X`. Il rejette un choix s’il crée un conflit ou laisse une ligne, colonne ou zone sans aucune position possible pour sa reine.
+- **Mosaïque** : une attribution de zone est rejetée si elle laisse une zone sans rectangle compatible, un marquage déjà posé sans rectangle possible, ou une case restante qui ne peut plus être couverte par aucune zone.
 - Si un seul candidat survit, l’indice explique quel candidat opposé conduit à l’impasse et pourquoi le coup conseillé est forcé.
 - Si plusieurs candidats restent compatibles après cette profondeur d’analyse, aucun coup n’est révélé.
 - Les indices restent persistants, bilingues, et le troisième appui applique uniquement le coup déjà démontré.
@@ -183,10 +196,10 @@ Site statique mobile-first regroupant Queens, Tango, Mini Sudoku 6×6 et Patches
 - Le moteur d’indices ne consulte plus la solution cachée pour choisir un coup.
 - Un indice n’est proposé que s’il peut être déduit des éléments actuellement visibles sur le plateau.
 - Si aucun coup n’est logiquement forcé à cet instant, l’application affiche `Aucun coup directement déductible avec l’état actuel / No move can be directly deduced from the current state` au lieu de révéler la solution.
-- Queens : recherche d’une ligne, colonne ou zone n’ayant plus qu’une seule case possible, compte tenu des reines et `X` déjà posés.
-- Tango : déductions par équilibre 3/3, règle des trois symboles, ou relation `=` / `×` avec un voisin connu.
-- Mini Sudoku : candidats uniques puis singles cachés dans une ligne, colonne ou bloc 2×3, calculés uniquement à partir des chiffres visibles.
-- Patches : génération des rectangles encore compatibles avec chaque indice et les cases déjà peintes ; une case n’est proposée que si elle appartient à tous les rectangles possibles d’une zone, ou si un seul rectangle reste possible.
+- Couronnes : recherche d’une ligne, colonne ou zone n’ayant plus qu’une seule case possible, compte tenu des reines et `X` déjà posés.
+- Équilibre : déductions par équilibre 3/3, règle des trois symboles, ou relation `=` / `×` avec un voisin connu.
+- Mini 6 : candidats uniques puis singles cachés dans une ligne, colonne ou bloc 2×3, calculés uniquement à partir des chiffres visibles.
+- Mosaïque : génération des rectangles encore compatibles avec chaque indice et les cases déjà peintes ; une case n’est proposée que si elle appartient à tous les rectangles possibles d’une zone, ou si un seul rectangle reste possible.
 - Le troisième niveau d’aide applique uniquement le coup déjà démontré par les deux premiers niveaux.
 - Les textes d’explication restent persistants et bilingues.
 
@@ -195,80 +208,80 @@ Site statique mobile-first regroupant Queens, Tango, Mini Sudoku 6×6 et Patches
 - Le premier niveau d’aide affiche le **coup conseillé** et la zone à observer.
 - Le deuxième niveau conserve le coup conseillé et ajoute **Pourquoi**, avec une justification logique.
 - Le troisième niveau applique le coup tout en conservant l’explication à l’écran jusqu’au bouton `Fermer / Close`.
-- Queens : l’indice indique la reine à placer et rappelle les contraintes de ligne, colonne, zone et non-adjacence ; lorsqu’une zone n’a plus qu’une case non barrée, cette raison est explicitement signalée.
-- Tango : l’indice indique `☀` ou `☾` et explique, lorsque c’est déductible, l’équilibre 3/3, une relation `=`/`×` ou la règle interdisant trois symboles identiques.
-- Mini Sudoku : l’indice donne le chiffre exact ; lorsqu’il s’agit d’un candidat unique, il précise que les autres chiffres sont éliminés par la ligne, la colonne et le bloc 2×3.
-- Patches : l’indice donne la zone à attribuer à une case et explique la contrainte de taille et/ou de forme portée par l’indice.
+- Couronnes : l’indice indique la reine à placer et rappelle les contraintes de ligne, colonne, zone et non-adjacence ; lorsqu’une zone n’a plus qu’une case non barrée, cette raison est explicitement signalée.
+- Équilibre : l’indice indique `☀` ou `☾` et explique, lorsque c’est déductible, l’équilibre 3/3, une relation `=`/`×` ou la règle interdisant trois symboles identiques.
+- Mini 6 : l’indice donne le chiffre exact ; lorsqu’il s’agit d’un candidat unique, il précise que les autres chiffres sont éliminés par la ligne, la colonne et le bloc 2×3.
+- Mosaïque : l’indice donne la zone à attribuer à une case et explique la contrainte de taille et/ou de forme portée par l’indice.
 - Les textes restent bilingues français / anglais et les indices restent persistants jusqu’à fermeture.
 
-## Correctif v2.3.1 — indices persistants et saisie Tango
+## Correctif v2.3.1 — indices persistants et saisie Équilibre
 - Les indices ne disparaissent plus automatiquement après 1,4 seconde.
 - Chaque niveau d’indice est maintenant affiché dans une carte persistante avec bouton `Fermer / Close`.
 - La carte reste visible aussi longtemps que nécessaire et ne bloque pas le plateau.
 - Une nouvelle action de jeu ferme automatiquement l’ancien indice afin d’éviter d’encombrer l’écran.
-- Tango : lorsqu’une lune est posée au premier tap, cette case est temporairement exclue de la colorisation rouge.
+- Équilibre : lorsqu’une lune est posée au premier tap, cette case est temporairement exclue de la colorisation rouge.
 - La lune provisoire reste visible, mais aucune violation impliquant cette case n’est signalée avant l’action suivante.
 - Au tap suivant, l’ancienne saisie devient définitive ; si la case est transformée en soleil, les règles sont alors évaluées normalement.
 - Le comportement évite les faux signaux rouges liés au cycle de saisie vide → lune → soleil.
 
 ## Évolution v2.3.0 — coups illégaux et score d’assistance
 - Les quatre jeux signalent désormais immédiatement les **coups illégaux** en colorant en rouge toutes les cases directement concernées par la violation.
-- Queens : conflits entre reines sur une même ligne, colonne, zone ou cases adjacentes.
-- Tango : plus de 3 symboles identiques dans une ligne/colonne, trois symboles identiques consécutifs ou relation `=` / `×` violée.
-- Mini Sudoku : doublons dans une ligne, une colonne ou un bloc 2×3.
-- Patches : occupation d’un autre indice, dépassement de taille impossible ou violation immédiate d’une contrainte de forme. Les situations encore réparables sans violer une règle ne sont pas signalées comme illégales.
+- Couronnes : conflits entre reines sur une même ligne, colonne, zone ou cases adjacentes.
+- Équilibre : plus de 3 symboles identiques dans une ligne/colonne, trois symboles identiques consécutifs ou relation `=` / `×` violée.
+- Mini 6 : doublons dans une ligne, une colonne ou un bloc 2×3.
+- Mosaïque : occupation d’un autre indice, dépassement de taille impossible ou violation immédiate d’une contrainte de forme. Les situations encore réparables sans violer une règle ne sont pas signalées comme illégales.
 - Deux marqueurs d’assistance sont suivis par tentative : `↶` pour un **retour en arrière/correction**, `💡` pour **indice utilisé**.
 - Les marqueurs apparaissent immédiatement à côté du score de difficulté pendant la partie puis sont enregistrés dans l’historique des scores.
-- Le cycle nécessaire de Queens `vide → X → reine` n’est pas considéré comme un retour en arrière. En revanche, retirer une reine ou effacer des X par drag l’est.
-- Pour Tango, un cycle normal nécessaire pour choisir le symbole n’est pas pénalisé ; revenir d’un symbole posé vers vide est enregistré.
+- Le cycle nécessaire de Couronnes `vide → X → reine` n’est pas considéré comme un retour en arrière. En revanche, retirer une reine ou effacer des X par drag l’est.
+- Pour Équilibre, un cycle normal nécessaire pour choisir le symbole n’est pas pénalisé ; revenir d’un symbole posé vers vide est enregistré.
 - Pour Sudoku, remplacer ou effacer une valeur déjà saisie est un retour en arrière.
-- Pour Patches, effacer ou repeindre une case déjà attribuée est un retour en arrière.
+- Pour Mosaïque, effacer ou repeindre une case déjà attribuée est un retour en arrière.
 - Réinitialiser une partie en cours après avoir joué est enregistré comme retour en arrière. Une nouvelle tentative créée après réinitialisation d’une partie déjà terminée repart avec des indicateurs vierges.
 
-## Ajustement v2.2.6 — Queens Difficile / Expert
-- Queens **Difficile** : au maximum **une seule** région de surface 1.
-- Queens **Expert** : les régions de surface 1 sont désormais **interdites**.
+## Ajustement v2.2.6 — Couronnes Difficile / Expert
+- Couronnes **Difficile** : au maximum **une seule** région de surface 1.
+- Couronnes **Expert** : les régions de surface 1 sont désormais **interdites**.
 - Le générateur rejette explicitement toute grille qui ne respecte pas ces limites, même si la construction interne produit accidentellement davantage de singletons.
 - Les contrôles d’unicité et la sélection par score de difficulté restent inchangés.
 
 ## Ajustement v2.2.5 — reines dorées persistantes
-- Après une victoire Queens, les reines restent dorées tant que la grille réussie est affichée.
+- Après une victoire Couronnes, les reines restent dorées tant que la grille réussie est affichée.
 - Le doré devient un marqueur visuel permanent de réussite du plateau, et non plus un simple effet d’animation.
 - La fermeture du pop-up de félicitations ne retire pas le doré.
 - Une réinitialisation du plateau retire le doré, puisque la grille n’est alors plus terminée.
-- Si un plateau Queens déjà terminé est re-rendu dans la même session, le style doré est restauré automatiquement.
+- Si un plateau Couronnes déjà terminé est re-rendu dans la même session, le style doré est restauré automatiquement.
 
 ## Amélioration v2.2.4 — reines dorées à la victoire
-- Lorsqu’une grille Queens est résolue correctement, toutes les reines passent temporairement en doré pendant l’animation de victoire.
+- Lorsqu’une grille Couronnes est résolue correctement, toutes les reines passent temporairement en doré pendant l’animation de victoire.
 - La couleur normale des reines reste inchangée pendant la partie.
 - Le rendu doré est adapté aux thèmes clair et sombre.
 - La couleur de victoire disparaît automatiquement à la fin de l’animation du plateau, avant le pop-up de félicitations.
 
-## Correctif v2.2.3 — suppression définitive de l’effet de zoom Queens
+## Correctif v2.2.3 — suppression définitive de l’effet de zoom Couronnes
 - Le correctif traite désormais aussi la géométrie du plateau, pas seulement les gestes Safari.
 - `#qboard` utilise `contain:size layout paint` : son contenu ne peut plus modifier ses dimensions.
-- Chaque cellule Queens est confinée avec `min-width:0`, `min-height:0` et `overflow:hidden`.
+- Chaque cellule Couronnes est confinée avec `min-width:0`, `min-height:0` et `overflow:hidden`.
 - Les symboles reine `♛` et croix `×` sont positionnés en absolu dans leur case : ils ne participent plus au calcul de taille du grid.
 - Le verrouillage tactile Safari de v2.2.2 (`touchstart`, `touchmove`, `touchend`, `dblclick`, `gesturestart`) est conservé.
 - Ainsi, deux taps rapides produisent uniquement les deux actions du jeu, sans agrandissement du plateau lié au symbole affiché.
 
-## Correctif v2.2.2 — double-tap zoom Safari sur Queens
-- Le plateau Queens intercepte maintenant directement les événements tactiles natifs Safari `touchstart`, `touchmove` et `touchend` avec `preventDefault()` en mode non-passif.
+## Correctif v2.2.2 — double-tap zoom Safari sur Couronnes
+- Le plateau Couronnes intercepte maintenant directement les événements tactiles natifs Safari `touchstart`, `touchmove` et `touchend` avec `preventDefault()` en mode non-passif.
 - Ce correctif vient en complément de `touch-action:none`, du blocage `dblclick`, de `gesturestart`, du menu contextuel et du verrouillage du viewport déjà utilisé par l’application.
 - Les deux taps rapides restent traités par les `pointer events` du jeu et doivent donc produire vide → `X` → reine, sans déclencher le zoom Safari.
-- Le correctif est limité au plateau Queens afin de ne pas désactiver le zoom de la page entière.
+- Le correctif est limité au plateau Couronnes afin de ne pas désactiver le zoom de la page entière.
 
-## Correctif v2.2.1 — réinitialisation et double-tap Queens
+## Correctif v2.2.1 — réinitialisation et double-tap Couronnes
 - Ajout d’un bouton `Réinitialiser / Reset` dans chacun des quatre jeux.
 - La réinitialisation conserve la même grille et la même difficulté, restaure uniquement les indices de départ et remet le chronomètre à `00:00`.
-- Queens : toutes les reines et tous les `X` sont effacés.
-- Tango : seules les cases données au départ sont restaurées.
-- Mini Sudoku : seuls les chiffres initiaux sont conservés.
-- Patches : toutes les zones peintes sont effacées et la première zone redevient active.
+- Couronnes : toutes les reines et tous les `X` sont effacés.
+- Équilibre : seules les cases données au départ sont restaurées.
+- Mini 6 : seuls les chiffres initiaux sont conservés.
+- Mosaïque : toutes les zones peintes sont effacées et la première zone redevient active.
 - Si une partie déjà terminée est réinitialisée, une nouvelle tentative statistique est démarrée ; une partie en cours réinitialisée reste la même tentative.
-- Le plateau Queens neutralise explicitement le double-clic, le geste de zoom et le menu contextuel du navigateur.
+- Le plateau Couronnes neutralise explicitement le double-clic, le geste de zoom et le menu contextuel du navigateur.
 - Deux taps rapides restent interprétés par le jeu comme deux actions successives : vide → `X` → reine, sans agrandissement du plateau.
-- La non-régression Queens Difficile rejette aussi les grilles générées avec trop de régions singleton accidentelles, afin de préserver le niveau de difficulté calibré.
+- La non-régression Couronnes Difficile rejette aussi les grilles générées avec trop de régions singleton accidentelles, afin de préserver le niveau de difficulté calibré.
 
 ## Évolution v2.2.0 — français / anglais, règles et À propos
 - Interface bilingue **Français / English**, avec langue mémorisée localement.
@@ -279,8 +292,8 @@ Site statique mobile-first regroupant Queens, Tango, Mini Sudoku 6×6 et Patches
 - L’attribut de langue du document HTML est mis à jour dynamiquement (`fr` / `en`) pour l’accessibilité.
 - Les réglages de langue utilisent la même persistance locale que les autres préférences.
 
-## Correctif v2.1.1 — drag Queens et tempo de victoire
-- Le drag Queens est refait au niveau du plateau : le gestionnaire `pointermove` est maintenant attaché au même élément qui capture le pointeur, ce qui corrige le comportement tactile sur iPhone/iPad.
+## Correctif v2.1.1 — drag Couronnes et tempo de victoire
+- Le drag Couronnes est refait au niveau du plateau : le gestionnaire `pointermove` est maintenant attaché au même élément qui capture le pointeur, ce qui corrige le comportement tactile sur iPhone/iPad.
 - Le calcul de la cellule sous le doigt utilise directement les coordonnées du plateau, sans dépendre de `elementFromPoint` pendant la capture.
 - Le drag interpole toutes les cases entre la case de départ et la position courante : un mouvement rapide ne saute plus de cases.
 - Départ sur une case vide : glisser ajoute des `X`.
@@ -289,12 +302,12 @@ Site statique mobile-first regroupant Queens, Tango, Mini Sudoku 6×6 et Patches
 - Un toucher simple conserve le cycle vide → `X` → reine → vide.
 - Après la fin de l’animation de victoire, une pause supplémentaire de **0,4 seconde** est désormais respectée avant l’affichage du pop-up de félicitations.
 
-## Évolution v2.1.0 — Queens Difficile renforcé + Expert
-- Le niveau **Difficile** de Queens reste en 8×8 mais sa génération a été profondément recalibrée.
+## Évolution v2.1.0 — Couronnes Difficile renforcé + Expert
+- Le niveau **Difficile** de Couronnes reste en 8×8 mais sa génération a été profondément recalibrée.
 - Les régions d’une seule case, qui rendaient trop de reines immédiatement évidentes, passent d’environ cinq à seulement deux.
 - Le générateur produit plusieurs grilles uniques puis conserve les candidates ayant le score de recherche le plus élevé.
 - Lors de la campagne de calibration, les grilles Difficile effectivement sélectionnées ont obtenu des scores d’environ **912 à 2140**, contre des scores souvent inférieurs à 100 pour les anciennes grilles faciles.
-- Nouveau niveau **Expert**, uniquement pour Queens, en **9×9**.
+- Nouveau niveau **Expert**, uniquement pour Couronnes, en **9×9**.
 - Expert utilise très peu de régions triviales et sélectionne les grilles les plus complexes parmi davantage de candidates ; pendant la calibration, les scores sélectionnés étaient d’environ **1721 à 5489**.
 - Une neuvième couleur de région a été ajoutée pour que les 9 régions d’une grille Expert restent visuellement distinctes.
 - Facile et Moyen restent disponibles et leurs dimensions restent 6×6 et 7×7.
@@ -302,14 +315,14 @@ Site statique mobile-first regroupant Queens, Tango, Mini Sudoku 6×6 et Patches
 
 ## Amélioration v2.0.4 — victoire automatique
 - La réussite est maintenant détectée automatiquement dès le dernier coup correct, sans appuyer sur `Vérifier`.
-- Le comportement est actif sur Queens, Tango, Mini Sudoku et Patches.
+- Le comportement est actif sur Couronnes, Équilibre, Mini 6 et Mosaïque.
 - Le bouton `Vérifier` reste disponible pour contrôler une grille incomplète ou incorrecte.
 - Une vraie réussite déclenche une animation en deux temps : propagation sur les cases du plateau, puis particules et écran de victoire.
 - L’affichage volontaire de la `Solution` reste distingué d’une victoire et ne déclenche pas la réussite automatique.
 - L’animation respecte `prefers-reduced-motion`.
 
-## Amélioration v2.0.3 — interaction Queens
-- Glisser le doigt horizontalement ou verticalement sur la grille Queens pose désormais des `X` en continu.
+## Amélioration v2.0.3 — interaction Couronnes
+- Glisser le doigt horizontalement ou verticalement sur la grille Couronnes pose désormais des `X` en continu.
 - Le geste se verrouille automatiquement sur la ligne ou la colonne dominante afin d’éviter les marquages accidentels en diagonale.
 - Un simple toucher conserve le cycle habituel : vide → `X` → reine → vide.
 - Nouvelle option **Croix automatiques quand je place une reine**, désactivée par défaut et mémorisée sur l’appareil.
@@ -318,8 +331,8 @@ Site statique mobile-first regroupant Queens, Tango, Mini Sudoku 6×6 et Patches
 
 ## Correctif v2.0.2 — taille fixe des grilles
 - Les quatre plateaux définissent maintenant explicitement un nombre identique de lignes et de colonnes en fractions fixes.
-- Dans Queens, l’ajout d’une reine ou d’une croix ne peut plus modifier la hauteur d’une ligne ni redimensionner le plateau.
-- Le correctif est appliqué de manière préventive à Tango, Mini Sudoku et Patches afin que leur géométrie reste également indépendante du contenu des cases.
+- Dans Couronnes, l’ajout d’une reine ou d’une croix ne peut plus modifier la hauteur d’une ligne ni redimensionner le plateau.
+- Le correctif est appliqué de manière préventive à Équilibre, Mini 6 et Mosaïque afin que leur géométrie reste également indépendante du contenu des cases.
 
 ## Propriété intellectuelle et licence
 Copyright © 2026 Serge Benoliel. All rights reserved.
@@ -346,15 +359,15 @@ La v2.0 conserve les clés de stockage des sauvegardes, statistiques, défis et 
 ## Nouveautés v1.7.0 — aides intelligentes
 - Le bouton Indice devient progressif en trois niveaux : (1) où regarder, (2) quelle logique appliquer, (3) révélation minimale.
 - La case concernée est mise en évidence sans modifier la grille aux deux premiers niveaux.
-- Queens : orientation vers ligne/région puis croisement des contraintes de colonnes et régions.
-- Tango : orientation vers une case puis rappel ciblé relations =/×, équilibre 3/3 et règle des trois.
-- Mini Sudoku : orientation puis élimination ligne/colonne/bloc 2×3.
-- Patches : orientation vers une zone puis raisonnement sur taille/forme et rectangles compatibles.
+- Couronnes : orientation vers ligne/région puis croisement des contraintes de colonnes et régions.
+- Équilibre : orientation vers une case puis rappel ciblé relations =/×, équilibre 3/3 et règle des trois.
+- Mini 6 : orientation puis élimination ligne/colonne/bloc 2×3.
+- Mosaïque : orientation vers une zone puis raisonnement sur taille/forme et rectangles compatibles.
 - Le troisième appel sur le même indice révèle seulement une case/reine/chiffre ; la sauvegarde reste cohérente.
 - Les animations d’aide respectent `prefers-reduced-motion`.
 
 ## Nouveautés v1.6.0 — défi quotidien
-- Quatre défis quotidiens : Queens, Tango, Mini Sudoku et Patches.
+- Quatre défis quotidiens : Couronnes, Équilibre, Mini 6 et Mosaïque.
 - Grilles quotidiennes déterministes : une date + un jeu + la version produisent la même grille sur tous les appareils.
 - Difficulté quotidienne fixée à Moyen afin de rendre les temps comparables.
 - Chronomètre et statistiques habituels conservés pour les défis.
@@ -380,22 +393,22 @@ La v2.0 conserve les clés de stockage des sauvegardes, statistiques, défis et 
 - Cibles tactiles d’au moins ~44 px pour les commandes principales.
 - Retour haptique léger lorsque le navigateur/appareil l’autorise (API Vibration ; absence de vibration sans impact fonctionnel).
 - Retour visuel immédiat à l’appui sur les boutons.
-- Mini Sudoku : surbrillance de la ligne, colonne et région de la case sélectionnée, ainsi que des chiffres identiques ; pavé numérique collant en bas de l’écran.
-- Patches : peinture au doigt conservée et renforcée avec `touch-action:none` sur le plateau pour limiter le défilement involontaire pendant un glissement.
+- Mini 6 : surbrillance de la ligne, colonne et région de la case sélectionnée, ainsi que des chiffres identiques ; pavé numérique collant en bas de l’écran.
+- Mosaïque : peinture au doigt conservée et renforcée avec `touch-action:none` sur le plateau pour limiter le défilement involontaire pendant un glissement.
 - Adaptation portrait, petits écrans, faible hauteur et paysage.
 - Respect de `prefers-reduced-motion`.
 - Overlay « Génération… » pendant la création/sélection d’une nouvelle grille.
-- Navigation clavier ajoutée au Mini Sudoku sur iPad avec clavier ou ordinateur.
+- Navigation clavier ajoutée au Mini 6 sur iPad avec clavier ou ordinateur.
 - Aucune dépendance supplémentaire : le site reste statique, PWA et à plat pour GitHub Pages.
 
 ## Nouveautés v1.3.0 — difficulté mesurée
 - Chaque grille générée reçoit désormais un score de difficulté calculé après génération.
 - Plusieurs candidats uniques sont générés ; le moteur retient le plus accessible pour Facile, un candidat médian pour Moyen et le plus exigeant pour Difficile.
 - Le score et la technique dominante sont visibles directement sous le titre du jeu.
-- Mini Sudoku : analyse logique par singles nus et singles cachés ; les blocages non résolus par ces techniques ajoutent une pénalité de complexité.
-- Tango : propagation des relations `=` / `×`, règles d’équilibrage 3/3 et interdiction de trois symboles identiques consécutifs ; les cellules non résolues augmentent le score.
-- Patches : analyse des rectangles candidats, rectangles forcés et couvertures forcées ; les ambiguïtés restantes augmentent le score.
-- Queens : analyseur de contraintes mesurant les embranchements et le nombre de nœuds nécessaires. Cette mesure est un indicateur de difficulté de résolution, mais ne prétend pas reproduire exactement toutes les stratégies humaines de Queens.
+- Mini 6 : analyse logique par singles nus et singles cachés ; les blocages non résolus par ces techniques ajoutent une pénalité de complexité.
+- Équilibre : propagation des relations `=` / `×`, règles d’équilibrage 3/3 et interdiction de trois symboles identiques consécutifs ; les cellules non résolues augmentent le score.
+- Mosaïque : analyse des rectangles candidats, rectangles forcés et couvertures forcées ; les ambiguïtés restantes augmentent le score.
+- Couronnes : analyseur de contraintes mesurant les embranchements et le nombre de nœuds nécessaires. Cette mesure est un indicateur de difficulté de résolution, mais ne prétend pas reproduire exactement toutes les stratégies humaines de Couronnes.
 - Les grilles restent acceptées uniquement si elles possèdent exactement une solution.
 
 ## Fonctions conservées
@@ -405,14 +418,14 @@ La v2.0 conserve les clés de stockage des sauvegardes, statistiques, défis et 
 - sauvegarde automatique et reprise de partie
 - nouvelle partie, vérification, indice et solution
 - interactions tactiles iPhone/iPad
-- Patches par toucher/glissement
+- Mosaïque par toucher/glissement
 - PWA installable et fonctionnement hors ligne après premier chargement
 - aucune dépendance serveur, aucun framework, aucun CDN
 
 ## Méthode de calibration
 La difficulté ne dépend plus seulement du nombre d’indices. Pour chaque nouvelle partie, plusieurs puzzles valides et uniques sont générés puis analysés. Le moteur sélectionne un puzzle dans la distribution obtenue selon le niveau demandé. Le score reste continu afin d’éviter de présenter comme identiques deux grilles de complexité sensiblement différente.
 
-Les analyseurs logiques de Sudoku, Tango et Patches utilisent des règles explicites et déterministes. Queens utilise actuellement un analyseur de contraintes avec mesure de recherche ; une simulation plus complète des techniques humaines de Queens pourra être enrichie ultérieurement.
+Les analyseurs logiques de Sudoku, Équilibre et Mosaïque utilisent des règles explicites et déterministes. Couronnes utilise actuellement un analyseur de contraintes avec mesure de recherche ; une simulation plus complète des techniques humaines de Couronnes pourra être enrichie ultérieurement.
 
 ## Déploiement GitHub Pages sur iPhone
 Tous les fichiers sont à la racine : aucun sous-répertoire. Envoyer directement les fichiers du ZIP dans le dépôt GitHub puis publier la branche principale depuis la racine.
@@ -421,7 +434,7 @@ Tous les fichiers sont à la racine : aucun sous-répertoire. Envoyer directemen
 Avant livraison :
 1. contrôle de syntaxe JavaScript avec Node ;
 2. tests répétés des générateurs sur les trois difficultés ;
-3. recomptage des solutions Queens, Tango, Mini Sudoku et Patches ;
+3. recomptage des solutions Couronnes, Équilibre, Mini 6 et Mosaïque ;
 4. validation structurelle des régions, rectangles et contraintes de chaque jeu ;
 5. tests des analyseurs de difficulté et comparaison des distributions de scores ;
 6. vérification des références HTML/CSS/JS/PWA et du numéro de version ;
@@ -438,4 +451,4 @@ Avant livraison :
 - v2.0 : finition complète
 - v2.1 optionnelle : éditeur de puzzles
 
-Projet indépendant. Les mécaniques suivent les règles publiques des jeux correspondants ; l’interface et le code sont originaux et sans affiliation à LinkedIn.
+Projet indépendant. L’interface, le code, les générateurs et les grilles sont propres à Logic 4.

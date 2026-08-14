@@ -464,7 +464,7 @@ body.busy{pointer-events:none}
 }
 
 
-/* v2.8.0 — Patches : rectangle interactif type LinkedIn */
+/* v2.8.0 — Mosaïque : rectangle interactif dynamique */
 #pboard.patch-rect-dragging{
   cursor:crosshair;
 }
