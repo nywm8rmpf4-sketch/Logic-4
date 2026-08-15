@@ -5,7 +5,7 @@
  */
 'use strict';
 const $=s=>document.querySelector(s), app=$('#app'), toast=$('#toast'), timerEl=$('#timer');
-const VERSION='2.21.4', SAVE_KEY='logic4-save-v1';
+const VERSION='2.21.5', SAVE_KEY='logic4-save-v1';
 let current=null, tick=null, startedAt=0, elapsedBase=0, paused=false;
 const I18N={
 fr:{
@@ -504,6 +504,38 @@ Object.assign(I18N.ro,{"walkthrough":"Rezolvare pas cu pas","walkthroughSub":"Ur
 Object.assign(I18N.sk,{"walkthrough":"Riešenie krok za krokom","walkthroughSub":"Sleduj logické riešenie bez zmeny svojej hracej plochy.","walkthroughNext":"Ďalší krok","walkthroughPrevious":"Predchádzajúci krok","walkthroughRestart":"Začať znova","walkthroughClose":"Späť do hry","walkthroughStep":"Krok","walkthroughStart":"Východisková pozícia","walkthroughComplete":"Riešenie dokončené","walkthroughStalled":"QUADLUD nemôže pokračovať v riešení pomocou súčasných logických techník.","walkthroughWhy":"Prečo tento ťah?","walkthroughCountsAsHelp":"Zobrazenie tohto riešenia sa počíta ako pomoc s riešením pre aktuálny pokus."});
 Object.assign(I18N.sl,{"walkthrough":"Rešitev korak za korakom","walkthroughSub":"Sledi logični rešitvi, ne da bi spremenil svojo ploščo.","walkthroughNext":"Naslednji korak","walkthroughPrevious":"Prejšnji korak","walkthroughRestart":"Začni znova","walkthroughClose":"Nazaj v igro","walkthroughStep":"Korak","walkthroughStart":"Začetni položaj","walkthroughComplete":"Rešitev končana","walkthroughStalled":"QUADLUD s trenutnimi logičnimi tehnikami ne more nadaljevati te rešitve.","walkthroughWhy":"Zakaj ta poteza?","walkthroughCountsAsHelp":"Ogled te rešitve šteje kot pomoč pri rešitvi za trenutni poskus."});
 Object.assign(I18N.sv,{"walkthrough":"Steg-för-steg-lösning","walkthroughSub":"Följ den logiska lösningen utan att ändra ditt eget bräde.","walkthroughNext":"Nästa steg","walkthroughPrevious":"Föregående steg","walkthroughRestart":"Börja om","walkthroughClose":"Tillbaka till spelet","walkthroughStep":"Steg","walkthroughStart":"Startposition","walkthroughComplete":"Lösning klar","walkthroughStalled":"QUADLUD kan inte fortsätta lösningen med de nuvarande logiska teknikerna.","walkthroughWhy":"Varför detta drag?","walkthroughCountsAsHelp":"Att visa denna lösning räknas som lösningshjälp för det aktuella försöket."});
+
+/* v2.21.5 — mobile-visible Tutor naming */
+Object.assign(I18N.en,{walkthrough:"Tutor"});
+Object.assign(I18N.zh,{walkthrough:"导师"});
+Object.assign(I18N.hi,{walkthrough:"ट्यूटर"});
+Object.assign(I18N.es,{walkthrough:"Tutor"});
+Object.assign(I18N.ar,{walkthrough:"المعلّم"});
+Object.assign(I18N.fr,{walkthrough:"Tuteur"});
+Object.assign(I18N.bn,{walkthrough:"শিক্ষক"});
+Object.assign(I18N.pt,{walkthrough:"Tutor"});
+Object.assign(I18N.id,{walkthrough:"Tutor"});
+Object.assign(I18N.ur,{walkthrough:"ٹیوٹر"});
+Object.assign(I18N.bg,{walkthrough:"Наставник"});
+Object.assign(I18N.hr,{walkthrough:"Tutor"});
+Object.assign(I18N.cs,{walkthrough:"Tutor"});
+Object.assign(I18N.da,{walkthrough:"Vejleder"});
+Object.assign(I18N.nl,{walkthrough:"Tutor"});
+Object.assign(I18N.et,{walkthrough:"Juhendaja"});
+Object.assign(I18N.fi,{walkthrough:"Ohjaaja"});
+Object.assign(I18N.de,{walkthrough:"Tutor"});
+Object.assign(I18N.el,{walkthrough:"Καθοδηγητής"});
+Object.assign(I18N.hu,{walkthrough:"Tutor"});
+Object.assign(I18N.ga,{walkthrough:"Teagascóir"});
+Object.assign(I18N.it,{walkthrough:"Tutor"});
+Object.assign(I18N.lv,{walkthrough:"Padomdevējs"});
+Object.assign(I18N.lt,{walkthrough:"Mokytojas"});
+Object.assign(I18N.mt,{walkthrough:"Tutur"});
+Object.assign(I18N.pl,{walkthrough:"Tutor"});
+Object.assign(I18N.ro,{walkthrough:"Tutor"});
+Object.assign(I18N.sk,{walkthrough:"Tútor"});
+Object.assign(I18N.sl,{walkthrough:"Mentor"});
+Object.assign(I18N.sv,{walkthrough:"Handledare"});
 let DIFF={};
 function lang(){let l=prefs().lang;return SUPPORTED_LANGS.includes(l)?l:'fr'}
 function dateLocale(){return {"en":"en-US","zh":"zh-CN","hi":"hi-IN","es":"es-ES","ar":"ar","fr":"fr-FR","bn":"bn-BD","pt":"pt-PT","id":"id-ID","ur":"ur-PK","bg":"bg-BG","hr":"hr-HR","cs":"cs-CZ","da":"da-DK","nl":"nl-NL","et":"et-EE","fi":"fi-FI","de":"de-DE","el":"el-GR","hu":"hu-HU","ga":"ga-IE","it":"it-IT","lv":"lv-LV","lt":"lt-LT","mt":"mt-MT","pl":"pl-PL","ro":"ro-RO","sk":"sk-SK","sl":"sl-SI","sv":"sv-SE"}[lang()]||'en-US'}
@@ -2516,7 +2548,7 @@ function closeWalkthrough(){
   startTimer(true,elapsed,wasPaused);updatePauseButton();saveCurrent();return true
 }
 
-function shell(name,subtitle,diff,content,rules){let challengeTag=current?.challenge?` · <span class="challenge-shell-tag">↗ <b>${current.challengeCode}</b></span>`:'';let trainingTag=current?.learning?` · <span class="training-shell-tag">${tr('lesson')} ${current.learningPhase}/4 : <b>${techniqueTitle(current.learningTechnique)}</b></span>`:current?.training?` · <span class="training-shell-tag">${tr('trainingTarget')} : <b>${techniqueTitle(current.trainingTechnique)}</b></span>`:'';app.innerHTML=`<section class="panel"><div class="game-head"><div><h1>${name}</h1><p>${subtitle}${trainingTag}${challengeTag}${current&&current.rating?` · <span class="difficulty-meter">${tr('score')} ${current.rating.score} · ${current.rating.technique}<span class="live-aids">${aidBadges(current,true)}</span></span>`:''}</p></div><select class="difficulty" id="difficulty" aria-label="${tr('rulesTitle')}">${Object.entries(DIFF).filter(([k])=>current?.game==='queens'||k!=='expert').map(([k,v])=>`<option value="${k}" ${k===diff?'selected':''}>${v}</option>`).join('')}</select></div><div class="toolbar" aria-label="${tr('actions')}"><button class="btn primary" id="newBtn">${tr('newGame')}</button><button class="btn" id="resetBtn">${tr('reset')}</button><button class="btn history-action" id="undoBtn" title="${tr('undo')}" aria-label="${tr('undo')}">↶ ${tr('undo')}</button><button class="btn history-action" id="redoBtn" title="${tr('redo')}" aria-label="${tr('redo')}">↷ ${tr('redo')}</button><button class="btn" id="pauseBtn">${tr('pause')}</button><button class="btn" id="checkBtn">${tr('check')}</button><button class="btn" id="hintBtn">${tr('logicCoach')}</button><button class="btn" id="exploreBtn">◇ ${tr('exploration')}</button><button class="btn secondary-action" id="shareChallengeBtn" style="${current?.challenge?'':'display:none'}">↗ ${tr('shareChallenge')}</button><button class="btn secondary-action" id="walkthroughBtn">▹ ${tr('walkthrough')}</button><button class="btn secondary-action" id="solutionBtn">${tr('solution')}</button><button class="btn secondary-action" id="rulesBtn">${tr('rules')}</button><button class="btn secondary-action" id="techniquesBtn">${tr('techniques')}</button></div><div id="status" class="status" aria-live="polite"></div><div id="errorCoach" class="error-coach" hidden aria-live="polite"></div><div id="reasoningAudit" class="reasoning-audit" hidden aria-live="polite"></div><div id="explorationPanel" class="exploration-panel" hidden aria-live="polite"></div><div id="learningGuide" class="learning-guide" hidden aria-live="polite"></div>${content}<div class="rules">${rules}</div></section>`;
+function shell(name,subtitle,diff,content,rules){let challengeTag=current?.challenge?` · <span class="challenge-shell-tag">↗ <b>${current.challengeCode}</b></span>`:'';let trainingTag=current?.learning?` · <span class="training-shell-tag">${tr('lesson')} ${current.learningPhase}/4 : <b>${techniqueTitle(current.learningTechnique)}</b></span>`:current?.training?` · <span class="training-shell-tag">${tr('trainingTarget')} : <b>${techniqueTitle(current.trainingTechnique)}</b></span>`:'';app.innerHTML=`<section class="panel"><div class="game-head"><div><h1>${name}</h1><p>${subtitle}${trainingTag}${challengeTag}${current&&current.rating?` · <span class="difficulty-meter">${tr('score')} ${current.rating.score} · ${current.rating.technique}<span class="live-aids">${aidBadges(current,true)}</span></span>`:''}</p></div><select class="difficulty" id="difficulty" aria-label="${tr('rulesTitle')}">${Object.entries(DIFF).filter(([k])=>current?.game==='queens'||k!=='expert').map(([k,v])=>`<option value="${k}" ${k===diff?'selected':''}>${v}</option>`).join('')}</select></div><div class="toolbar" aria-label="${tr('actions')}"><button class="btn primary" id="newBtn">${tr('newGame')}</button><button class="btn" id="resetBtn">${tr('reset')}</button><button class="btn history-action" id="undoBtn" title="${tr('undo')}" aria-label="${tr('undo')}">↶ ${tr('undo')}</button><button class="btn history-action" id="redoBtn" title="${tr('redo')}" aria-label="${tr('redo')}">↷ ${tr('redo')}</button><button class="btn" id="pauseBtn">${tr('pause')}</button><button class="btn" id="checkBtn">${tr('check')}</button><button class="btn" id="hintBtn">${tr('logicCoach')}</button><button class="btn" id="exploreBtn">◇ ${tr('exploration')}</button><button class="btn secondary-action" id="shareChallengeBtn" style="${current?.challenge?'':'display:none'}">↗ ${tr('shareChallenge')}</button><button class="btn tutor-action" id="walkthroughBtn">▹ ${tr('walkthrough')}</button><button class="btn secondary-action" id="solutionBtn">${tr('solution')}</button><button class="btn secondary-action" id="rulesBtn">${tr('rules')}</button><button class="btn secondary-action" id="techniquesBtn">${tr('techniques')}</button></div><div id="status" class="status" aria-live="polite"></div><div id="errorCoach" class="error-coach" hidden aria-live="polite"></div><div id="reasoningAudit" class="reasoning-audit" hidden aria-live="polite"></div><div id="explorationPanel" class="exploration-panel" hidden aria-live="polite"></div><div id="learningGuide" class="learning-guide" hidden aria-live="polite"></div>${content}<div class="rules">${rules}</div></section>`;
 $('#difficulty').onchange=e=>launch(current.game,e.target.value);$('#newBtn').onclick=()=>current?.challengeCode?launchChallenge(current.challengeCode):launch(current.game,current.diff);if(current?.challenge){$('#difficulty').disabled=true}$('#resetBtn').onclick=resetCurrent;$('#undoBtn').onclick=()=>undoMoves(1);$('#redoBtn').onclick=()=>redoMoves(1);$('#pauseBtn').onclick=togglePause;$('#exploreBtn').onclick=()=>explorationState()?.active?refreshExplorationPanel():startExploration();let scb=$('#shareChallengeBtn');if(scb&&current?.challenge)scb.onclick=()=>shareChallenge(challengeParse(current.challengeCode));let wb=$('#walkthroughBtn');if(wb)wb.onclick=openWalkthrough;$('#rulesBtn').onclick=()=>modal(`${tr('rules')} — ${name}`,rules);$('#techniquesBtn').onclick=()=>modal(`${tr('techniques')} — ${name}`,techniqueLibraryHtml(current.game));app.querySelectorAll('button').forEach(pressFeedback);updatePauseButton();updateHistoryButtons();refreshErrorCoach();refreshReasoningAudit();refreshExplorationPanel();if(current?.training)decorateTrainingShell()}
 
 function resetCurrent(){
@@ -2580,7 +2612,7 @@ function ensurePrecomputeWorker(){
   if(precomputeWorker)return precomputeWorker;
   if(typeof Worker==='undefined')return null;
   try{
-    let w=new Worker('./precompute-worker.js?v=2.21.4');
+    let w=new Worker('./precompute-worker.js?v=2.21.5');
     w.onmessage=e=>{
       let m=e.data||{};precomputeBusy=false;
       if(m.ok&&m.day===precomputeDay&&m.candidate){

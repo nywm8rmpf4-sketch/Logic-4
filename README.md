@@ -1,6 +1,25 @@
-# QUADLUD — v2.21.4
+# QUADLUD — v2.21.5
 
 Application web statique mobile-first regroupant **Couronnes**, **Soleil-Lune**, **Grille 6** et **Rectangles**.
+
+## v2.21.5 — Tuteur visible sur mobile
+- Le mode précédemment nommé **« Résolution pas à pas »** est renommé **« Tuteur »**.
+- Le fonctionnement interne reste identique : le Tuteur montre la résolution logique du puzzle étape par étape avec l’explication de chaque déduction.
+- Correction de la régression mobile de v2.21.4 :
+  - le bouton Tuteur n’est plus classé `secondary-action` ;
+  - il n’est donc plus masqué par la règle mobile `.toolbar .secondary-action { display:none; }` ;
+  - il reste explicitement visible dans la barre d’actions sur iPhone et autres petits écrans.
+- Le bouton apparaît sous la forme **`▹ Tuteur`** dans une partie normale.
+- Le mode reste masqué dans **Apprendre** et **S’entraîner**, où la trajectoire pédagogique spécifique reste prioritaire.
+- Aucun changement du moteur de résolution, de la logique des quatre jeux, du scoring, de l’historique ou des défis partageables.
+- Le nom du mode est localisé dans les **30 langues** sans changer le nombre de clés i18n.
+
+### Validation spécifique v2.21.5
+- Vérification que le bouton `walkthroughBtn` ne porte plus la classe `secondary-action`.
+- Vérification CSS que `.tutor-action` reste affiché sous 620 px.
+- Vérification du libellé français **Tuteur** et des 30 traductions non vides.
+- Non-régression syntaxique et structurelle des fonctions de résolution pas à pas.
+- Non-régression des versions, références PWA, README, ROADMAP et licence.
 
 ## v2.21.4 — Logic Coach en 3 étapes + résolution logique pas à pas
 - Le parcours courant du **Logic Coach** passe de quatre à **trois étapes explicites** :

@@ -23,6 +23,7 @@ Le Logic Coach doit enseigner progressivement le raisonnement réel à partir de
   - **v2.21.2** — patch Couronnes : difficultés certifiées par inférences R1/R2 — ✅ terminé
   - **v2.21.3** — patch Couronnes : tailles 7×7 / 8×8 / 9×9 / 9×9 — ✅ terminé
   - **v2.21.4** — patch Logic Coach : 3 étapes + résolution logique pas à pas — ✅ terminé
+  - **v2.21.5** — patch UX : mode Tuteur visible sur mobile — ✅ terminé
 - **v2.22** — Accessibilité — prochain jalon
 - **v2.23** — Confidentialité / portabilité des données
 - **v2.24** — Préparation iOS
