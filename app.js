@@ -5,7 +5,7 @@
  */
 'use strict';
 const $=s=>document.querySelector(s), app=$('#app'), toast=$('#toast'), timerEl=$('#timer');
-const VERSION='2.21.1', SAVE_KEY='logic4-save-v1';
+const VERSION='2.21.3', SAVE_KEY='logic4-save-v1';
 let current=null, tick=null, startedAt=0, elapsedBase=0, paused=false;
 const I18N={
 fr:{
@@ -944,7 +944,7 @@ function statsSummary(){
 
 
 // ===== v2.21.0 — shareable friend challenges =====
-const CHALLENGE_SCHEMA=1,CHALLENGE_GENERATOR=1;
+const CHALLENGE_SCHEMA=1,CHALLENGE_GENERATOR=3;
 const CHALLENGE_ALPHABET='23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
 const CHALLENGE_GAME_TO_CODE={queens:'Q',tango:'T',sudoku:'S',patches:'P'};
 const CHALLENGE_CODE_TO_GAME={Q:'queens',T:'tango',S:'sudoku',P:'patches'};
@@ -961,27 +961,27 @@ function challengeRandomSeed(len=8){
   for(let i=0;i<len;i++){let n=bytes?bytes[i]:Math.floor(Math.random()*0x100000000);out+=a[n%a.length]}
   return out
 }
-function challengeMake(game,diff,seed=challengeRandomSeed()){
+function challengeMake(game,diff,seed=challengeRandomSeed(),generator=CHALLENGE_GENERATOR){
   if(!CHALLENGE_GAME_TO_CODE[game])return null;if(game!=='queens'&&diff==='expert')return null;if(!CHALLENGE_DIFF_TO_CODE[diff])return null;
   seed=challengeNormalizeCode(seed).slice(0,8);if(seed.length!==8||[...seed].some(c=>!CHALLENGE_ALPHABET.includes(c)))return null;
-  let payload=`QL${CHALLENGE_SCHEMA}${CHALLENGE_GENERATOR}${CHALLENGE_GAME_TO_CODE[game]}${CHALLENGE_DIFF_TO_CODE[diff]}${seed}`,check=challengeChecksum(payload);
-  return {schema:CHALLENGE_SCHEMA,generator:CHALLENGE_GENERATOR,game,diff,seed,code:`QL${CHALLENGE_SCHEMA}${CHALLENGE_GENERATOR}-${CHALLENGE_GAME_TO_CODE[game]}${CHALLENGE_DIFF_TO_CODE[diff]}-${seed}-${check}`}
+  if(![1,2,3].includes(Number(generator)))return null;generator=Number(generator);let payload=`QL${CHALLENGE_SCHEMA}${generator}${CHALLENGE_GAME_TO_CODE[game]}${CHALLENGE_DIFF_TO_CODE[diff]}${seed}`,check=challengeChecksum(payload);
+  return {schema:CHALLENGE_SCHEMA,generator,game,diff,seed,code:`QL${CHALLENGE_SCHEMA}${generator}-${CHALLENGE_GAME_TO_CODE[game]}${CHALLENGE_DIFF_TO_CODE[diff]}-${seed}-${check}`}
 }
 function challengeParse(raw){
   let n=challengeNormalizeCode(raw);
   // QL + schema + generator + game + difficulty + 8 seed chars + 2 checksum chars.
   if(n.length!==16||n.slice(0,2)!=='QL')return null;
   let schema=Number(n[2]),generator=Number(n[3]),game=CHALLENGE_CODE_TO_GAME[n[4]],diff=CHALLENGE_CODE_TO_DIFF[n[5]],seed=n.slice(6,14),check=n.slice(14);
-  if(schema!==CHALLENGE_SCHEMA||generator!==CHALLENGE_GENERATOR||!game||!diff||(game!=='queens'&&diff==='expert'))return null;
+  if(schema!==CHALLENGE_SCHEMA||![1,2,3].includes(generator)||!game||!diff||(game!=='queens'&&diff==='expert'))return null;
   if([...seed].some(c=>!CHALLENGE_ALPHABET.includes(c)))return null;
   let payload=n.slice(0,14);if(challengeChecksum(payload)!==check)return null;
-  return challengeMake(game,diff,seed)
+  return challengeMake(game,diff,seed,generator)
 }
 function challengeSeedString(ch){return `quadlud-challenge-v${ch.generator}:${ch.game}:${ch.diff}:${ch.seed}`}
 function challengeBuildCandidateV1(ch){
   if(!ch||ch.generator!==1)return null;
   return withSeed(challengeSeedString(ch),()=>{
-    if(ch.game==='queens'){let count=ch.diff==='expert'?16:ch.diff==='hard'?14:6;return targetPick(collectCandidates(()=>queenCandidate(ch.diff),count),ch.diff)}
+    if(ch.game==='queens'){let count=ch.diff==='expert'?16:ch.diff==='hard'?14:6;return targetPick(collectCandidates(()=>legacyQueenCandidateV1(ch.diff),count),ch.diff)}
     if(ch.game==='tango')return targetPick(collectCandidates(()=>tangoCandidate(ch.diff),6),ch.diff);
     if(ch.game==='sudoku')return targetPick(collectCandidates(()=>sudokuCandidate(ch.diff),8),ch.diff);
     if(ch.game==='patches')return targetPick(collectCandidates(()=>patchesCandidate(ch.diff),ch.diff==='hard'?5:4),ch.diff);
@@ -996,7 +996,29 @@ function challengeFingerprintFromCandidate(ch,g){
   else pub={n:g.n,clues:Object.fromEntries(g.ids.map(id=>[id,g.clues[id]]))};
   return hash32(JSON.stringify(pub)).toString(36).toUpperCase()
 }
-function challengePublicFingerprint(ch){return challengeFingerprintFromCandidate(ch,challengeBuildCandidateV1(ch))}
+function challengeBuildCandidateV2(ch){
+  if(!ch||ch.generator!==2)return null;
+  return withSeed(challengeSeedString(ch),()=>{
+    if(ch.game==='queens')return legacyQueenCandidateV2(ch.diff);
+    if(ch.game==='tango')return targetPick(collectCandidates(()=>tangoCandidate(ch.diff),6),ch.diff);
+    if(ch.game==='sudoku')return targetPick(collectCandidates(()=>sudokuCandidate(ch.diff),8),ch.diff);
+    if(ch.game==='patches')return targetPick(collectCandidates(()=>patchesCandidate(ch.diff),ch.diff==='hard'?5:4),ch.diff);
+    return null
+  })
+}
+function challengeBuildCandidateV3(ch){
+  if(!ch||ch.generator!==3)return null;
+  return withSeed(challengeSeedString(ch),()=>{
+    if(ch.game==='queens')return queenCandidate(ch.diff);
+    if(ch.game==='tango')return targetPick(collectCandidates(()=>tangoCandidate(ch.diff),6),ch.diff);
+    if(ch.game==='sudoku')return targetPick(collectCandidates(()=>sudokuCandidate(ch.diff),8),ch.diff);
+    if(ch.game==='patches')return targetPick(collectCandidates(()=>patchesCandidate(ch.diff),ch.diff==='hard'?5:4),ch.diff);
+    return null
+  })
+}
+function challengeBuildCandidate(ch){return ch?.generator===1?challengeBuildCandidateV1(ch):ch?.generator===2?challengeBuildCandidateV2(ch):ch?.generator===3?challengeBuildCandidateV3(ch):null}
+
+function challengePublicFingerprint(ch){return challengeFingerprintFromCandidate(ch,challengeBuildCandidate(ch))}
 function challengeInstall(ch,g){
   if(ch.game==='queens')current={game:'queens',diff:ch.diff,n:g.n,reg:g.reg,sol:g.sol,rating:g.rating,state:Array.from({length:g.n},()=>Array(g.n).fill(0)),generated:true,unique:true,completed:false};
   else if(ch.game==='tango'){let state=Array.from({length:6},()=>Array(6).fill(-1));for(let i of g.givens)state[Math.floor(i/6)][i%6]=g.sol[Math.floor(i/6)][i%6];current={game:'tango',diff:ch.diff,n:6,sol:g.sol,givens:g.givens,edges:g.edges,rating:g.rating,state,generated:true,unique:true,completed:false}}
@@ -1009,7 +1031,7 @@ function launchChallenge(value){
   let ch=typeof value==='string'?challengeParse(value):value;if(!ch){showToast(tr('invalidChallengeCode'));return false}
   closePreviousAttempt();clearSaved();stopTimer();paused=false;setBusy(true);
   requestAnimationFrame(()=>{try{
-    let g=challengeBuildCandidateV1(ch);if(!g)throw new Error('challenge generation failed');challengeInstall(ch,g);
+    let g=challengeBuildCandidate(ch);if(!g)throw new Error('challenge generation failed');challengeInstall(ch,g);
     historyInit(true);updateHistoryButtons();statsStart(current);startTimer(true,0,false);saveCurrent();haptic(8)
   }catch(_){showToast(tr('invalidChallengeCode'));home()}finally{setBusy(false);startBackgroundPrecompute(ch.game,ch.diff)}});return true
 }
@@ -2362,7 +2384,7 @@ function ensurePrecomputeWorker(){
   if(precomputeWorker)return precomputeWorker;
   if(typeof Worker==='undefined')return null;
   try{
-    let w=new Worker('./precompute-worker.js?v=2.21.1');
+    let w=new Worker('./precompute-worker.js?v=2.21.3');
     w.onmessage=e=>{
       let m=e.data||{};precomputeBusy=false;
       if(m.ok&&m.day===precomputeDay&&m.candidate){
@@ -3568,7 +3590,9 @@ function transformedQueenFallback(diff){
   mask=transformGrid(mask,k);let sol=Array(n).fill(-1);for(let r=0;r<n;r++)sol[r]=mask[r].indexOf(1);
   return {n,sol,reg}
 }
-function generateQueensPuzzle(diff){
+
+// Frozen Queens generator used only to reproduce v2.21 friend-challenge generator V1 codes.
+function generateQueensPuzzleLegacyV1(diff){
   const n={easy:6,medium:7,hard:8,expert:9}[diff],single={easy:4,medium:3,hard:2,expert:3}[diff],maxSingles={easy:99,medium:99,hard:1,expert:0}[diff];
   for(let t=0;t<(diff==='expert'?260:diff==='hard'?180:240);t++){
     let sol=randomQueenSolution(n);if(!sol)continue;
@@ -3578,6 +3602,70 @@ function generateQueensPuzzle(diff){
   }
   if(diff==='hard'||diff==='expert')return transformedQueenFallback(diff);
   throw new Error('Queens generation failed')
+}
+function legacyQueenCandidateV1(diff){let g=generateQueensPuzzleLegacyV1(diff);g.rating=analyzeQueens(g.reg);return g}
+
+// Frozen Queens generator used only to reproduce v2.21.2 friend-challenge generator V2 codes.
+function generateQueensPuzzleLegacyV2(diff){
+  const cfg={
+    easy:{n:6,single:4,maxSingles:99,attempts:260},
+    medium:{n:7,single:3,maxSingles:99,attempts:520},
+    hard:{n:8,single:6,maxSingles:0,attempts:520},
+    expert:{n:9,single:3,maxSingles:0,attempts:320}
+  }[diff];
+  if(!cfg)throw new Error('Unknown Queens difficulty');
+  for(let t=0;t<cfg.attempts;t++){
+    let sol=randomQueenSolution(cfg.n);if(!sol)continue;
+    let reg=queenRegionsFromSolution(sol,cfg.single);if(!reg)continue;
+    if(cfg.maxSingles===0){reg=reduceQueenSingletons(reg,sol,0);if(!reg)continue}
+    if(countQueensGenerated(reg,2)!==1)continue;
+    let profile=analyzeQueensLogicProfile(reg,{diff,budgetMs:Infinity});
+    if(queenProfileMatchesDifficulty(profile,diff))return {n:cfg.n,sol,reg,logicProfile:queenCompactProfile(profile)}
+  }
+  if(diff==='hard'||diff==='expert')return transformedQueenFallbackV2(diff);
+  throw new Error('Queens generation failed for requested logical profile')
+}
+function legacyQueenCandidateV2(diff){let g=generateQueensPuzzleLegacyV2(diff);g.rating=queenProfileRating(g.reg,g.logicProfile);return g}
+
+const queenStrictFallbackV2={
+  hard:{sol:[7,0,6,4,2,5,3,1],reg:[[2,2,2,2,2,2,2,0],[1,2,2,2,2,2,2,0],[1,2,2,2,2,2,2,2],[2,2,2,3,3,2,2,2],[2,6,4,6,2,2,2,2],[6,6,4,6,5,5,2,2],[6,6,6,6,6,2,2,2],[6,7,7,6,6,6,2,2]]}
+};
+function transformedQueenFallbackV2(diff){
+  let base=diff==='hard'?queenStrictFallbackV2.hard:queenStrictFallback.expert,k=Math.floor(Math.random()*8),reg=transformGrid(base.reg,k),n=reg.length,mask=base.sol.map((c,r)=>Array.from({length:n},(_,j)=>j===c?1:0));
+  mask=transformGrid(mask,k);let sol=Array(n).fill(-1);for(let r=0;r<n;r++)sol[r]=mask[r].indexOf(1);
+  let profile=analyzeQueensLogicProfile(reg,{diff,budgetMs:Infinity});
+  if(!queenProfileMatchesDifficulty(profile,diff))throw new Error('Queens strict fallback profile mismatch');
+  return {n,sol,reg,logicProfile:queenCompactProfile(profile)}
+}
+const queenStrictFallbackV3={
+  hard:{sol:[5,0,4,6,3,8,2,7,1],reg:[[5,5,5,5,5,0,5,5,5],[1,5,5,5,5,0,5,5,5],[1,5,5,5,2,5,5,5,5],[5,5,5,5,2,3,3,5,5],[5,5,4,4,5,5,5,5,5],[5,5,6,5,5,5,5,5,5],[5,5,6,5,5,5,5,5,5],[5,5,5,5,5,5,7,7,5],[8,8,5,5,5,5,5,5,5]]}
+};
+function transformedQueenFallbackV3(diff){
+  let base=diff==='hard'?queenStrictFallbackV3.hard:queenStrictFallback.expert,k=Math.floor(Math.random()*8),reg=transformGrid(base.reg,k),n=reg.length,mask=base.sol.map((c,r)=>Array.from({length:n},(_,j)=>j===c?1:0));
+  mask=transformGrid(mask,k);let sol=Array(n).fill(-1);for(let r=0;r<n;r++)sol[r]=mask[r].indexOf(1);
+  let profile=analyzeQueensLogicProfile(reg,{diff,budgetMs:Infinity});
+  if(!queenProfileMatchesDifficulty(profile,diff))throw new Error('Queens strict fallback profile mismatch');
+  return {n,sol,reg,logicProfile:queenCompactProfile(profile)}
+}
+
+function generateQueensPuzzle(diff){
+  const cfg={
+    easy:{n:7,single:4,maxSingles:99,attempts:320},
+    medium:{n:8,single:3,maxSingles:99,attempts:620},
+    hard:{n:9,single:8,maxSingles:0,attempts:620},
+    expert:{n:9,single:3,maxSingles:0,attempts:320}
+  }[diff];
+  if(!cfg)throw new Error('Unknown Queens difficulty');
+  for(let t=0;t<cfg.attempts;t++){
+    let sol=randomQueenSolution(cfg.n);if(!sol)continue;
+    let reg=queenRegionsFromSolution(sol,cfg.single);if(!reg)continue;
+    if(cfg.maxSingles===0){reg=reduceQueenSingletons(reg,sol,0);if(!reg)continue}
+    if(countQueensGenerated(reg,2)!==1)continue;
+    let profile=analyzeQueensLogicProfile(reg,{diff,budgetMs:Infinity});
+    if(queenProfileMatchesDifficulty(profile,diff))return {n:cfg.n,sol,reg,logicProfile:queenCompactProfile(profile)}
+  }
+  if(diff==='hard'||diff==='expert')return transformedQueenFallbackV3(diff);
+  throw new Error('Queens generation failed for requested logical profile')
 }
 function queens(diff){let g=generateQueensPuzzle(diff);current={game:'queens',diff,n:g.n,reg:g.reg,sol:g.sol,state:Array.from({length:g.n},()=>Array(g.n).fill(0)),generated:true,unique:true,completed:false};renderQueens(current)}
 
@@ -3614,6 +3702,92 @@ function analyzeSudoku(sol,empty){let g=sol.map((r,ri)=>r.map((v,c)=>empty.has(r
 function tangoLocalVals(grid,edges,r,c){let vals=[];for(let v of [0,1]){let row=grid[r].slice();row[c]=v;let ones=row.filter(x=>x===1).length,zeros=row.filter(x=>x===0).length;if(ones>3||zeros>3)continue;let bad=false;for(let i=0;i<4;i++)if(row[i]!==-1&&row[i]===row[i+1]&&row[i]===row[i+2])bad=true;let col=grid.map((x,rr)=>rr===r?v:x[c]),co=col.filter(x=>x===1).length,cz=col.filter(x=>x===0).length;if(co>3||cz>3)bad=true;for(let i=0;i<4;i++)if(col[i]!==-1&&col[i]===col[i+1]&&col[i]===col[i+2])bad=true;for(let [rr,cc,d,s] of edges){let r2=d==='r'?rr:rr+1,c2=d==='r'?cc+1:cc;if((rr===r&&cc===c)||(r2===r&&c2===c)){let other=(rr===r&&cc===c)?grid[r2][c2]:grid[rr][cc];if(other!==-1&&((s==='='&&v!==other)||(s==='×'&&v===other)))bad=true}}if(!bad)vals.push(v)}return vals}
 function analyzeTango(sol,givens,edges){let g=Array.from({length:6},()=>Array(6).fill(-1));for(let i of givens)g[Math.floor(i/6)][i%6]=sol[Math.floor(i/6)][i%6];let steps=0,rel=0,guard=0;while(g.flat().includes(-1)&&guard++<100){let progress=false;for(let [r,c,d,s] of edges){let r2=d==='r'?r:r+1,c2=d==='r'?c+1:c,a=g[r][c],b=g[r2][c2];if(a!==-1&&b===-1){g[r2][c2]=s==='='?a:1-a;steps++;rel++;progress=true}else if(b!==-1&&a===-1){g[r][c]=s==='='?b:1-b;steps++;rel++;progress=true}}for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(g[r][c]===-1){let vals=tangoLocalVals(g,edges,r,c);if(vals.length===1){g[r][c]=vals[0];steps++;progress=true}}if(!progress)break}let remain=g.flat().filter(x=>x===-1).length,level=remain?2:rel?1:0,score=Math.round(steps+rel*1.5+remain*3);return {score,technique:labelTechnique('tango',level),solved:remain===0,remain,level}}
 function analyzePatches(n,ids,clues){let positions=ids.map(id=>clues[id].pos),opts={};for(let id of ids)opts[id]=possiblePatchRects(n,clues[id],positions);let chosen=new Map(),covered=new Set(),steps=0,coverForced=0,guard=0;while(chosen.size<ids.length&&guard++<100){let progress=false;for(let id of ids)if(!chosen.has(id)){let a=opts[id].filter(c=>c.every(x=>!covered.has(x)));if(a.length===1){chosen.set(id,a[0]);a[0].forEach(x=>covered.add(x));steps++;progress=true}}if(progress)continue;for(let cell=0;cell<n*n;cell++)if(!covered.has(cell)){let owners=[];for(let id of ids)if(!chosen.has(id))for(let cells of opts[id])if(cells.includes(cell)&&cells.every(x=>!covered.has(x)))owners.push([id,cells]);let uniq=[...new Set(owners.map(x=>x[0]))];if(uniq.length===1){let id=uniq[0],arr=owners.filter(x=>x[0]===id);if(arr.length===1){chosen.set(id,arr[0][1]);arr[0][1].forEach(x=>covered.add(x));steps++;coverForced++;progress=true;break}}}if(!progress)break}let remain=ids.length-chosen.size,level=remain?2:coverForced?1:0,branch=ids.reduce((s,id)=>s+Math.max(0,opts[id].length-1),0),score=Math.round(steps+coverForced*2+remain*5+branch*.25);return {score,technique:labelTechnique('patches',level),solved:remain===0,remain,level}}
+
+// v2.21.2 — measured Queens logical difficulty profile.
+function queenLogicalComplete(){
+  if(!current||current.game!=='queens')return false;
+  let n=current.n,queens=[];
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.state[r][c]===2)queens.push([r,c]);
+  if(queens.length!==n)return false;
+  if(new Set(queens.map(x=>x[0])).size!==n||new Set(queens.map(x=>x[1])).size!==n)return false;
+  if(new Set(queens.map(([r,c])=>current.reg[r][c])).size!==n)return false;
+  return !queenStateContradiction()
+}
+function applyQueenProfileHint(h){
+  if(!h||h.timeout||!Number.isInteger(h.r)||!Number.isInteger(h.c)||![1,2].includes(h.v))return false;
+  if(current.state[h.r][h.c]!==0)return false;
+  current.state[h.r][h.c]=h.v;return true
+}
+function queenSingletonRegions(reg){
+  let sizes={};for(let id of reg.flat())sizes[id]=(sizes[id]||0)+1;
+  return Object.values(sizes).filter(x=>x===1).length
+}
+function analyzeQueensLogicProfile(reg,options={}){
+  let n=reg.length,previous=current,deadline=Date.now()+(options.budgetMs||2500),profile={
+    rank0:0,rank1:0,rank2:0,rank3:0,singletonRegions:queenSingletonRegions(reg),
+    solvedLogically:false,timeout:false,stalled:false,sequence:[]
+  };
+  current={game:'queens',diff:options.diff||'medium',n,reg:reg.map(r=>[...r]),state:Array.from({length:n},()=>Array(n).fill(0)),completed:false};
+  try{
+    let guard=0,maxSteps=n*n*5;
+    while(!queenLogicalComplete()&&guard++<maxSteps){
+      if(Date.now()>=deadline){profile.timeout=true;break}
+      let direct=findQueenLogicalHint();
+      if(direct){
+        if(!applyQueenProfileHint(direct)){profile.stalled=true;break}
+        profile.rank0++;profile.sequence.push({rank:0,technique:direct.technique||null,r:direct.r,c:direct.c,v:direct.v});continue
+      }
+      let h=findQueenRank1Hint(deadline);
+      if(h?.timeout){profile.timeout=true;break}
+      if(h){
+        if(!applyQueenProfileHint(h)){profile.stalled=true;break}
+        profile.rank1++;profile.sequence.push({rank:1,technique:h.technique||'Q_CONTRADICTION_R1',r:h.r,c:h.c,v:h.v});continue
+      }
+      h=findQueenRank2Hint(deadline);
+      if(h?.timeout){profile.timeout=true;break}
+      if(h){
+        if(!applyQueenProfileHint(h)){profile.stalled=true;break}
+        profile.rank2++;profile.sequence.push({rank:2,technique:h.technique||'Q_CONTRADICTION_R2',r:h.r,c:h.c,v:h.v});continue
+      }
+      h=findQueenRank3Hint(deadline);
+      if(h?.timeout){profile.timeout=true;break}
+      if(h){
+        if(!applyQueenProfileHint(h)){profile.stalled=true;break}
+        profile.rank3++;profile.sequence.push({rank:3,technique:h.technique||'Q_CONTRADICTION_R3',r:h.r,c:h.c,v:h.v});continue
+      }
+      profile.stalled=true;break
+    }
+    profile.solvedLogically=queenLogicalComplete();
+    profile.maxRank=profile.rank3?3:profile.rank2?2:profile.rank1?1:0;
+    return profile
+  }finally{current=previous}
+}
+
+
+function queenProfileMatchesDifficulty(profile,diff){
+  if(!profile||!profile.solvedLogically||profile.timeout||profile.stalled||profile.rank3!==0)return false;
+  if(diff==='easy')return profile.rank1<=1&&profile.rank2===0;
+  if(diff==='medium')return profile.rank1>=2&&profile.rank2===0;
+  if(diff==='hard')return profile.singletonRegions===0&&profile.rank1>=3&&profile.rank2<=1;
+  if(diff==='expert')return profile.singletonRegions===0&&profile.rank2>=1;
+  return false
+}
+function queenCompactProfile(profile){
+  return {rank0:profile.rank0,rank1:profile.rank1,rank2:profile.rank2,rank3:profile.rank3,
+    singletonRegions:profile.singletonRegions,solvedLogically:profile.solvedLogically,
+    timeout:!!profile.timeout,stalled:!!profile.stalled,maxRank:profile.maxRank};
+}
+function queenProfileSummary(profile){
+  return `R0 ${profile.rank0} · R1 ${profile.rank1} · R2 ${profile.rank2} · R3 ${profile.rank3}`;
+}
+function queenProfileRating(reg,profile){
+  let legacy=analyzeQueens(reg),level=profile.rank2?2:profile.rank1?1:0;
+  return {...legacy,technique:labelTechnique('queens',level),logicProfile:{
+    rank0:profile.rank0,rank1:profile.rank1,rank2:profile.rank2,rank3:profile.rank3,
+    singletonRegions:profile.singletonRegions,solvedLogically:profile.solvedLogically,maxRank:profile.maxRank
+  }}
+}
+
 function queenSearchStats(reg){let n=reg.length,nodes=0,maxBranch=0;function bt(r,cols,zones,prev){nodes++;if(r===n)return true;let cand=[];for(let c=0;c<n;c++){let z=reg[r][c];if(cols.has(c)||zones.has(z)||(r>0&&Math.abs(c-prev)===1))continue;cand.push(c)}maxBranch=Math.max(maxBranch,cand.length);for(let c of cand){let z=reg[r][c];cols.add(c);zones.add(z);if(bt(r+1,cols,zones,c))return true;cols.delete(c);zones.delete(z)}return false}bt(0,new Set(),new Set(),-99);return {nodes,maxBranch}}
 function analyzeQueens(reg){let n=reg.length,regionSizes={};for(let x of reg.flat())regionSizes[x]=(regionSizes[x]||0)+1;let singles=Object.values(regionSizes).filter(x=>x===1).length,stats=queenSearchStats(reg),score=Math.round((stats.nodes-n-1)*2+stats.maxBranch*3+(n-singles)*2);let level=score>220?2:score>70?1:0;return {score,technique:labelTechnique('queens',level),solved:true,remain:0,level,nodes:stats.nodes,singles}}
 
@@ -3667,18 +3841,20 @@ function collectFreshQueenCandidates(diff,count,day=localDay()){
   return out
 }
 function queenCandidateForDisplay(diff,dailyRequest=false,day=localDay()){
-  let count=diff==='expert'?16:diff==='hard'?14:6,g;
-  if(dailyRequest){
-    // Daily challenge must remain deterministic for a given date/version.
-    g=targetPick(collectCandidates(()=>queenCandidate(diff),count),diff)
-  }else{
-    g=targetPick(collectFreshQueenCandidates(diff,count,day),diff)
+  let g=null;
+  if(dailyRequest)g=queenCandidate(diff);
+  else{
+    let seen=queenSessionSet(day);
+    for(let tries=0;tries<40;tries++){
+      let x=queenCandidate(diff),sig=queenCanonicalSignature(x.reg);
+      if(seen.has(sig))continue;g=x;break
+    }
+    if(!g)throw new Error(lang()==='fr'?'Aucune nouvelle grille Couronnes conforme au profil logique n’a pu être générée.':'No fresh Crowns grid matching the logical profile could be generated.')
   }
-  rememberQueenGeneratedThisSession(g.reg,day);
-  return g
+  rememberQueenGeneratedThisSession(g.reg,day);return g
 }
 
-function queenCandidate(diff){let g=generateQueensPuzzle(diff);g.rating=analyzeQueens(g.reg);return g}
+function queenCandidate(diff){let g=generateQueensPuzzle(diff);g.rating=queenProfileRating(g.reg,g.logicProfile);return g}
 function tangoCandidate(diff){let g=generateTangoPuzzle(diff);g.rating=analyzeTango(g.sol,g.givens,g.edges);return g}
 function sudokuCandidate(diff){let sol=randomSudokuSolution(),holes={easy:16,medium:22,hard:27}[diff],empty=makeSudokuHoles(sol,holes);return {sol,empty,rating:analyzeSudoku(sol,empty)}}
 function patchesCandidate(diff){let g=generatePatchesPuzzle(diff);g.rating=analyzePatches(g.n,g.ids,g.clues);return g}

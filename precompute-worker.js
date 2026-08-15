@@ -37,22 +37,15 @@ self.setInterval=()=>0;
 self.clearInterval=__noop;
 
 // Use the exact same versioned generator implementation as the UI.
-importScripts('./app.js?v=2.21.1');
+importScripts('./app.js?v=2.21.3');
 
 function __queenBackgroundCandidate(diff,forbidden){
-  let count=diff==='expert'?4:diff==='hard'?14:6;
-  let out=[],batch=new Set(),guard=0,maxTries=Math.max(64,count*16),blocked=new Set(forbidden||[]);
-  while(out.length<count&&guard++<maxTries){
-    try{
-      let g=queenCandidate(diff),sig=queenCanonicalSignature(g.reg);
-      if(blocked.has(sig)||batch.has(sig))continue;
-      batch.add(sig);g.__queenSignature=sig;out.push(g)
-    }catch(_){}
+  let blocked=new Set(forbidden||[]);
+  for(let guard=0;guard<48;guard++){
+    let g=queenCandidate(diff),sig=queenCanonicalSignature(g.reg);
+    if(blocked.has(sig))continue;g.__queenSignature=sig;return g
   }
-  if(!out.length)throw new Error('No fresh Queens candidate available');
-  let g=targetPick(out,diff);
-  if(!g.__queenSignature)g.__queenSignature=queenCanonicalSignature(g.reg);
-  return g
+  throw new Error('No fresh Queens candidate matching logical profile')
 }
 function __build(game,diff,forbiddenQueens){
   if(game==='queens')return __queenBackgroundCandidate(diff,forbiddenQueens);

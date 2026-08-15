@@ -1,6 +1,73 @@
-# QUADLUD — v2.21.1
+# QUADLUD — v2.21.3
 
 Application web statique mobile-first regroupant **Couronnes**, **Soleil-Lune**, **Grille 6** et **Rectangles**.
+
+## v2.21.3 — Couronnes : tailles 7×7 / 8×8 / 9×9 / 9×9
+- Les tailles Couronnes deviennent :
+  - **Facile : 7×7** ;
+  - **Moyen : 8×8** ;
+  - **Difficile : 9×9** ;
+  - **Expert : 9×9** (inchangé).
+- Les critères logiques validés en v2.21.2 sont conservés sans modification :
+  - Facile : R1 ≤ 1, R2 = 0, R3 = 0 ;
+  - Moyen : R1 ≥ 2, R2 = 0, R3 = 0 ;
+  - Difficile : aucune zone singleton, R1 ≥ 3, R2 ≤ 1, R3 = 0 ;
+  - Expert : aucune zone singleton, R2 ≥ 1, R3 = 0.
+- Difficile et Expert ont donc désormais la même dimension 9×9, mais restent distingués par la profondeur logique requise.
+- Le générateur Difficile 9×9 utilise une stratégie sans singleton adaptée et un fallback 9×9 prévalidé.
+- Compatibilité des défis partageables :
+  - les codes **QL11** restent liés au générateur v1 historique ;
+  - les codes **QL12** restent liés au générateur v2.21.2 (tailles 6×6 / 7×7 / 8×8 / 9×9) ;
+  - les nouveaux défis utilisent **QL13** et les tailles 7×7 / 8×8 / 9×9 / 9×9.
+- Le seed du Défi quotidien reste historique, mais la grille Couronnes quotidienne peut changer par rapport à v2.21.2 puisque la dimension Moyen passe de 7×7 à 8×8.
+- Aucun changement aux règles, aux profils R1/R2, aux IDs de techniques, au Logic Coach, à l’historique ou aux trois autres jeux.
+
+### Validation spécifique v2.21.3
+- Génération et certification sur les quatre nouvelles dimensions.
+- Unicité contrôlée sur chaque niveau.
+- Vérification que Difficile 9×9 reste sans singleton et respecte R1 ≥ 3, R2 ≤ 1.
+- Vérification qu’Expert reste 9×9 avec R2 ≥ 1.
+- Vérification des anciens défis QL11 et QL12, et des nouveaux défis QL13.
+- Non-régression des alertes configurables, du Mode Exploration, de l’audit, du Défi quotidien, des 27 techniques/leçons et des générateurs des trois autres jeux.
+
+## v2.21.2 — Couronnes : difficultés fondées sur les inférences nécessaires
+- La difficulté **Couronnes** n’est plus définie principalement par le score heuristique de recherche. Chaque grille candidate est désormais parcourue par le moteur logique réel de QUADLUD.
+- Le classificateur applique systématiquement toutes les déductions **R0** disponibles. Lorsqu’il est bloqué, il applique une seule inférence de rang supérieur, puis recommence par R0. Ainsi, une inférence R1 qui débloque plusieurs déductions simples ne compte que pour **une R1**.
+- Profils imposés :
+  - **Facile 6×6** : au plus **1 R1**, **0 R2**, **0 R3** ;
+  - **Moyen 7×7** : au moins **2 R1**, **0 R2**, **0 R3** ;
+  - **Difficile 8×8** : **0 zone singleton**, au moins **3 R1**, au plus **1 R2**, **0 R3** ;
+  - **Expert 9×9** : **0 zone singleton**, au moins **1 R2**, **0 R3**.
+- Toutes les grilles acceptées doivent en outre :
+  - conserver une solution unique ;
+  - être résolues complètement par cette trajectoire logique ;
+  - respecter la taille historique du niveau.
+- Le générateur Difficile a été adapté : il part de davantage de régions initialement contraintes puis supprime les singletons jusqu’à zéro avant certification. Cette stratégie produit beaucoup plus efficacement des 8×8 nécessitant plusieurs R1 mais au plus une R2.
+- Une grille de secours Difficile a été remplacée par une grille prévalidée conforme au nouveau profil. La grille de secours Expert reste conforme (aucun singleton, au moins une R2, aucune R3).
+- Le score heuristique historique `analyzeQueens()` est conservé uniquement comme information secondaire d’affichage/statistique ; **il ne décide plus de la difficulté Couronnes**.
+- `rating.logicProfile` conserve désormais `rank0`, `rank1`, `rank2`, `rank3`, `singletonRegions`, `solvedLogically` et `maxRank`.
+- Le pré-calcul en Worker utilise le même générateur certifié ; aucune logique de difficulté n’est dupliquée.
+- Compatibilité des défis partageables :
+  - les anciens codes **`QL11`** restent interprétés avec un générateur Couronnes v1 figé et recréent exactement leurs anciennes grilles ;
+  - les nouveaux codes utilisent **`QL12`** et suivent le nouveau classificateur logique.
+- La génération quotidienne Couronnes continue d’utiliser le seed quotidien historique, mais le générateur Couronnes ayant changé, une grille quotidienne régénérée sous v2.21.2 peut différer de celle produite par une version antérieure pour la même date. Ce changement est explicitement lié à la nouvelle définition validée des difficultés.
+- Aucun changement n’est apporté aux règles de Couronnes, au Logic Coach, aux 27 IDs de techniques, à l’historique, à la maîtrise ni aux trois autres jeux.
+
+### Validation spécifique v2.21.2
+- Lot statistique réellement exécuté de **39 grilles Couronnes** :
+  - 12 Facile ;
+  - 12 Moyen ;
+  - 10 Difficile ;
+  - 5 Expert.
+- **39/39** respectent leur profil logique et ont une solution unique.
+- Dans le lot :
+  - Facile : 0 R2/R3 et R1 ≤ 1 ;
+  - Moyen : R1 ≥ 2 et 0 R2/R3 ;
+  - Difficile : 0 singleton, R1 ≥ 3, R2 ≤ 1, 0 R3 ;
+  - Expert : 0 singleton, R2 ≥ 1, 0 R3.
+- Revalidation des empreintes historiques des défis Couronnes `QL11` : Facile, Moyen, Difficile et Expert reproduisent exactement les empreintes v2.21 attendues.
+- Vérification déterministe des nouveaux défis Couronnes `QL12` et de leur conformité logique.
+- Non-régression des alertes configurables v2.21.1, des défis partageables, du Mode Exploration, de l’audit des coups, du Défi quotidien, des 27 techniques/leçons et des générateurs des autres jeux.
 
 ## v2.21.1 — alertes configurables et plateau stable
 - Deux préférences indépendantes sont ajoutées dans **Préférences** :

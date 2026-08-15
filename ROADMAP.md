@@ -20,6 +20,8 @@ Le Logic Coach doit enseigner progressivement le raisonnement réel à partir de
 - **v2.20** — Mode Exploration : branches / hypothèses — ✅ terminé
 - **v2.21** — Défis partageables par seed/code — ✅ terminé
   - **v2.21.1** — patch UX : alertes configurables et plateau stable — ✅ terminé
+  - **v2.21.2** — patch Couronnes : difficultés certifiées par inférences R1/R2 — ✅ terminé
+  - **v2.21.3** — patch Couronnes : tailles 7×7 / 8×8 / 9×9 / 9×9 — ✅ terminé
 - **v2.22** — Accessibilité — prochain jalon
 - **v2.23** — Confidentialité / portabilité des données
 - **v2.24** — Préparation iOS

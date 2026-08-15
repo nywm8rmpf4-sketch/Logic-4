@@ -2,7 +2,7 @@
   "id": "./",
   "name": "QUADLUD — Jeux de logique",
   "short_name": "QUADLUD",
-  "description": "QUADLUD — quatre jeux de logique en 30 langues avec alertes configurables sans déplacement du plateau, défis entre amis, Logic Coach et Mode Exploration.",
+  "description": "QUADLUD — quatre jeux de logique en 30 langues avec Couronnes 7×7 / 8×8 / 9×9 / 9×9 selon la difficulté, profils logiques certifiés, Logic Coach, Exploration et défis partageables.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
@@ -27,7 +27,7 @@
       "purpose": "any maskable"
     }
   ],
-  "version": "2.21.1",
+  "version": "2.21.3",
   "copyright": "Copyright © 2026 Serge Benoliel. All rights reserved.",
   "license": "Proprietary — see LICENSE"
 }
