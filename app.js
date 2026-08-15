@@ -5,7 +5,7 @@
  */
 'use strict';
 const $=s=>document.querySelector(s), app=$('#app'), toast=$('#toast'), timerEl=$('#timer');
-const VERSION='2.21.3', SAVE_KEY='logic4-save-v1';
+const VERSION='2.21.4', SAVE_KEY='logic4-save-v1';
 let current=null, tick=null, startedAt=0, elapsedBase=0, paused=false;
 const I18N={
 fr:{
@@ -472,6 +472,38 @@ Object.assign(I18N.ro,{"illegalAlerts":"Alerte pentru mutări interzise","illega
 Object.assign(I18N.sk,{"illegalAlerts":"Upozornenia na zakázané ťahy","illegalAlertsSub":"Automaticky označ konflikty pravidiel červenou a zobraz upozornenie na chybu.","unjustifiedAlerts":"Upozornenia na neodôvodnené ťahy","unjustifiedAlertsSub":"Zobraz legálny, ale nedokázaný prvok oranžovou bez otvorenia panela oznámení."});
 Object.assign(I18N.sl,{"illegalAlerts":"Opozorila za prepovedane poteze","illegalAlertsSub":"Samodejno označi konflikte pravil rdeče in prikaži opozorilo o napaki.","unjustifiedAlerts":"Opozorila za neutemeljene poteze","unjustifiedAlertsSub":"Prikaži dovoljeno, vendar nedokazano figuro oranžno brez odpiranja plošče z obvestili."});
 Object.assign(I18N.sv,{"illegalAlerts":"Varningar för förbjudna drag","illegalAlertsSub":"Markera automatiskt regelkonflikter med rött och visa felvarningen.","unjustifiedAlerts":"Varningar för omotiverade drag","unjustifiedAlertsSub":"Visa en laglig men obevisad pjäs i orange utan att öppna en meddelandepanel."});
+
+/* v2.21.4 — 3-stage Coach + step-by-step solution */
+Object.assign(I18N.en,{"walkthrough":"Step-by-step solution","walkthroughSub":"Follow the logical resolution of the puzzle without changing your grid.","walkthroughNext":"Next step","walkthroughPrevious":"Previous step","walkthroughRestart":"Restart","walkthroughClose":"Return to game","walkthroughStep":"Step","walkthroughStart":"Initial position","walkthroughComplete":"Resolution complete","walkthroughStalled":"QUADLUD cannot continue this resolution with its current logical techniques.","walkthroughWhy":"Why this move?","walkthroughCountsAsHelp":"Viewing this resolution counts as solution help for the current attempt."});
+Object.assign(I18N.fr,{"walkthrough":"Résolution pas à pas","walkthroughSub":"Suis la résolution logique du puzzle sans modifier ta grille.","walkthroughNext":"Étape suivante","walkthroughPrevious":"Étape précédente","walkthroughRestart":"Recommencer","walkthroughClose":"Retour au jeu","walkthroughStep":"Étape","walkthroughStart":"Position initiale","walkthroughComplete":"Résolution terminée","walkthroughStalled":"QUADLUD ne peut pas poursuivre cette résolution avec ses techniques logiques actuelles.","walkthroughWhy":"Pourquoi ce coup ?","walkthroughCountsAsHelp":"Consulter cette résolution compte comme une aide de type solution pour la partie en cours."});
+Object.assign(I18N.es,{"walkthrough":"Solución paso a paso","walkthroughSub":"Sigue la resolución lógica del puzzle sin modificar tu cuadrícula.","walkthroughNext":"Paso siguiente","walkthroughPrevious":"Paso anterior","walkthroughRestart":"Reiniciar","walkthroughClose":"Volver al juego","walkthroughStep":"Paso","walkthroughStart":"Posición inicial","walkthroughComplete":"Resolución completa","walkthroughStalled":"QUADLUD no puede continuar esta resolución con sus técnicas lógicas actuales.","walkthroughWhy":"¿Por qué esta jugada?","walkthroughCountsAsHelp":"Ver esta resolución cuenta como ayuda de solución para la partida actual."});
+Object.assign(I18N.pt,{"walkthrough":"Resolução passo a passo","walkthroughSub":"Segue a resolução lógica do puzzle sem alterar a tua grelha.","walkthroughNext":"Passo seguinte","walkthroughPrevious":"Passo anterior","walkthroughRestart":"Recomeçar","walkthroughClose":"Voltar ao jogo","walkthroughStep":"Passo","walkthroughStart":"Posição inicial","walkthroughComplete":"Resolução concluída","walkthroughStalled":"QUADLUD não consegue continuar esta resolução com as técnicas lógicas atuais.","walkthroughWhy":"Porquê esta jogada?","walkthroughCountsAsHelp":"Ver esta resolução conta como ajuda de solução para a partida atual."});
+Object.assign(I18N.it,{"walkthrough":"Soluzione passo passo","walkthroughSub":"Segui la risoluzione logica del puzzle senza modificare la tua griglia.","walkthroughNext":"Passo successivo","walkthroughPrevious":"Passo precedente","walkthroughRestart":"Ricomincia","walkthroughClose":"Torna al gioco","walkthroughStep":"Passo","walkthroughStart":"Posizione iniziale","walkthroughComplete":"Risoluzione completata","walkthroughStalled":"QUADLUD non può continuare questa risoluzione con le tecniche logiche attuali.","walkthroughWhy":"Perché questa mossa?","walkthroughCountsAsHelp":"Visualizzare questa risoluzione conta come aiuto di soluzione per la partita corrente."});
+Object.assign(I18N.de,{"walkthrough":"Schritt-für-Schritt-Lösung","walkthroughSub":"Verfolge die logische Lösung, ohne dein Spielfeld zu verändern.","walkthroughNext":"Nächster Schritt","walkthroughPrevious":"Vorheriger Schritt","walkthroughRestart":"Neu starten","walkthroughClose":"Zurück zum Spiel","walkthroughStep":"Schritt","walkthroughStart":"Ausgangsposition","walkthroughComplete":"Lösung abgeschlossen","walkthroughStalled":"QUADLUD kann diese Lösung mit den aktuellen Logiktechniken nicht fortsetzen.","walkthroughWhy":"Warum dieser Zug?","walkthroughCountsAsHelp":"Das Anzeigen dieser Lösung zählt als Lösungshilfe für den aktuellen Versuch."});
+Object.assign(I18N.nl,{"walkthrough":"Stap-voor-stapoplossing","walkthroughSub":"Volg de logische oplossing zonder je eigen bord te wijzigen.","walkthroughNext":"Volgende stap","walkthroughPrevious":"Vorige stap","walkthroughRestart":"Opnieuw beginnen","walkthroughClose":"Terug naar spel","walkthroughStep":"Stap","walkthroughStart":"Beginpositie","walkthroughComplete":"Oplossing voltooid","walkthroughStalled":"QUADLUD kan deze oplossing niet voortzetten met de huidige logische technieken.","walkthroughWhy":"Waarom deze zet?","walkthroughCountsAsHelp":"Deze oplossing bekijken telt als oplossingshulp voor de huidige poging."});
+Object.assign(I18N.zh,{"walkthrough":"逐步解答","walkthroughSub":"查看逻辑解题过程，而不改变你的当前棋盘。","walkthroughNext":"下一步","walkthroughPrevious":"上一步","walkthroughRestart":"重新开始","walkthroughClose":"返回游戏","walkthroughStep":"步骤","walkthroughStart":"初始位置","walkthroughComplete":"解答完成","walkthroughStalled":"QUADLUD 无法使用当前逻辑技巧继续此解答。","walkthroughWhy":"为什么这样走？","walkthroughCountsAsHelp":"查看此解答会计为当前对局使用了答案帮助。"});
+Object.assign(I18N.hi,{"walkthrough":"चरण-दर-चरण समाधान","walkthroughSub":"अपनी ग्रिड बदले बिना पहेली का तार्किक समाधान देखें।","walkthroughNext":"अगला चरण","walkthroughPrevious":"पिछला चरण","walkthroughRestart":"फिर से शुरू करें","walkthroughClose":"खेल पर लौटें","walkthroughStep":"चरण","walkthroughStart":"प्रारंभिक स्थिति","walkthroughComplete":"समाधान पूरा","walkthroughStalled":"QUADLUD अपनी वर्तमान तार्किक तकनीकों से इस समाधान को आगे नहीं बढ़ा सकता।","walkthroughWhy":"यह चाल क्यों?","walkthroughCountsAsHelp":"इस समाधान को देखना वर्तमान प्रयास में समाधान-सहायता माना जाएगा।"});
+Object.assign(I18N.ar,{"walkthrough":"حل خطوة بخطوة","walkthroughSub":"تابع الحل المنطقي للغز من دون تغيير شبكتك.","walkthroughNext":"الخطوة التالية","walkthroughPrevious":"الخطوة السابقة","walkthroughRestart":"إعادة البدء","walkthroughClose":"العودة إلى اللعبة","walkthroughStep":"خطوة","walkthroughStart":"الوضع الابتدائي","walkthroughComplete":"اكتمل الحل","walkthroughStalled":"لا يستطيع QUADLUD متابعة هذا الحل بتقنياته المنطقية الحالية.","walkthroughWhy":"لماذا هذه النقلة؟","walkthroughCountsAsHelp":"عرض هذا الحل يُحتسب كمساعدة حل للمحاولة الحالية."});
+Object.assign(I18N.bn,{"walkthrough":"ধাপে ধাপে সমাধান","walkthroughSub":"আপনার গ্রিড না বদলে ধাঁধার যৌক্তিক সমাধান অনুসরণ করুন।","walkthroughNext":"পরবর্তী ধাপ","walkthroughPrevious":"আগের ধাপ","walkthroughRestart":"আবার শুরু","walkthroughClose":"খেলায় ফিরুন","walkthroughStep":"ধাপ","walkthroughStart":"প্রাথমিক অবস্থা","walkthroughComplete":"সমাধান সম্পূর্ণ","walkthroughStalled":"QUADLUD বর্তমান যুক্তিগত কৌশল দিয়ে এই সমাধান আর এগিয়ে নিতে পারছে না।","walkthroughWhy":"এই চাল কেন?","walkthroughCountsAsHelp":"এই সমাধান দেখা বর্তমান প্রচেষ্টায় সমাধান-সহায়তা হিসেবে গণ্য হবে।"});
+Object.assign(I18N.id,{"walkthrough":"Solusi langkah demi langkah","walkthroughSub":"Ikuti penyelesaian logis tanpa mengubah papan Anda.","walkthroughNext":"Langkah berikutnya","walkthroughPrevious":"Langkah sebelumnya","walkthroughRestart":"Mulai ulang","walkthroughClose":"Kembali ke permainan","walkthroughStep":"Langkah","walkthroughStart":"Posisi awal","walkthroughComplete":"Penyelesaian selesai","walkthroughStalled":"QUADLUD tidak dapat melanjutkan penyelesaian ini dengan teknik logika saat ini.","walkthroughWhy":"Mengapa langkah ini?","walkthroughCountsAsHelp":"Melihat penyelesaian ini dihitung sebagai bantuan solusi untuk percobaan saat ini."});
+Object.assign(I18N.ur,{"walkthrough":"مرحلہ وار حل","walkthroughSub":"اپنی گرڈ بدلے بغیر پہیلی کا منطقی حل دیکھیں۔","walkthroughNext":"اگلا مرحلہ","walkthroughPrevious":"پچھلا مرحلہ","walkthroughRestart":"دوبارہ شروع کریں","walkthroughClose":"کھیل پر واپس جائیں","walkthroughStep":"مرحلہ","walkthroughStart":"ابتدائی حالت","walkthroughComplete":"حل مکمل","walkthroughStalled":"QUADLUD موجودہ منطقی تکنیکوں سے اس حل کو مزید آگے نہیں بڑھا سکتا۔","walkthroughWhy":"یہ چال کیوں؟","walkthroughCountsAsHelp":"یہ حل دیکھنا موجودہ کوشش میں حل کی مدد شمار ہوگا۔"});
+Object.assign(I18N.bg,{"walkthrough":"Решение стъпка по стъпка","walkthroughSub":"Проследи логическото решение, без да променяш своята дъска.","walkthroughNext":"Следваща стъпка","walkthroughPrevious":"Предишна стъпка","walkthroughRestart":"Отначало","walkthroughClose":"Обратно към играта","walkthroughStep":"Стъпка","walkthroughStart":"Начална позиция","walkthroughComplete":"Решението е завършено","walkthroughStalled":"QUADLUD не може да продължи решението с текущите логически техники.","walkthroughWhy":"Защо този ход?","walkthroughCountsAsHelp":"Преглеждането на решението се брои като помощ с решение за текущия опит."});
+Object.assign(I18N.hr,{"walkthrough":"Rješenje korak po korak","walkthroughSub":"Prati logičko rješenje bez mijenjanja svoje ploče.","walkthroughNext":"Sljedeći korak","walkthroughPrevious":"Prethodni korak","walkthroughRestart":"Ponovno pokreni","walkthroughClose":"Natrag u igru","walkthroughStep":"Korak","walkthroughStart":"Početni položaj","walkthroughComplete":"Rješenje završeno","walkthroughStalled":"QUADLUD ne može nastaviti ovo rješenje trenutačnim logičkim tehnikama.","walkthroughWhy":"Zašto ovaj potez?","walkthroughCountsAsHelp":"Pregled ovog rješenja računa se kao pomoć rješenjem za trenutačni pokušaj."});
+Object.assign(I18N.cs,{"walkthrough":"Řešení krok za krokem","walkthroughSub":"Sleduj logické řešení bez změny své herní plochy.","walkthroughNext":"Další krok","walkthroughPrevious":"Předchozí krok","walkthroughRestart":"Začít znovu","walkthroughClose":"Zpět do hry","walkthroughStep":"Krok","walkthroughStart":"Výchozí pozice","walkthroughComplete":"Řešení dokončeno","walkthroughStalled":"QUADLUD nemůže pokračovat v řešení pomocí současných logických technik.","walkthroughWhy":"Proč tento tah?","walkthroughCountsAsHelp":"Zobrazení tohoto řešení se počítá jako pomoc s řešením pro aktuální pokus."});
+Object.assign(I18N.da,{"walkthrough":"Trinvis løsning","walkthroughSub":"Følg den logiske løsning uden at ændre dit spillebræt.","walkthroughNext":"Næste trin","walkthroughPrevious":"Forrige trin","walkthroughRestart":"Start forfra","walkthroughClose":"Tilbage til spillet","walkthroughStep":"Trin","walkthroughStart":"Startposition","walkthroughComplete":"Løsning færdig","walkthroughStalled":"QUADLUD kan ikke fortsætte løsningen med de nuværende logiske teknikker.","walkthroughWhy":"Hvorfor dette træk?","walkthroughCountsAsHelp":"Visning af denne løsning tæller som løsningshjælp i det aktuelle forsøg."});
+Object.assign(I18N.et,{"walkthrough":"Samm-sammuline lahendus","walkthroughSub":"Jälgi loogilist lahendust oma mängulauda muutmata.","walkthroughNext":"Järgmine samm","walkthroughPrevious":"Eelmine samm","walkthroughRestart":"Alusta uuesti","walkthroughClose":"Tagasi mängu","walkthroughStep":"Samm","walkthroughStart":"Algseis","walkthroughComplete":"Lahendus valmis","walkthroughStalled":"QUADLUD ei saa praeguste loogikatehnikatega seda lahendust jätkata.","walkthroughWhy":"Miks see käik?","walkthroughCountsAsHelp":"Selle lahenduse vaatamine loetakse praeguse katse lahendusabiks."});
+Object.assign(I18N.fi,{"walkthrough":"Vaiheittainen ratkaisu","walkthroughSub":"Seuraa loogista ratkaisua muuttamatta omaa ruudukkoasi.","walkthroughNext":"Seuraava vaihe","walkthroughPrevious":"Edellinen vaihe","walkthroughRestart":"Aloita alusta","walkthroughClose":"Takaisin peliin","walkthroughStep":"Vaihe","walkthroughStart":"Alkutilanne","walkthroughComplete":"Ratkaisu valmis","walkthroughStalled":"QUADLUD ei pysty jatkamaan ratkaisua nykyisillä logiikkatekniikoillaan.","walkthroughWhy":"Miksi tämä siirto?","walkthroughCountsAsHelp":"Ratkaisun katsominen lasketaan ratkaisuavuksi nykyisessä yrityksessä."});
+Object.assign(I18N.el,{"walkthrough":"Λύση βήμα προς βήμα","walkthroughSub":"Παρακολούθησε τη λογική λύση χωρίς να αλλάξεις το ταμπλό σου.","walkthroughNext":"Επόμενο βήμα","walkthroughPrevious":"Προηγούμενο βήμα","walkthroughRestart":"Επανεκκίνηση","walkthroughClose":"Επιστροφή στο παιχνίδι","walkthroughStep":"Βήμα","walkthroughStart":"Αρχική θέση","walkthroughComplete":"Η λύση ολοκληρώθηκε","walkthroughStalled":"Το QUADLUD δεν μπορεί να συνεχίσει τη λύση με τις τρέχουσες λογικές τεχνικές.","walkthroughWhy":"Γιατί αυτή η κίνηση;","walkthroughCountsAsHelp":"Η προβολή αυτής της λύσης μετρά ως βοήθεια λύσης για την τρέχουσα προσπάθεια."});
+Object.assign(I18N.hu,{"walkthrough":"Lépésről lépésre megoldás","walkthroughSub":"Kövesd a logikai megoldást a saját táblád módosítása nélkül.","walkthroughNext":"Következő lépés","walkthroughPrevious":"Előző lépés","walkthroughRestart":"Újrakezdés","walkthroughClose":"Vissza a játékhoz","walkthroughStep":"Lépés","walkthroughStart":"Kezdőállás","walkthroughComplete":"Megoldás kész","walkthroughStalled":"A QUADLUD a jelenlegi logikai technikákkal nem tudja folytatni ezt a megoldást.","walkthroughWhy":"Miért ez a lépés?","walkthroughCountsAsHelp":"A megoldás megtekintése megoldási segítségnek számít az aktuális próbálkozásban."});
+Object.assign(I18N.ga,{"walkthrough":"Réiteach céim ar chéim","walkthroughSub":"Lean an réiteach loighciúil gan do chlár féin a athrú.","walkthroughNext":"An chéad chéim eile","walkthroughPrevious":"An chéim roimhe","walkthroughRestart":"Atosaigh","walkthroughClose":"Ar ais chuig an gcluiche","walkthroughStep":"Céim","walkthroughStart":"Suíomh tosaigh","walkthroughComplete":"Réiteach críochnaithe","walkthroughStalled":"Ní féidir le QUADLUD leanúint leis an réiteach leis na teicnící loighciúla reatha.","walkthroughWhy":"Cén fáth an bogadh seo?","walkthroughCountsAsHelp":"Áirítear féachaint ar an réiteach seo mar chabhair réitigh don iarracht reatha."});
+Object.assign(I18N.lv,{"walkthrough":"Risinājums soli pa solim","walkthroughSub":"Seko loģiskajam risinājumam, nemainot savu laukumu.","walkthroughNext":"Nākamais solis","walkthroughPrevious":"Iepriekšējais solis","walkthroughRestart":"Sākt no jauna","walkthroughClose":"Atpakaļ uz spēli","walkthroughStep":"Solis","walkthroughStart":"Sākuma pozīcija","walkthroughComplete":"Risinājums pabeigts","walkthroughStalled":"QUADLUD nevar turpināt risinājumu ar pašreizējām loģikas metodēm.","walkthroughWhy":"Kāpēc šis gājiens?","walkthroughCountsAsHelp":"Šī risinājuma skatīšana tiek uzskatīta par risinājuma palīdzību pašreizējā mēģinājumā."});
+Object.assign(I18N.lt,{"walkthrough":"Sprendimas žingsnis po žingsnio","walkthroughSub":"Sek loginį sprendimą nekeisdamas savo lentos.","walkthroughNext":"Kitas žingsnis","walkthroughPrevious":"Ankstesnis žingsnis","walkthroughRestart":"Pradėti iš naujo","walkthroughClose":"Grįžti į žaidimą","walkthroughStep":"Žingsnis","walkthroughStart":"Pradinė padėtis","walkthroughComplete":"Sprendimas baigtas","walkthroughStalled":"QUADLUD negali tęsti sprendimo dabartinėmis loginėmis technikomis.","walkthroughWhy":"Kodėl šis ėjimas?","walkthroughCountsAsHelp":"Šio sprendimo peržiūra laikoma sprendimo pagalba dabartiniam bandymui."});
+Object.assign(I18N.mt,{"walkthrough":"Soluzzjoni pass pass","walkthroughSub":"Segwi s-soluzzjoni loġika mingħajr ma tbiddel il-bord tiegħek.","walkthroughNext":"Pass li jmiss","walkthroughPrevious":"Pass ta’ qabel","walkthroughRestart":"Ibda mill-ġdid","walkthroughClose":"Lura għal-logħba","walkthroughStep":"Pass","walkthroughStart":"Pożizzjoni inizjali","walkthroughComplete":"Soluzzjoni kompluta","walkthroughStalled":"QUADLUD ma jistax ikompli din is-soluzzjoni bit-tekniki loġiċi attwali.","walkthroughWhy":"Għaliex din il-mossa?","walkthroughCountsAsHelp":"Li tara din is-soluzzjoni jgħodd bħala għajnuna tas-soluzzjoni għall-prova attwali."});
+Object.assign(I18N.pl,{"walkthrough":"Rozwiązanie krok po kroku","walkthroughSub":"Śledź logiczne rozwiązanie bez zmiany swojej planszy.","walkthroughNext":"Następny krok","walkthroughPrevious":"Poprzedni krok","walkthroughRestart":"Zacznij od nowa","walkthroughClose":"Wróć do gry","walkthroughStep":"Krok","walkthroughStart":"Pozycja początkowa","walkthroughComplete":"Rozwiązanie zakończone","walkthroughStalled":"QUADLUD nie może kontynuować rozwiązania przy użyciu obecnych technik logicznych.","walkthroughWhy":"Dlaczego ten ruch?","walkthroughCountsAsHelp":"Wyświetlenie tego rozwiązania liczy się jako pomoc w rozwiązaniu bieżącej próby."});
+Object.assign(I18N.ro,{"walkthrough":"Rezolvare pas cu pas","walkthroughSub":"Urmărește rezolvarea logică fără să modifici tabla ta.","walkthroughNext":"Pasul următor","walkthroughPrevious":"Pasul anterior","walkthroughRestart":"Reîncepe","walkthroughClose":"Înapoi la joc","walkthroughStep":"Pas","walkthroughStart":"Poziția inițială","walkthroughComplete":"Rezolvare completă","walkthroughStalled":"QUADLUD nu poate continua această rezolvare cu tehnicile logice actuale.","walkthroughWhy":"De ce această mutare?","walkthroughCountsAsHelp":"Vizualizarea acestei rezolvări contează ca ajutor de soluție pentru încercarea curentă."});
+Object.assign(I18N.sk,{"walkthrough":"Riešenie krok za krokom","walkthroughSub":"Sleduj logické riešenie bez zmeny svojej hracej plochy.","walkthroughNext":"Ďalší krok","walkthroughPrevious":"Predchádzajúci krok","walkthroughRestart":"Začať znova","walkthroughClose":"Späť do hry","walkthroughStep":"Krok","walkthroughStart":"Východisková pozícia","walkthroughComplete":"Riešenie dokončené","walkthroughStalled":"QUADLUD nemôže pokračovať v riešení pomocou súčasných logických techník.","walkthroughWhy":"Prečo tento ťah?","walkthroughCountsAsHelp":"Zobrazenie tohto riešenia sa počíta ako pomoc s riešením pre aktuálny pokus."});
+Object.assign(I18N.sl,{"walkthrough":"Rešitev korak za korakom","walkthroughSub":"Sledi logični rešitvi, ne da bi spremenil svojo ploščo.","walkthroughNext":"Naslednji korak","walkthroughPrevious":"Prejšnji korak","walkthroughRestart":"Začni znova","walkthroughClose":"Nazaj v igro","walkthroughStep":"Korak","walkthroughStart":"Začetni položaj","walkthroughComplete":"Rešitev končana","walkthroughStalled":"QUADLUD s trenutnimi logičnimi tehnikami ne more nadaljevati te rešitve.","walkthroughWhy":"Zakaj ta poteza?","walkthroughCountsAsHelp":"Ogled te rešitve šteje kot pomoč pri rešitvi za trenutni poskus."});
+Object.assign(I18N.sv,{"walkthrough":"Steg-för-steg-lösning","walkthroughSub":"Följ den logiska lösningen utan att ändra ditt eget bräde.","walkthroughNext":"Nästa steg","walkthroughPrevious":"Föregående steg","walkthroughRestart":"Börja om","walkthroughClose":"Tillbaka till spelet","walkthroughStep":"Steg","walkthroughStart":"Startposition","walkthroughComplete":"Lösning klar","walkthroughStalled":"QUADLUD kan inte fortsätta lösningen med de nuvarande logiska teknikerna.","walkthroughWhy":"Varför detta drag?","walkthroughCountsAsHelp":"Att visa denna lösning räknas som lösningshjälp för det aktuella försöket."});
 let DIFF={};
 function lang(){let l=prefs().lang;return SUPPORTED_LANGS.includes(l)?l:'fr'}
 function dateLocale(){return {"en":"en-US","zh":"zh-CN","hi":"hi-IN","es":"es-ES","ar":"ar","fr":"fr-FR","bn":"bn-BD","pt":"pt-PT","id":"id-ID","ur":"ur-PK","bg":"bg-BG","hr":"hr-HR","cs":"cs-CZ","da":"da-DK","nl":"nl-NL","et":"et-EE","fi":"fi-FI","de":"de-DE","el":"el-GR","hu":"hu-HU","ga":"ga-IE","it":"it-IT","lv":"lv-LV","lt":"lt-LT","mt":"mt-MT","pl":"pl-PL","ro":"ro-RO","sk":"sk-SK","sl":"sl-SI","sv":"sv-SE"}[lang()]||'en-US'}
@@ -918,7 +950,7 @@ function captureRejectedPatchError(info){
 
 function statsFinish(c,seconds,outcome){
   if(!c||c.statsClosed)return;c.statsClosed=true;
-  let s=safeStats(),b=statBucket(s,c.game,c.diff),rec={id:c.attemptId||`${Date.now()}`,ts:Date.now(),day:localDay(),game:c.game,diff:c.diff,seconds:Math.max(0,Math.round(seconds)),outcome,score:c.rating?.score??null,backtrackUsed:!!c.backtrackUsed,hintUsed:!!c.hintUsed,coachUsage:c.coachUsage?{...c.coachUsage}:null,errorCoachUsage:c.errorCoachUsage?{...c.errorCoachUsage}:null,reasoningAudit:c.reasoningAudit?{...c.reasoningAudit}:null,exploration:c.exploration?{...c.exploration}:null,challengeCode:c.challengeCode||null,challengeGenerator:c.challengeGenerator||null,challengeFingerprint:c.challengeFingerprint||null,masterySession:cloneMasterySession(c.masterySession),masteryMerged:true};
+  let s=safeStats(),b=statBucket(s,c.game,c.diff),rec={id:c.attemptId||`${Date.now()}`,ts:Date.now(),day:localDay(),game:c.game,diff:c.diff,seconds:Math.max(0,Math.round(seconds)),outcome,score:c.rating?.score??null,backtrackUsed:!!c.backtrackUsed,hintUsed:!!c.hintUsed,walkthroughUsed:!!c.walkthroughUsed,coachUsage:c.coachUsage?{...c.coachUsage}:null,errorCoachUsage:c.errorCoachUsage?{...c.errorCoachUsage}:null,reasoningAudit:c.reasoningAudit?{...c.reasoningAudit}:null,exploration:c.exploration?{...c.exploration}:null,challengeCode:c.challengeCode||null,challengeGenerator:c.challengeGenerator||null,challengeFingerprint:c.challengeFingerprint||null,masterySession:cloneMasterySession(c.masterySession),masteryMerged:true};
   if(outcome==='solved'){s.solved++;s.totalSolvedSeconds+=rec.seconds;b.solved++;b.totalSeconds+=rec.seconds;b.best=b.best==null?rec.seconds:Math.min(b.best,rec.seconds)}
   if(outcome==='revealed'){s.revealed++;b.revealed++}
   masteryMergeIntoStats(s,c.masterySession);
@@ -1093,8 +1125,13 @@ function saveDailyState(x){try{localStorage.setItem(DAILY_KEY,JSON.stringify(x))
 function dailyKey(day,game){return `${day}:${game}`}
 function dailyRecord(day,game,state=dailyState()){return state[dailyKey(day,game)]||null}
 function dailyHelpStage(c){
-  let s=Math.max(0,Math.min(4,Number(c?.coachUsage?.maxStage)||0));
-  if(!s&&c?.hintUsed)s=4;return s
+  if(c?.walkthroughUsed)return 4;
+  let u=c?.coachUsage||{};
+  if((u.reveal||0)>0)return 4;
+  if((u.why||0)>0)return 3;
+  if((u.rule||0)>0)return 2;
+  if((u.where||0)>0)return 1;
+  return c?.hintUsed?4:0
 }
 function dailyHelpLabel(stage){
   return [tr('dailyNoHelp'),tr('dailyOrientation'),tr('dailyRuleHelp'),tr('dailyExplanationHelp'),tr('dailyRevealHelp')][Math.max(0,Math.min(4,Number(stage)||0))]
@@ -1270,8 +1307,8 @@ function techniqueLibraryHtml(game){
 
 
 // ===== v2.15.0 — logical mastery profile =====
-const MASTERY_KINDS=['encountered','solo','where','rule','why','reveal','errors'];
-function emptyMasteryCounts(){return {encountered:0,solo:0,where:0,rule:0,why:0,reveal:0,errors:0}}
+const MASTERY_KINDS=['encountered','solo','where','rule','why','reveal','where3','why3','reveal3','errors'];
+function emptyMasteryCounts(){return {encountered:0,solo:0,where:0,rule:0,why:0,reveal:0,where3:0,why3:0,reveal3:0,errors:0}}
 function normalizeMasteryCounts(x={}){
   let o=emptyMasteryCounts();for(let k of MASTERY_KINDS)o[k]=Math.max(0,Number(x?.[k])||0);return o
 }
@@ -1284,7 +1321,7 @@ function masterySessionBucket(id){
 }
 function masteryRecord(id,kind){
   let b=masterySessionBucket(id);if(!b||!MASTERY_KINDS.includes(kind))return false;
-  if(kind==='solo'||kind==='where'||kind==='errors')b.encountered++;
+  if(kind==='solo'||kind==='where'||kind==='where3'||kind==='errors')b.encountered++;
   b[kind]++;return true
 }
 function cloneMasterySession(s){return s?JSON.parse(JSON.stringify(s)):null}
@@ -1308,7 +1345,8 @@ function masteryLegacyFromHistory(history=[]){
     for(let [id,t] of Object.entries(rec?.coachUsage?.techniques||{})){
       if(!TECHNIQUE_LIBRARY[id])continue;
       let b=out[id]||(out[id]=emptyMasteryCounts()),where=Math.max(0,Number(t.where)||0);
-      b.encountered+=where;b.where+=where;b.rule+=Math.max(0,Number(t.rule)||0);b.why+=Math.max(0,Number(t.why)||0);b.reveal+=Math.max(0,Number(t.reveal)||0)
+      if(rec?.coachUsage?.flowVersion===2){b.encountered+=where;b.where3+=where;b.why3+=Math.max(0,Number(t.why)||0);b.reveal3+=Math.max(0,Number(t.reveal)||0)}
+      else{b.encountered+=where;b.where+=where;b.rule+=Math.max(0,Number(t.rule)||0);b.why+=Math.max(0,Number(t.why)||0);b.reveal+=Math.max(0,Number(t.reveal)||0)}
     }
   }
   return out
@@ -1322,7 +1360,9 @@ function effectiveMasteryByTechnique(stats=safeStats()){
 }
 function masteryMetrics(c){
   c=normalizeMasteryCounts(c);
-  let whereOnly=Math.max(0,c.where-c.rule),ruleOnly=Math.max(0,c.rule-c.why),whyOnly=Math.max(0,c.why-c.reveal),revealed=c.reveal;
+  let legacyWhere=Math.max(0,c.where-c.rule),ruleOnly=Math.max(0,c.rule-c.why),legacyWhy=Math.max(0,c.why-c.reveal),legacyReveal=c.reveal;
+  let newWhere=Math.max(0,c.where3-c.why3),newWhy=Math.max(0,c.why3-c.reveal3),newReveal=c.reveal3;
+  let whereOnly=legacyWhere+newWhere,whyOnly=legacyWhy+newWhy,revealed=legacyReveal+newReveal;
   let assisted=whereOnly+ruleOnly+whyOnly+revealed;
   let samples=c.solo+assisted+c.errors;
   let weighted=c.solo+whereOnly*.82+ruleOnly*.65+whyOnly*.45+revealed*.20;
@@ -1351,12 +1391,10 @@ function adaptiveCoachPlan(technique,mode=null){mode=current?.coachModeOverride|
     else if(m.score>=75){entryStage=1;reason='light'}
     else{entryStage=2;reason='reinforced'}
   }else{
-    if(m.samples<3){entryStage=3;reason='learning'}
-    else if(m.score>=90){entryStage=1;reason='light'}
-    else if(m.score>=55){entryStage=2;reason='reinforced'}
-    else{entryStage=3;reason='learning'}
+    if(m.score!=null&&m.score>=90){entryStage=1;reason='light'}
+    else{entryStage=2;reason=m.samples<3?'learning':'reinforced'}
   }
-  return {mode,entryStage,reason,technique,score:m.score,samples:m.samples,confidence:m.confidence,levelKey:lv.key}
+  return {mode,entryStage,reason,technique,score:m.score,samples:m.samples,confidence:m.confidence,levelKey:lv.key,flowVersion:2}
 }
 function adaptiveCoachNote(plan){
   if(!plan||plan.mode==='minimal')return '';
@@ -1366,8 +1404,7 @@ function adaptiveCoachNote(plan){
 }
 function coachStageBlock(stage,kind,target,message){
   if(stage===1)return `<b>${tr('where')} :</b> ${message.look||coachLookText(kind,target,message)}`;
-  if(stage===2)return `<b>${tr('rulesTitle')} :</b> ${message.rule||coachRuleText(message)}`;
-  if(stage===3)return `<b>${tr('hintWhy')} :</b> ${message.why}`;
+  if(stage===2)return `<b>${tr('hintWhy')} :</b> ${message.why}`;
   return `<b>${tr('hintMove')} :</b> ${message.move}<br><span class="hint-applied">${message.reveal}</span>`
 }
 
@@ -1755,7 +1792,7 @@ function decorateTrainingShell(){
     if(n){n.textContent=tr('lesson');n.onclick=()=>lessonView(current.learningTechnique)}
   }else if(n){n.textContent=tr('newExercise');n.onclick=()=>launchTraining(current.trainingTechnique)}
   let r=$('#resetBtn');if(r)r.onclick=resetTrainingExercise;let c=$('#checkBtn');if(c)c.onclick=checkTrainingTarget;let sol=$('#solutionBtn');if(sol)sol.style.display='none';
-  let hb=$('#hintBtn');if(hb&&current.learningPhase===2)hb.style.display='none';let eb=$('#exploreBtn');if(eb)eb.style.display='none';
+  let hb=$('#hintBtn');if(hb&&current.learningPhase===2)hb.style.display='none';let eb=$('#exploreBtn');if(eb)eb.style.display='none';let wb=$('#walkthroughBtn');if(wb)wb.style.display='none';
   if(current.learning)decorateLearningShell()
 }
 function launchTraining(id){
@@ -2320,8 +2357,167 @@ function home(){if(current&&!current.completed)saveCurrent();stopTimer();timerEl
 </section><button class="daily-card" id="dailyBtn"><span>◆</span><b>${tr('daily')}</b><small>${dailyHomeLine()}</small></button><button class="stats-card challenge-home-card" id="challengeBtn"><span>↗</span><b>${tr('challenge')}</b><small>${tr('challengeSub')}</small></button><button class="stats-card" id="statsBtn"><span>▥</span><b>${tr('stats')}</b><small>${tr('statsSub')}</small></button><button class="stats-card mastery-home-card" id="masteryBtn"><span>◎</span><b>${tr('mastery')}</b><small>${tr('masterySub')}</small></button><button class="stats-card learning-home-card" id="learnBtn"><span>◉</span><b>${tr('learn')}</b><small>${tr('learnSub')}</small></button><button class="stats-card training-home-card" id="trainingBtn"><span>◇</span><b>${tr('training')}</b><small>${tr('trainingSub')}</small></button><button class="settings-card" id="settingsBtn"><span>⚙︎</span><b>${tr('prefs')}</b><small>${tr('prefsSub')}</small></button><button class="settings-card" id="aboutBtn"><span>ⓘ</span><b>${tr('about')}</b><small>${tr('aboutSub')}</small></button><div class="footer-note">QUADLUD v${VERSION} · © 2026 Serge Benoliel</div>`;
 if(saved)$('#resumeBtn').onclick=resumeSaved;$('#dailyBtn').onclick=dailyView;$('#challengeBtn').onclick=()=>challengeView();$('#statsBtn').onclick=statsView;$('#masteryBtn').onclick=masteryView;$('#learnBtn').onclick=learningView;$('#trainingBtn').onclick=trainingView;$('#settingsBtn').onclick=settingsView;$('#aboutBtn').onclick=aboutView;app.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>launch(b.dataset.g,'easy'));app.querySelectorAll('button').forEach(pressFeedback)}
 function gameLabel(g){return {queens:tr('gameQueens'),tango:tr('gameTango'),sudoku:tr('gameSudoku'),patches:tr('gamePatches')}[g]||g}
-function shell(name,subtitle,diff,content,rules){let challengeTag=current?.challenge?` · <span class="challenge-shell-tag">↗ <b>${current.challengeCode}</b></span>`:'';let trainingTag=current?.learning?` · <span class="training-shell-tag">${tr('lesson')} ${current.learningPhase}/4 : <b>${techniqueTitle(current.learningTechnique)}</b></span>`:current?.training?` · <span class="training-shell-tag">${tr('trainingTarget')} : <b>${techniqueTitle(current.trainingTechnique)}</b></span>`:'';app.innerHTML=`<section class="panel"><div class="game-head"><div><h1>${name}</h1><p>${subtitle}${trainingTag}${challengeTag}${current&&current.rating?` · <span class="difficulty-meter">${tr('score')} ${current.rating.score} · ${current.rating.technique}<span class="live-aids">${aidBadges(current,true)}</span></span>`:''}</p></div><select class="difficulty" id="difficulty" aria-label="${tr('rulesTitle')}">${Object.entries(DIFF).filter(([k])=>current?.game==='queens'||k!=='expert').map(([k,v])=>`<option value="${k}" ${k===diff?'selected':''}>${v}</option>`).join('')}</select></div><div class="toolbar" aria-label="${tr('actions')}"><button class="btn primary" id="newBtn">${tr('newGame')}</button><button class="btn" id="resetBtn">${tr('reset')}</button><button class="btn history-action" id="undoBtn" title="${tr('undo')}" aria-label="${tr('undo')}">↶ ${tr('undo')}</button><button class="btn history-action" id="redoBtn" title="${tr('redo')}" aria-label="${tr('redo')}">↷ ${tr('redo')}</button><button class="btn" id="pauseBtn">${tr('pause')}</button><button class="btn" id="checkBtn">${tr('check')}</button><button class="btn" id="hintBtn">${tr('logicCoach')}</button><button class="btn" id="exploreBtn">◇ ${tr('exploration')}</button><button class="btn secondary-action" id="shareChallengeBtn" style="${current?.challenge?'':'display:none'}">↗ ${tr('shareChallenge')}</button><button class="btn secondary-action" id="solutionBtn">${tr('solution')}</button><button class="btn secondary-action" id="rulesBtn">${tr('rules')}</button><button class="btn secondary-action" id="techniquesBtn">${tr('techniques')}</button></div><div id="status" class="status" aria-live="polite"></div><div id="errorCoach" class="error-coach" hidden aria-live="polite"></div><div id="reasoningAudit" class="reasoning-audit" hidden aria-live="polite"></div><div id="explorationPanel" class="exploration-panel" hidden aria-live="polite"></div><div id="learningGuide" class="learning-guide" hidden aria-live="polite"></div>${content}<div class="rules">${rules}</div></section>`;
-$('#difficulty').onchange=e=>launch(current.game,e.target.value);$('#newBtn').onclick=()=>current?.challengeCode?launchChallenge(current.challengeCode):launch(current.game,current.diff);if(current?.challenge){$('#difficulty').disabled=true}$('#resetBtn').onclick=resetCurrent;$('#undoBtn').onclick=()=>undoMoves(1);$('#redoBtn').onclick=()=>redoMoves(1);$('#pauseBtn').onclick=togglePause;$('#exploreBtn').onclick=()=>explorationState()?.active?refreshExplorationPanel():startExploration();let scb=$('#shareChallengeBtn');if(scb&&current?.challenge)scb.onclick=()=>shareChallenge(challengeParse(current.challengeCode));$('#rulesBtn').onclick=()=>modal(`${tr('rules')} — ${name}`,rules);$('#techniquesBtn').onclick=()=>modal(`${tr('techniques')} — ${name}`,techniqueLibraryHtml(current.game));app.querySelectorAll('button').forEach(pressFeedback);updatePauseButton();updateHistoryButtons();refreshErrorCoach();refreshReasoningAudit();refreshExplorationPanel();if(current?.training)decorateTrainingShell()}
+
+// ===== v2.21.4 — non-destructive logical walkthrough =====
+let walkthroughSession=null;
+function walkthroughRootSnapshot(){
+  let h=current?.moveHistory,root=h?.nodes?.h0?.snapshot;
+  return root?JSON.parse(JSON.stringify(root)):puzzleSnapshot()
+}
+function walkthroughVisibleClone(c,root){
+  if(!c||!root)return null;
+  if(c.game==='queens')return {game:'queens',diff:c.diff,n:c.n,reg:cloneGrid(c.reg),state:cloneGrid(root.state||c.state),completed:false};
+  if(c.game==='tango')return {game:'tango',diff:c.diff,n:6,state:cloneGrid(root.state||c.state),givens:new Set(c.givens||[]),edges:(c.edges||[]).map(x=>[...x]),tangoPendingCell:null,completed:false};
+  if(c.game==='sudoku')return {game:'sudoku',diff:c.diff,n:6,state:cloneGrid(root.state||c.state),empty:new Set(c.empty||[]),sel:null,completed:false};
+  if(c.game==='patches')return {game:'patches',diff:c.diff,n:c.n,ids:[...(c.ids||[])],clues:JSON.parse(JSON.stringify(c.clues||{})),pal:[...(c.pal||[])],paint:cloneGrid(root.paint||c.paint),active:c.ids?.[0]??0,completed:false};
+  return null
+}
+function walkthroughSnapshot(c){return c.game==='patches'?{paint:cloneGrid(c.paint)}:{state:cloneGrid(c.state)}}
+function withWalkthroughCurrent(fn){let saved=current;current=walkthroughSession?.work||saved;try{return fn(current)}finally{current=saved}}
+function walkthroughComplete(){return withWalkthroughCurrent(()=>{
+  if(current.game==='queens')return queenLogicalComplete();
+  if(current.game==='tango')return current.state.every(row=>row.every(v=>v===0||v===1))&&!tangoImmediateContradiction();
+  if(current.game==='sudoku')return current.state.every(row=>row.every(v=>v>=1&&v<=6))&&!sudokuImmediateContradiction();
+  if(current.game==='patches'){
+    if(!current.paint.every(row=>row.every(v=>v!=null)))return false;
+    let clueAt=new Map(current.ids.map(id=>[current.clues[id].pos.join(','),id]));
+    for(let id of current.ids){
+      let cells=[];for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(current.paint[r][c]===id)cells.push([r,c]);
+      if(!cells.length)return false;let cl=current.clues[id],own=cl.pos;
+      if(!cells.some(([r,c])=>r===own[0]&&c===own[1]))return false;
+      if(cells.some(([r,c])=>clueAt.has(r+','+c)&&clueAt.get(r+','+c)!==id))return false;
+      let sh=patchShape(cells);if(sh==='libre')return false;
+      if((cl.mode==='both'||cl.mode==='size')&&cells.length!==cl.size)return false;
+      if((cl.mode==='both'||cl.mode==='shape')&&sh!==cl.shape)return false
+    }
+    return true
+  }
+  return false
+})}
+function walkthroughQueenCompletionCount(limit=1){
+  let n=current.n,count=0,usedC=new Set(),usedR=new Set();
+  function bt(r,prev){if(count>=limit)return;if(r===n){count++;return}
+    let forced=[];for(let c=0;c<n;c++)if(current.state[r][c]===2)forced.push(c);if(forced.length>1)return;
+    let cols=forced.length?forced:Array.from({length:n},(_,c)=>c).filter(c=>current.state[r][c]!==1);
+    for(let c of cols){let z=current.reg[r][c];if(usedC.has(c)||usedR.has(z))continue;if(r>0&&Math.abs(c-prev)===1)continue;usedC.add(c);usedR.add(z);bt(r+1,c);usedC.delete(c);usedR.delete(z);if(count>=limit)return}
+  }bt(0,-99);return count
+}
+
+function walkthroughTangoCount(vr=null,vc=null,vv=null,limit=1){
+  let givens=new Map();for(let r=0;r<6;r++)for(let c=0;c<6;c++){let v=current.state[r][c];if(v!==-1)givens.set(r*6+c,v)}
+  if(vr!=null)givens.set(vr*6+vc,vv);return countTangoSolutions(givens,current.edges,limit)
+}
+function walkthroughPatchCompletionCount(limit=1){
+  let n=current.n,ids=current.ids,positions=ids.map(id=>current.clues[id].pos),opts={};
+  for(let id of ids){
+    let own=[];for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.paint[r][c]===id)own.push(r*n+c);
+    opts[id]=possiblePatchRects(n,current.clues[id],positions).filter(rect=>{
+      let set=new Set(rect);if(own.some(k=>!set.has(k)))return false;
+      for(let i of rect){let r=Math.floor(i/n),c=i%n,p=current.paint[r][c];if(p!=null&&p!==id)return false}return true
+    });if(!opts[id].length)return 0
+  }
+  let count=0,covered=new Set();function bt(done){if(count>=limit)return;if(done.size===ids.length){if(covered.size===n*n)count++;return}
+    let best=null,bestOpts=null;for(let id of ids)if(!done.has(id)){let avail=opts[id].filter(rect=>rect.every(i=>!covered.has(i)));if(!avail.length)return;if(!bestOpts||avail.length<bestOpts.length){best=id;bestOpts=avail;if(avail.length===1)break}}
+    done.add(best);for(let rect of bestOpts){rect.forEach(i=>covered.add(i));bt(done);rect.forEach(i=>covered.delete(i));if(count>=limit)break}done.delete(best)
+  }bt(new Set());return count
+}
+function walkthroughExhaustiveHint(){return withWalkthroughCurrent(()=>{
+  let fr=lang()==='fr';
+  if(current.game==='queens')for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(current.state[r][c]===0){
+    let counts=[];for(let v of [1,2]){current.state[r][c]=v;let n=walkthroughQueenCompletionCount(1);current.state[r][c]=0;counts.push([v,n])}let good=counts.filter(x=>x[1]>0);
+    if(good.length===1){let v=good[0][0];return {r,c,v,rank:4,walkthroughExhaustive:true,walkthroughWhy:fr?`En testant toutes les complétions compatibles avec les règles visibles, l'autre choix ne permet aucune grille complète valide. ${pieceName('queens',v)} est donc imposé en ${cellName(r,c)}.`:`Testing all completions compatible with the visible rules shows that the other choice permits no valid complete grid. ${pieceName('queens',v)} is therefore forced at ${cellName(r,c)}.`}}
+  }
+  if(current.game==='tango')for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(current.state[r][c]===-1){
+    let vals=[0,1].filter(v=>tangoCandidateLocallyLegal(r,c,v)),counts=vals.map(v=>[v,walkthroughTangoCount(r,c,v,1)]),good=counts.filter(x=>x[1]>0);
+    if(good.length===1&&counts.length>1){let v=good[0][0];return {r,c,v,rank:3,walkthroughExhaustive:true,walkthroughWhy:fr?`En testant toutes les complétions compatibles avec les règles visibles, l'autre symbole ne mène à aucune grille complète valide. ${pieceName('tango',v)} est donc imposé en ${cellName(r,c)}.`:`Testing all completions compatible with the visible rules shows that the other symbol leads to no valid complete grid. ${pieceName('tango',v)} is therefore forced at ${cellName(r,c)}.`}}
+  }
+  if(current.game==='sudoku')for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(current.state[r][c]===0&&current.empty.has(r*6+c)){
+    let vals=sudokuCandidatesAt(r,c),counts=[];for(let v of vals){let grid=cloneGrid(current.state);grid[r][c]=v;counts.push([v,countMiniSudoku(grid,1)])}let good=counts.filter(x=>x[1]>0);
+    if(good.length===1&&counts.length>1){let v=good[0][0];return {r,c,v,rank:3,walkthroughExhaustive:true,walkthroughWhy:fr?`En testant toutes les complétions compatibles avec les règles visibles, tous les autres candidats conduisent à une impasse. ${v} est donc imposé en ${cellName(r,c)}.`:`Testing all completions compatible with the visible rules shows that every other candidate leads to a dead end. ${v} is therefore forced at ${cellName(r,c)}.`}}
+  }
+  if(current.game==='patches')for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(current.paint[r][c]==null){
+    let vals=patchPossibleIdsAt(r,c),counts=[];for(let id of vals){let old=current.paint[r][c];current.paint[r][c]=id;let n=walkthroughPatchCompletionCount(1);current.paint[r][c]=old;counts.push([id,n])}let good=counts.filter(x=>x[1]>0);
+    if(good.length===1&&counts.length>=1){let id=good[0][0];return {r,c,id,rank:3,walkthroughExhaustive:true,walkthroughWhy:fr?`En testant tous les découpages complets compatibles avec les indices visibles, toutes les autres zones deviennent impossibles pour ${cellName(r,c)}. Cette case doit donc appartenir à la zone ${id+1}.`:`Testing all complete partitions compatible with the visible clues rules out every other region for ${cellName(r,c)}. This cell must therefore belong to region ${id+1}.`}}
+  }
+  return null
+})}
+
+function walkthroughFindHint(){return withWalkthroughCurrent(()=>{
+  if(current.game==='queens'){
+    let deadline=Date.now()+5000,h=findQueenLogicalHint()||findQueenRank1Hint(deadline);if(h?.timeout)return h;
+    h=h||findQueenRank2Hint(deadline);if(h?.timeout)return h;h=h||findQueenRank3Hint(deadline);if(h?.timeout)return h;return h||walkthroughExhaustiveHint()
+  }
+  if(current.game==='tango')return findTangoLogicalHint()||findTangoRank1Hint()||findTangoRank2Hint()||walkthroughExhaustiveHint();
+  if(current.game==='sudoku')return findSudokuLogicalHint()||findSudokuRank1Hint()||findSudokuRank2Hint()||walkthroughExhaustiveHint();
+  if(current.game==='patches')return findPatchLogicalHint()||findPatchRank1Hint()||findPatchRank2Hint()||walkthroughExhaustiveHint();
+  return null
+})}
+function walkthroughWhyText(h){return h.walkthroughWhy|| (h.rank===3?rank3Why(h):h.rank===2?rank2Why(h):h.rank===1?rank1Why(h):h.why)}
+function walkthroughMoveText(game,h){
+  if(game==='queens')return `${h.v===2?pieceName('queens',2):pieceName('queens',1)} · ${cellName(h.r,h.c)}`;
+  if(game==='tango')return `${pieceName('tango',h.v)} · ${cellName(h.r,h.c)}`;
+  if(game==='sudoku')return `${h.v} · ${cellName(h.r,h.c)}`;
+  return `${pieceName('patches',h.id)} · ${cellName(h.r,h.c)}`
+}
+function walkthroughApplyHint(h){return withWalkthroughCurrent(()=>{
+  if(current.game==='patches')current.paint[h.r][h.c]=h.id;
+  else current.state[h.r][h.c]=h.v;
+  return true
+})}
+function walkthroughGenerateNext(){
+  let s=walkthroughSession;if(!s||s.done||s.stalled)return false;
+  if(walkthroughComplete()){s.done=true;s.total=s.moves.length;return false}
+  let h=walkthroughFindHint();
+  if(!h||h.timeout){s.stalled=true;s.timeout=!!h?.timeout;return false}
+  let info=withWalkthroughCurrent(()=>{let reasoning=h.walkthroughExhaustive?{schema:1,source:'visible-state',game:current.game,technique:null,rank:3,target:{row:h.r,column:h.c},action:coachActionFor(current.game,h),proof:{direct:h.walkthroughWhy,exhaustive:true}}:structuredReasoning(current.game,h);return {
+    technique:h.walkthroughExhaustive?null:coachTechniqueId(current.game,h),rank:Math.max(0,Number(h.rank)||0),exhaustive:!!h.walkthroughExhaustive,target:[h.r,h.c],
+    where:coachLookText(current.game,[h.r,h.c],{reasoning}),why:walkthroughWhyText(h),move:walkthroughMoveText(current.game,h),reasoning
+  }});
+  walkthroughApplyHint(h);info.snapshot=walkthroughSnapshot(s.work);s.moves.push(info);
+  if(walkthroughComplete()){s.done=true;s.total=s.moves.length}
+  return true
+}
+function walkthroughTarget(index){return index>0?walkthroughSession?.moves?.[index-1]?.target:null}
+function walkthroughBoardHtml(snapshot,target=null){
+  let s=walkthroughSession,c=s.base,n=c.n||6,initial=s.initial,targetKey=target?target.join(','):null,cells=[];
+  if(c.game==='queens'){
+    for(let r=0;r<n;r++)for(let col=0;col<n;col++){let v=snapshot.state[r][col],cls='cell walkthrough-cell'+(targetKey===`${r},${col}`?' walkthrough-target':''),body=v===2?'<span class="queen">♛</span>':v===1?'<span class="mark">×</span>':'';cells.push(`<div class="${cls}" style="background:${QUEEN_REGION_COLORS[c.reg[r][col]%QUEEN_REGION_COLORS.length]}">${body}</div>`)}
+  }else if(c.game==='tango'){
+    let rel=new Map();for(let [r,col,d,x] of c.edges||[]){let k=r+','+col,a=rel.get(k)||[];a.push(`<span class="relation ${d}">${x}</span>`);rel.set(k,a)}
+    for(let r=0;r<6;r++)for(let col=0;col<6;col++){let v=snapshot.state[r][col],fixed=initial.state[r][col]!==-1,body=v===0?'<span class="tango-symbol">☾</span>':v===1?'<span class="tango-symbol">☀</span>':'',cls='cell walkthrough-cell'+(fixed?' fixed':'')+(targetKey===`${r},${col}`?' walkthrough-target':'');cells.push(`<div class="${cls}">${body}${(rel.get(r+','+col)||[]).join('')}</div>`)}
+  }else if(c.game==='sudoku'){
+    for(let r=0;r<6;r++)for(let col=0;col<6;col++){let v=snapshot.state[r][col],fixed=initial.state[r][col]!==0,cls='cell walkthrough-cell '+(fixed?'fixed ':'')+(col===2?'boxR ':'')+((r===1||r===3)?'boxB ':'')+(targetKey===`${r},${col}`?'walkthrough-target':'');cells.push(`<div class="${cls}">${v||''}</div>`)}
+  }else{
+    let clueAt=new Map(c.ids.map(id=>[c.clues[id].pos.join(','),id]));
+    for(let r=0;r<n;r++)for(let col=0;col<n;col++){let id=snapshot.paint[r][col],clue=clueAt.get(r+','+col),style=id!=null?`background:${c.pal[id%c.pal.length]}`:'',cls='cell patch-cell walkthrough-cell'+(clue!=null?' clue':'')+(targetKey===`${r},${col}`?' walkthrough-target':''),body=clue!=null?clueHTML(c.clues[clue]):'';cells.push(`<div class="${cls}" style="${style}">${body}</div>`)}
+  }
+  return `<div class="walkthrough-board-wrap"><div class="board ${c.game==='sudoku'?'sudoku ':''}walkthrough-board" style="grid-template-columns:repeat(${n},minmax(0,1fr));grid-template-rows:repeat(${n},minmax(0,1fr))">${cells.join('')}</div></div>`
+}
+function walkthroughExplanationHtml(index){
+  let s=walkthroughSession;if(index===0)return `<div class="walkthrough-explanation start"><b>${tr('walkthroughStart')}</b><p>${tr('walkthroughSub')}</p></div>`;
+  let m=s.moves[index-1],tech=m.technique?techniqueTitle(m.technique):techniqueTerm('contradiction'),rank=m.exhaustive?'R+':`R${m.rank}`;
+  return `<div class="walkthrough-explanation"><div class="walkthrough-tech"><b>${tech}</b><span>${rank}</span></div><p><b>${tr('where')} :</b> ${m.where}</p><p><b>${tr('walkthroughWhy')}</b><br>${m.why||''}</p><p class="walkthrough-move"><b>${tr('hintMove')} :</b> ${m.move}</p></div>`
+}
+function renderWalkthrough(){
+  let s=walkthroughSession;if(!s)return;let i=s.index,snap=i===0?s.initial:s.moves[i-1].snapshot,target=walkthroughTarget(i),stateNote=s.done&&i===s.moves.length?`<div class="walkthrough-complete">✓ ${tr('walkthroughComplete')}</div>`:s.stalled&&i===s.moves.length?`<div class="walkthrough-stalled">⚠ ${tr('walkthroughStalled')}</div>`:'';
+  let progress=s.done?`${i}/${s.moves.length}`:`${i}`;
+  app.innerHTML=`<section class="panel walkthrough-panel"><div class="stats-head"><div><h1>${tr('walkthrough')}</h1><p>${gameLabel(s.base.game)} · ${DIFF[s.base.diff]} · ${tr('walkthroughStep')} ${progress}</p></div><button class="btn" id="walkthroughClose">${tr('walkthroughClose')}</button></div><p class="walkthrough-help-note">💡 ${tr('walkthroughCountsAsHelp')}</p>${walkthroughBoardHtml(snap,target)}${walkthroughExplanationHtml(i)}${stateNote}<div class="walkthrough-actions"><button class="btn" id="walkthroughPrev" ${i===0?'disabled':''}>← ${tr('walkthroughPrevious')}</button><button class="btn" id="walkthroughRestart" ${i===0?'disabled':''}>↺ ${tr('walkthroughRestart')}</button><button class="btn primary" id="walkthroughNext" ${(s.done||s.stalled)&&i===s.moves.length?'disabled':''}>${tr('walkthroughNext')} →</button></div></section>`;
+  $('#walkthroughClose').onclick=closeWalkthrough;$('#walkthroughPrev').onclick=()=>{if(s.index>0){s.index--;renderWalkthrough()}};$('#walkthroughRestart').onclick=()=>{s.index=0;renderWalkthrough()};$('#walkthroughNext').onclick=()=>{if(s.index<s.moves.length)s.index++;else if(walkthroughGenerateNext())s.index++;renderWalkthrough()};app.querySelectorAll('button').forEach(pressFeedback)
+}
+function openWalkthrough(){
+  if(!current||current.training)return false;let root=walkthroughRootSnapshot(),work=walkthroughVisibleClone(current,root);if(!work)return false;
+  let elapsed=timerSeconds(),wasPaused=paused;stopTimer(true);current.walkthroughUsed=true;markHintUsed();updateScoreFlags();saveCurrent();
+  walkthroughSession={schema:1,base:work,work,initial:walkthroughSnapshot(work),moves:[],index:0,done:false,stalled:false,elapsed,wasPaused};
+  renderWalkthrough();return true
+}
+function closeWalkthrough(){
+  let s=walkthroughSession;if(!s||!current)return false;let elapsed=s.elapsed,wasPaused=s.wasPaused;walkthroughSession=null;
+  if(current.game==='queens')renderQueens(current);else if(current.game==='tango')renderTango(current);else if(current.game==='sudoku')renderSudoku(current);else renderPatches(current);
+  startTimer(true,elapsed,wasPaused);updatePauseButton();saveCurrent();return true
+}
+
+function shell(name,subtitle,diff,content,rules){let challengeTag=current?.challenge?` · <span class="challenge-shell-tag">↗ <b>${current.challengeCode}</b></span>`:'';let trainingTag=current?.learning?` · <span class="training-shell-tag">${tr('lesson')} ${current.learningPhase}/4 : <b>${techniqueTitle(current.learningTechnique)}</b></span>`:current?.training?` · <span class="training-shell-tag">${tr('trainingTarget')} : <b>${techniqueTitle(current.trainingTechnique)}</b></span>`:'';app.innerHTML=`<section class="panel"><div class="game-head"><div><h1>${name}</h1><p>${subtitle}${trainingTag}${challengeTag}${current&&current.rating?` · <span class="difficulty-meter">${tr('score')} ${current.rating.score} · ${current.rating.technique}<span class="live-aids">${aidBadges(current,true)}</span></span>`:''}</p></div><select class="difficulty" id="difficulty" aria-label="${tr('rulesTitle')}">${Object.entries(DIFF).filter(([k])=>current?.game==='queens'||k!=='expert').map(([k,v])=>`<option value="${k}" ${k===diff?'selected':''}>${v}</option>`).join('')}</select></div><div class="toolbar" aria-label="${tr('actions')}"><button class="btn primary" id="newBtn">${tr('newGame')}</button><button class="btn" id="resetBtn">${tr('reset')}</button><button class="btn history-action" id="undoBtn" title="${tr('undo')}" aria-label="${tr('undo')}">↶ ${tr('undo')}</button><button class="btn history-action" id="redoBtn" title="${tr('redo')}" aria-label="${tr('redo')}">↷ ${tr('redo')}</button><button class="btn" id="pauseBtn">${tr('pause')}</button><button class="btn" id="checkBtn">${tr('check')}</button><button class="btn" id="hintBtn">${tr('logicCoach')}</button><button class="btn" id="exploreBtn">◇ ${tr('exploration')}</button><button class="btn secondary-action" id="shareChallengeBtn" style="${current?.challenge?'':'display:none'}">↗ ${tr('shareChallenge')}</button><button class="btn secondary-action" id="walkthroughBtn">▹ ${tr('walkthrough')}</button><button class="btn secondary-action" id="solutionBtn">${tr('solution')}</button><button class="btn secondary-action" id="rulesBtn">${tr('rules')}</button><button class="btn secondary-action" id="techniquesBtn">${tr('techniques')}</button></div><div id="status" class="status" aria-live="polite"></div><div id="errorCoach" class="error-coach" hidden aria-live="polite"></div><div id="reasoningAudit" class="reasoning-audit" hidden aria-live="polite"></div><div id="explorationPanel" class="exploration-panel" hidden aria-live="polite"></div><div id="learningGuide" class="learning-guide" hidden aria-live="polite"></div>${content}<div class="rules">${rules}</div></section>`;
+$('#difficulty').onchange=e=>launch(current.game,e.target.value);$('#newBtn').onclick=()=>current?.challengeCode?launchChallenge(current.challengeCode):launch(current.game,current.diff);if(current?.challenge){$('#difficulty').disabled=true}$('#resetBtn').onclick=resetCurrent;$('#undoBtn').onclick=()=>undoMoves(1);$('#redoBtn').onclick=()=>redoMoves(1);$('#pauseBtn').onclick=togglePause;$('#exploreBtn').onclick=()=>explorationState()?.active?refreshExplorationPanel():startExploration();let scb=$('#shareChallengeBtn');if(scb&&current?.challenge)scb.onclick=()=>shareChallenge(challengeParse(current.challengeCode));let wb=$('#walkthroughBtn');if(wb)wb.onclick=openWalkthrough;$('#rulesBtn').onclick=()=>modal(`${tr('rules')} — ${name}`,rules);$('#techniquesBtn').onclick=()=>modal(`${tr('techniques')} — ${name}`,techniqueLibraryHtml(current.game));app.querySelectorAll('button').forEach(pressFeedback);updatePauseButton();updateHistoryButtons();refreshErrorCoach();refreshReasoningAudit();refreshExplorationPanel();if(current?.training)decorateTrainingShell()}
 
 function resetCurrent(){
   if(!current)return;
@@ -2384,7 +2580,7 @@ function ensurePrecomputeWorker(){
   if(precomputeWorker)return precomputeWorker;
   if(typeof Worker==='undefined')return null;
   try{
-    let w=new Worker('./precompute-worker.js?v=2.21.3');
+    let w=new Worker('./precompute-worker.js?v=2.21.4');
     w.onmessage=e=>{
       let m=e.data||{};precomputeBusy=false;
       if(m.ok&&m.day===precomputeDay&&m.candidate){
@@ -3146,40 +3342,40 @@ function coachRuleText(message={}){
 }
 function coachUsage(stage,technique=null){
   if(!current)return;
-  let u=current.coachUsage||(current.coachUsage={where:0,rule:0,why:0,reveal:0,maxStage:0,techniques:{}});
-  if(!u.techniques)u.techniques={};
-  let k=['','where','rule','why','reveal'][stage];if(k)u[k]=(u[k]||0)+1;
+  let u=current.coachUsage||(current.coachUsage={where:0,rule:0,why:0,reveal:0,maxStage:0,techniques:{},flowVersion:2});
+  if(!u.techniques)u.techniques={};u.flowVersion=2;
+  let k=['','where','why','reveal'][stage];if(k)u[k]=(u[k]||0)+1;
   u.maxStage=Math.max(u.maxStage||0,stage);
   if(technique&&TECHNIQUE_LIBRARY[technique]){
     let t=u.techniques[technique]||(u.techniques[technique]={where:0,rule:0,why:0,reveal:0});
     if(k)t[k]=(t[k]||0)+1;
-    if(k)masteryRecord(technique,k)
+    if(k)masteryRecord(technique,{where:'where3',why:'why3',reveal:'reveal3'}[k]||k)
   }
 }
 function hintStage(kind,target,message,apply){
   if(!DETAILED_HINT_LANGS.has(lang())&&message.rank!=null){let g=genericLocalizedHint(kind,target,message.rank,message.value);message={...message,...g}}
   if(message.reasoning)current.lastReasoning=message.reasoning;
-  let technique=message?.reasoning?.technique||null,isNew=!current.hintFlow||current.hintFlow.kind!==kind||current.hintFlow.key!==target.join(',');
+  let technique=message?.reasoning?.technique||null,isNew=!current.hintFlow||current.hintFlow.kind!==kind||current.hintFlow.key!==target.join(',')||current.hintFlow.plan?.flowVersion!==2;
   if(isNew){
     let plan=adaptiveCoachPlan(technique);
     current.hintFlow={kind,key:target.join(','),stage:0,plan};
   }
-  let h=current.hintFlow,previous=h.stage||0,next=isNew?Math.max(1,Math.min(3,h.plan?.entryStage||1)):Math.min(4,previous+1);
+  let h=current.hintFlow,previous=h.stage||0,next=isNew?Math.max(1,Math.min(2,h.plan?.entryStage||1)):Math.min(3,previous+1);
   h.stage=next;
   for(let s=previous+1;s<=next;s++)coachUsage(s,technique);
   if(technique)current.masteryPendingAid={technique,stage:h.stage,target:[...target]};
   clearHintFocus();
-  if(h.stage<=2)focusHintContext(kind,target,message);else focusHint(target);
-  let progress=`<span class="coach-progress">${h.stage}/4</span>`,note=adaptiveCoachNote(h.plan),blocks=[];
+  if(h.stage===1)focusHintContext(kind,target,message);else focusHint(target);
+  let progress=`<span class="coach-progress">${h.stage}/3</span>`,note=adaptiveCoachNote(h.plan),blocks=[];
   // If adaptation jumps on the first request, show every level actually delivered.
   for(let s=(isNew?1:h.stage);s<=h.stage;s++)blocks.push(coachStageBlock(s,kind,target,message));
-  if(h.stage<4){
+  if(h.stage<3){
     showHintNotice(`${progress}${blocks.join('<br>')}${note}`)
   }else{
     let before=historySnapshotKey();markHintUsed();updateScoreFlags();apply();
-    historyRecord({type:'COACH_APPLY',reasoning:message.reasoning||null,coachStage:4,adaptivePlan:h.plan||null},before);
+    historyRecord({type:'COACH_APPLY',reasoning:message.reasoning||null,coachStage:3,coachFlowVersion:2,adaptivePlan:h.plan||null},before);
     current.hintFlow=null;
-    showHintNotice(`${progress}${coachStageBlock(4,kind,target,message)}${note}`);
+    showHintNotice(`${progress}${coachStageBlock(3,kind,target,message)}${note}`);
     haptic(12)
   }
   saveCurrent();if(current?.trainingPendingComplete){current.trainingPendingComplete=false;finishTrainingExercise()}

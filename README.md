@@ -1,6 +1,53 @@
-# QUADLUD — v2.21.3
+# QUADLUD — v2.21.4
 
 Application web statique mobile-first regroupant **Couronnes**, **Soleil-Lune**, **Grille 6** et **Rectangles**.
+
+## v2.21.4 — Logic Coach en 3 étapes + résolution logique pas à pas
+- Le parcours courant du **Logic Coach** passe de quatre à **trois étapes explicites** :
+  1. **Où regarder** ;
+  2. **Pourquoi** la déduction s’applique ;
+  3. **Montrer le coup**.
+- L’ancienne étape intermédiaire « règle/technique » n’est plus affichée : à l’usage elle répétait une information moins utile que l’explication causale de l’ancienne étape 3.
+- Le nom de la technique reste disponible dans la bibliothèque pédagogique, la maîtrise, les exercices ciblés et les données structurées ; il n’occupe simplement plus une étape séparée du Coach.
+- Le Coach adaptatif est recalibré sur trois étapes :
+  - Minimal démarre à « Où regarder » ;
+  - Normal peut démarrer directement à « Pourquoi » pour un joueur encore en apprentissage ;
+  - Pédagogique peut également fournir « Où + Pourquoi » dès la première demande ;
+  - aucune adaptation ne révèle automatiquement le coup : la révélation reste la troisième action explicite.
+- Compatibilité des statistiques : les anciens compteurs `rule` restent lisibles ; le nouveau flux utilise des compteurs de maîtrise `where3` / `why3` / `reveal3` afin de ne pas déformer les scores historiques.
+- Le score quotidien s’appuie désormais sur la **nature de l’aide** et non sur le numéro brut de l’étape, ce qui maintient la compatibilité avec les anciennes parties à quatre étapes.
+
+### Nouveau mode « Résolution pas à pas »
+- Un bouton **▹ Résolution pas à pas** est disponible dans les parties normales, quotidiennes et les défis partageables.
+- Le mode part de la **position initiale du puzzle** enregistrée dans l’historique, même si le joueur a déjà effectué des coups.
+- La grille réelle du joueur n’est jamais modifiée : la résolution s’exécute dans une copie visible indépendante.
+- Chaque pression sur **Étape suivante** calcule une seule déduction puis affiche :
+  - la case concernée ;
+  - la technique/rang lorsqu’elle appartient aux 27 techniques connues ;
+  - **où regarder** ;
+  - **pourquoi** le coup est imposé ;
+  - **quel coup** effectuer.
+- **Étape précédente** et **Recommencer** permettent de revoir librement les étapes déjà calculées.
+- Le mode utilise d’abord exactement les moteurs logiques du Logic Coach (R0/R1/R2 et R3 Couronnes).
+- Si ces techniques nommées ne suffisent pas sur une grille pourtant unique, la résolution peut utiliser une preuve **R+ par contradiction exhaustive** : elle teste toutes les complétions compatibles avec l’état visible et les règles, puis rejette les choix qui ne conduisent à aucune grille complète valide.
+- Cette preuve R+ n’est volontairement pas enregistrée comme une nouvelle technique pédagogique : les **27 IDs stables restent inchangés**.
+- Le moteur de résolution pas à pas ne reçoit pas `current.sol` et ne consulte jamais la solution cachée. Les complétions sont calculées exclusivement à partir des contraintes visibles.
+- Le mode est testé jusqu’à une fin valide sur les **13 combinaisons jeu/difficulté** actuellement supportées.
+- Consulter la résolution pas à pas marque la tentative courante comme ayant reçu une **aide de type solution**. La grille n’est pas changée, mais la partie ne peut donc pas être comptée ensuite comme « sans aide ».
+- Le chronomètre de jeu est suspendu pendant la consultation puis reprend à son retour, afin que le temps passé à lire l’explication ne soit pas ajouté artificiellement au temps de résolution.
+- Le mode est masqué dans **Apprendre** et **S’entraîner**, où les trajectoires pédagogiques propres à ces modes restent prioritaires.
+- 12 nouveaux libellés sont disponibles dans les **30 langues**.
+
+### Validation spécifique v2.21.4
+- Vérification du nouveau flux Coach **1 → 2 → 3** sans étape « règle » affichée.
+- Vérification que l’étape 2 explique bien le **pourquoi** et que l’étape 3 applique le coup.
+- Vérification qu’aucun mode adaptatif ne démarre directement par la révélation.
+- Vérification de la compatibilité du score quotidien ancien/nouveau.
+- Vérification de la compatibilité du profil de maîtrise ancien/nouveau.
+- Vérification que la résolution part du nœud racine de l’historique et ne modifie jamais la grille réelle du joueur.
+- Vérification que le moteur de résolution ne consulte pas la solution cachée.
+- Résolution complète testée sur les 13 combinaisons jeu/difficulté.
+- Non-régression des tailles/profils Couronnes v2.21.3, des alertes v2.21.1, des défis QL11/QL12/QL13, du Mode Exploration, de l’audit, du Défi quotidien et des 27 techniques/leçons.
 
 ## v2.21.3 — Couronnes : tailles 7×7 / 8×8 / 9×9 / 9×9
 - Les tailles Couronnes deviennent :

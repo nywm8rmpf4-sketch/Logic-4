@@ -752,3 +752,17 @@ body.busy{pointer-events:none}
   .error-explain-btn{width:auto;flex:0 0 auto}
   .board-wrap{max-width:min(calc(100vw - 44px),calc(100svh - 300px))}
 }
+/* v2.21.4 — résolution logique pas à pas */
+.walkthrough-panel{max-width:760px;margin-inline:auto}
+.walkthrough-help-note{margin:10px 0 12px;padding:9px 11px;border-radius:11px;background:var(--soft);color:var(--muted);font-size:12px;line-height:1.4}
+.walkthrough-board-wrap{display:flex;justify-content:center;margin:10px auto 14px;max-width:min(92vw,560px)}
+.walkthrough-board{width:min(92vw,560px);aspect-ratio:1;pointer-events:none;user-select:none}
+.walkthrough-cell{position:relative}
+.walkthrough-target{box-shadow:inset 0 0 0 4px color-mix(in srgb,var(--accent) 78%,transparent);z-index:2}
+.walkthrough-explanation{display:grid;gap:8px;margin:12px 0;padding:13px 14px;border:1px solid color-mix(in srgb,var(--accent) 28%,transparent);border-radius:14px;background:var(--paper);line-height:1.45}
+.walkthrough-explanation p{margin:0}.walkthrough-explanation.start{color:var(--muted)}
+.walkthrough-tech{display:flex;align-items:center;justify-content:space-between;gap:10px}.walkthrough-tech span{padding:3px 7px;border-radius:999px;background:var(--soft);font-size:11px;font-weight:800}
+.walkthrough-move{padding-top:6px;border-top:1px solid color-mix(in srgb,var(--muted) 20%,transparent)}
+.walkthrough-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px}
+.walkthrough-complete,.walkthrough-stalled{margin-top:10px;padding:10px 12px;border-radius:11px;font-weight:750}.walkthrough-complete{background:color-mix(in srgb,var(--ok) 10%,var(--paper))}.walkthrough-stalled{background:color-mix(in srgb,var(--danger) 9%,var(--paper))}
+@media(max-width:620px){.walkthrough-board-wrap,.walkthrough-board{width:min(94vw,68svh);max-width:94vw}.walkthrough-actions .btn{flex:1}.walkthrough-target{box-shadow:inset 0 0 0 3px color-mix(in srgb,var(--accent) 78%,transparent)}}
