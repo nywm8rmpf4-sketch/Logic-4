@@ -714,3 +714,41 @@ body.busy{pointer-events:none}
 .exploration-empty{padding:10px;border:1px dashed color-mix(in srgb,var(--muted) 35%,transparent);border-radius:10px;color:var(--muted)}
 .exploration-actions{display:flex;gap:7px;flex-wrap:wrap}.exploration-analysis{margin-top:10px;padding:10px;border-radius:11px;background:color-mix(in srgb,var(--ok) 8%,var(--paper));line-height:1.4}.exploration-analysis[hidden]{display:none}.exploration-analysis.bad{background:color-mix(in srgb,var(--danger) 9%,var(--paper))}.exploration-analysis>div{margin-top:5px;color:var(--muted)}
 @media(max-width:620px){.exploration-head{flex-direction:column}.exploration-actions .btn{flex:1}.exploration-branch{grid-template-columns:auto 1fr auto}}
+
+/* v2.21.0 — défis partageables */
+.challenge-home-card>span:first-child{font-size:21px}
+.challenge-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0}
+.challenge-box{display:grid;gap:11px;padding:14px;border:1px solid color-mix(in srgb,var(--muted) 26%,transparent);border-radius:15px;background:var(--paper)}
+.challenge-box h2{margin:0}.challenge-box label{display:grid;gap:6px;color:var(--muted);font-size:12px;font-weight:700}
+.challenge-box .difficulty{width:100%}
+.challenge-input{width:100%;box-sizing:border-box;padding:10px 11px;border:1px solid color-mix(in srgb,var(--muted) 35%,transparent);border-radius:10px;background:var(--paper);color:var(--ink);font:700 15px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.03em}
+.challenge-ready{padding:15px;border:1px solid color-mix(in srgb,var(--accent) 36%,transparent);border-radius:16px;background:color-mix(in srgb,var(--accent) 7%,var(--paper));text-align:center}
+.challenge-ready>small{color:var(--muted);font-weight:750}.challenge-code{margin:9px 0;font:800 clamp(18px,5vw,28px)/1.15 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.06em;word-break:break-word}
+.challenge-meta{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:12px}.challenge-ready p,.challenge-note{color:var(--muted);line-height:1.45}
+.challenge-actions{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:11px}.challenge-shell-tag{font-size:11px;color:var(--accent)}
+@media(max-width:620px){.challenge-columns{grid-template-columns:1fr}.challenge-actions .btn{flex:1}.challenge-code{font-size:18px}}
+
+
+/* v2.21.1 — alertes configurables sans déplacement du plateau */
+.error-coach{
+  position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 62px);transform:translateX(-50%);
+  z-index:117;width:min(92vw,520px);box-sizing:border-box;margin:0;
+  box-shadow:0 14px 38px rgba(0,0,0,.18);
+}
+.reasoning-audit{display:none!important}
+.board .cell.unjustified-piece{color:#d97800!important}
+#qboard .cell.unjustified-piece .queen,#qboard .cell.unjustified-piece .mark,
+#tboard .cell.unjustified-piece .tango-symbol{color:#d97800!important}
+#sboard .cell.unjustified-piece{color:#d97800!important;text-shadow:0 0 0 #d97800}
+#pboard .patch-cell.unjustified-piece{outline:3px solid #d97800;outline-offset:-4px;z-index:5}
+:root[data-theme="dark"] .board .cell.unjustified-piece,
+:root[data-theme="dark"] #qboard .cell.unjustified-piece .queen,
+:root[data-theme="dark"] #qboard .cell.unjustified-piece .mark,
+:root[data-theme="dark"] #tboard .cell.unjustified-piece .tango-symbol,
+:root[data-theme="dark"] #sboard .cell.unjustified-piece{color:#ffad42!important}
+:root[data-theme="dark"] #pboard .patch-cell.unjustified-piece{outline-color:#ffad42}
+@media(max-width:520px){
+  .error-coach{top:calc(env(safe-area-inset-top) + 58px);width:min(94vw,480px);flex-direction:row;align-items:center}
+  .error-explain-btn{width:auto;flex:0 0 auto}
+  .board-wrap{max-width:min(calc(100vw - 44px),calc(100svh - 300px))}
+}

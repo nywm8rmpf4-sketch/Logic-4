@@ -1,6 +1,84 @@
-# QUADLUD — v2.20.0
+# QUADLUD — v2.21.1
 
 Application web statique mobile-first regroupant **Couronnes**, **Soleil-Lune**, **Grille 6** et **Rectangles**.
+
+## v2.21.1 — alertes configurables et plateau stable
+- Deux préférences indépendantes sont ajoutées dans **Préférences** :
+  - **Alertes de coups interdits** ;
+  - **Alertes de coups non justifiés**.
+- Les deux préférences sont **activées par défaut** afin de préserver le comportement des installations existantes.
+- Désactiver une alerte ne désactive jamais le moteur d’analyse : les erreurs, justifications, statistiques, Logic Coach et Mode Exploration continuent à fonctionner.
+- Lorsque **Alertes de coups interdits** est activé :
+  - les conflits visibles restent marqués en rouge ;
+  - l’alerte « Explique mon erreur » reste disponible.
+- Lorsque cette préférence est désactivée :
+  - aucun marquage rouge automatique n’est affiché ;
+  - le bandeau automatique d’erreur est masqué ;
+  - une demande explicite au Logic Coach continue malgré tout à détecter et expliquer les conflits réels.
+- Pour un **coup légal mais non justifié**, le bandeau automatique v2.19.1 est supprimé :
+  - la pièce, le symbole ou le chiffre concerné est simplement affiché en **orange** ;
+  - pour Rectangles, la case concernée reçoit un contour orange afin de ne pas remplacer la couleur de sa zone.
+- Si les alertes de coups non justifiés sont désactivées, cette coloration orange disparaît, mais le statut logique du coup reste conservé dans l’historique.
+- Le mécanisme `acceptLastMoveAsHypothesis()` et les statuts `unjustified` / `hypothesis` restent présents dans le moteur ; le Mode Exploration continue à exploiter ces statuts.
+- Les notifications automatiques ne participent plus au flux vertical de la page :
+  - le bandeau de coup interdit est désormais une **surcouche fixe** ;
+  - le panneau automatique des coups non justifiés n’occupe plus de hauteur ;
+  - l’apparition ou la disparition d’une alerte ne décale donc plus le plateau.
+- Sur petit écran, le plateau conserve également une limite liée à la hauteur visuelle `svh` pour éviter qu’une notification ou une barre du navigateur mobile ne provoque un redimensionnement brutal.
+- Les quatre nouveaux libellés de préférences sont disponibles dans les **30 langues**.
+
+### Validation spécifique v2.21.1
+- Migration des anciennes préférences : les deux alertes sont activées par défaut.
+- Activation/désactivation indépendante des deux familles d’alertes.
+- Vérification qu’une alerte de coup interdit désactivée ne supprime ni `lastError` ni la détection du Logic Coach.
+- Vérification du marquage orange d’un coup non justifié, sans bandeau de notification.
+- Vérification de la disparition du marquage orange lorsque l’option correspondante est désactivée.
+- Vérification que les notifications automatiques sont hors flux et ne peuvent plus déplacer le plateau.
+- Vérification des 30 langues et des 286 clés de traduction.
+- Non-régression des défis partageables v2.21, du Mode Exploration v2.20, de l’audit logique v2.19.1, du Défi quotidien, des 27 techniques/leçons et des générateurs.
+
+## v2.21.0 — défis partageables entre joueurs
+- Nouvelle entrée **Défi entre amis** depuis l’accueil.
+- Un défi contient uniquement :
+  - schéma de code ;
+  - version du générateur de défi ;
+  - jeu ;
+  - difficulté ;
+  - seed aléatoire de 8 caractères ;
+  - checksum de contrôle.
+- Format v1 : `QL11-QM-XXXXXXXX-XX` (exemple de structure, pas une grille prédéfinie).
+- Le code **ne contient ni solution, ni état caché, ni identifiant personnel**.
+- Le checksum rejette les fautes de frappe ou les codes altérés.
+- Les quatre jeux sont partageables ; Couronnes accepte également la difficulté Expert.
+- Le **générateur de défi v1** est isolé du cache de pré-génération afin qu’un code donné reproduise exactement la même grille publique.
+- Un même code peut être :
+  - copié/collé manuellement ;
+  - partagé par la feuille de partage native quand disponible ;
+  - transmis comme lien `#challenge=...`.
+- Ouvrir un lien partagé affiche d’abord une fiche de défi (jeu, difficulté, code, version du générateur), puis le joueur choisit explicitement de lancer la partie.
+- Aucun compte, serveur, connexion sociale ou tracking n’est requis.
+- Pendant une partie issue d’un défi :
+  - le code est visible dans l’en-tête ;
+  - un bouton **Partager le défi** reste disponible ;
+  - **Nouvelle partie** rejoue exactement le même défi ;
+  - le sélecteur de difficulté est verrouillé afin de ne pas transformer silencieusement le défi.
+- L’écran de victoire permet de repartager le défi ; le texte de résultat inclut le code et le lien, jamais la solution.
+- Les entrées statistiques conservent `challengeCode`, `challengeGenerator` et une empreinte de la grille publique pour audit local.
+- Les sauvegardes `logic4-save-v1` conservent les métadonnées du défi et permettent une reprise normale.
+- Le contrat `CHALLENGE_GENERATOR=1` doit être conservé dans les versions futures pour que les anciens codes restent interprétables ; toute évolution incompatible devra utiliser une nouvelle version de générateur.
+- 18 nouveaux libellés sont disponibles dans les **30 langues**.
+
+### Validation spécifique v2.21.0
+- Round-trip création → parsing sur les **13 combinaisons** jeu/difficulté.
+- Rejet d’un code dont le checksum est modifié.
+- Rejet de la difficulté Expert hors Couronnes.
+- Reproduction déterministe du même puzzle public pour un même code, répétée sur les 13 combinaisons.
+- Vérification que des seeds différentes produisent des puzzles différents sur des cas représentatifs.
+- Vérification d’un lien `#challenge=...` et de la fiche d’atterrissage sans lancement automatique.
+- Vérification du lancement, de la sauvegarde et des statistiques d’un défi.
+- Vérification qu’aucune solution n’est présente dans le code ou le lien.
+- Vérification des 30 langues et des 282 clés de traduction.
+- Non-régression du Mode Exploration v2.20, de l’audit des coups v2.19.1, du Défi quotidien v2.19, de la priorité « erreurs d’abord », des 27 techniques/leçons, de l’entraînement ciblé, de l’historique et des générateurs.
 
 ## v2.20.0 — Mode Exploration
 - Nouveau bouton **◇ Exploration** dans chaque partie normale.
