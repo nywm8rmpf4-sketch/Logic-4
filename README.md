@@ -1,6 +1,416 @@
-# QUADLUD — v2.11.0
+# QUADLUD — v2.20.0
 
 Application web statique mobile-first regroupant **Couronnes**, **Soleil-Lune**, **Grille 6** et **Rectangles**.
+
+## v2.20.0 — Mode Exploration
+- Nouveau bouton **◇ Exploration** dans chaque partie normale.
+- **Tester une hypothèse** mémorise la position courante comme **point de branchement** sans écraser l’historique existant.
+- Tous les coups joués ensuite restent dans l’arbre d’historique v2.11.
+- Si le joueur effectue un coup **légal mais non démontré** dans cette exploration, le premier coup de ce type sur le chemin est automatiquement marqué `hypothesis`.
+- Des coups logiquement justifiés peuvent précéder l’hypothèse : QUADLUD attend alors le premier véritable saut non démontré avant d’étiqueter la branche.
+- Le panneau Exploration affiche les branches issues du point de branchement avec :
+  - action de départ de la branche ;
+  - statut logique : déduction, hypothèse, coup non justifié ou erreur ;
+  - branche courante ;
+  - branche préférée.
+- Une branche peut être sélectionnée à tout moment. QUADLUD rejoint son chemin préféré sans supprimer les autres branches.
+- **↶ Revenir au point de branchement** restaure exactement la position de départ de l’exploration, sans supprimer la branche testée et sans compter ce déplacement comme un Undo classique.
+- Le joueur peut alors tester une autre hypothèse ; la nouvelle trajectoire devient une véritable branche sœur dans l’historique.
+- **✓ Conserver cette branche** marque le chemin courant comme chemin préféré et ferme le mode Exploration. Les autres branches restent néanmoins conservées pour l’historique.
+- **Analyser la branche** recherche une contradiction uniquement avec les règles, l’état visible et les moteurs de preuve existants :
+  - Couronnes : conflits visibles et contradictions bornées jusqu’au niveau utilisé par le moteur ;
+  - Soleil-Lune : contradictions directes, rang 1 et témoin rang 2 ;
+  - Grille 6 : candidats impossibles, unités impossibles et témoin rang 2 ;
+  - Rectangles : zones/rectangles impossibles et témoin rang 2.
+- Le message **« Aucune contradiction n’est encore démontrable »** ne signifie pas que l’hypothèse est vraie : seulement que le moteur n’a pas trouvé de contradiction avec sa profondeur de preuve actuelle.
+- Logic Coach est intégré au mode Exploration : si la branche courante est déjà démontrablement contradictoire, une demande de Coach explique d’abord cette contradiction et propose un retour au point de branchement, avant tout nouvel indice.
+- Les violations immédiates de règles restent prioritaires grâce à la logique **« erreurs d’abord »** de v2.18.1.
+- Le statut des hypothèses, l’arbre, le point de branchement et l’état du mode Exploration sont sauvegardés dans `logic4-save-v1`.
+- Undo/Redo classiques continuent à fonctionner pendant l’exploration et le panneau se synchronise avec le curseur d’historique.
+- Les informations d’Exploration sont ajoutées à l’entrée d’historique statistique de la partie pour préparer les analyses futures.
+- Le mode Exploration est volontairement désactivé dans **Apprendre** et **S’entraîner**, où une trajectoire pédagogique précise doit rester identifiable.
+- Le moteur Exploration n’accède jamais à `current.sol` ni à la solution cachée.
+- 17 nouveaux libellés du mode Exploration sont disponibles dans les **30 langues**.
+
+### Validation spécifique v2.20.0
+- Test de création d’un point de branchement.
+- Test d’une hypothèse automatique à partir d’un coup légal non justifié.
+- Test d’un ou plusieurs coups justifiés avant l’apparition de l’hypothèse.
+- Test de deux branches sœurs conservées simultanément.
+- Test du retour au point de branchement sans suppression de branche ni incrément artificiel d’Undo.
+- Test de navigation vers une branche existante et son dernier nœud préféré.
+- Test de **Conserver cette branche** et du pointeur `preferred`.
+- Test de persistance après sauvegarde des branches et statuts `hypothesis`.
+- Test d’analyse d’une branche propre et d’une contradiction logique sans violation directe de règle.
+- Test de l’interception de cette contradiction par Logic Coach sans consommation d’indice.
+- Vérification que le moteur Exploration ne consulte pas la solution cachée.
+- Vérification des 30 langues et des 264 clés de traduction.
+- Non-régression de l’audit v2.19.1, du Défi quotidien v2.19, de la priorité « erreurs d’abord », des 27 techniques et leçons, de l’entraînement ciblé, du profil de maîtrise et des générateurs.
+
+## v2.19.1 — détection des coups non justifiés
+- Chaque **nouveau coup constructif** d’une partie normale est maintenant audité à partir de la position qui existait juste avant le coup.
+- QUADLUD distingue trois situations :
+  1. **Coup justifié** : une preuve logique est trouvée avec les règles et techniques connues.
+  2. **Coup erroné** : le coup viole une règle visible ; il reste traité par « Explique mon erreur ».
+  3. **Coup légal, mais non justifié** : le coup ne viole aucune règle, mais aucune preuve logique n’est trouvée ; QUADLUD le présente comme une **hypothèse** potentielle.
+- Un coup non justifié n’est **pas interdit**. Un bandeau explique qu’il est légal mais non démontré et propose :
+  - **Traiter comme hypothèse** ;
+  - **Annuler ce coup**.
+- Lorsqu’une hypothèse est acceptée, le nœud correspondant de l’arbre d’historique reçoit explicitement le statut `hypothesis`. Ce statut survit à Undo/Redo et prépare directement le mode Exploration v2.20.
+- Quand le moteur connaît déjà un autre coup démontrable dans la position précédente, le bandeau peut l’indiquer comme **coup actuellement démontrable**.
+- Le vocabulaire est volontairement prudent : « non justifié » signifie **« non démontré par les techniques actuellement connues de QUADLUD »**, et non « faux ».
+- Le contrôle utilise uniquement la position précédente, les règles et les moteurs de preuve. **La solution cachée n’est jamais consultée.**
+- Couronnes vérifie :
+  - exclusions et positions uniques directes ;
+  - contradictions de rang 1, 2 et 3 avec budget borné.
+- Soleil-Lune vérifie :
+  - équilibre 3/3 ;
+  - règle des trois ;
+  - relations `=` / `×` ;
+  - contradictions de rang 1 et 2.
+- Grille 6 vérifie :
+  - candidat unique ;
+  - unique caché ligne/colonne/bloc ;
+  - contradictions de rang 1 et 2.
+- Rectangles vérifie :
+  - rectangle unique ;
+  - case obligatoire ;
+  - contradictions de rang 1 et 2 ;
+  - création complète d’un rectangle lorsqu’elle correspond à l’unique rectangle compatible.
+- Les opérations de suppression/effacement, auto-croix dérivées, gestes complexes non auditables avec certitude et coups du Coach ne sont pas faussement signalés comme hypothèses.
+- Le profil de maîtrise peut désormais créditer comme « résolu seul » un coup que ce nouvel audit a effectivement **prouvé**, même s’il n’était pas le premier indice que le moteur aurait choisi.
+- Chaque partie conserve un `reasoningAudit` avec compteurs `justified`, `unjustified`, `hypotheses` et `unknown`; ces données sont ajoutées à l’historique statistique sans changer le schéma global v4.
+- Neuf nouveaux libellés sont disponibles dans les **30 langues**.
+
+### Validation spécifique v2.19.1
+- Test d’un candidat unique Grille 6 classé **justifié**.
+- Test d’un coup arbitraire légal classé **non justifié**.
+- Test d’acceptation explicite comme **hypothèse**.
+- Test Undo/Redo : le statut hypothèse est conservé dans la branche.
+- Test qu’un coup erroné reste une erreur et n’est jamais classé hypothèse.
+- Test d’une exclusion Couronnes justifiée.
+- Test d’un équilibre Soleil-Lune justifié.
+- Test d’un rectangle unique justifié.
+- Test qu’un effacement n’est pas faussement signalé.
+- Test d’un coup démontrable alternatif proposé depuis l’état visible.
+- Vérification de la persistance `reasoningAudit`.
+- Vérification des 30 langues et des 247 clés de traduction.
+- Non-régression du Défi quotidien v2.19, de la priorité « erreurs d’abord », du parcours Apprendre, de l’entraînement ciblé, de l’historique arborescent et des générateurs.
+
+## v2.19.0 — Défi QUADLUD quotidien 4 jeux + score logique
+- Le défi quotidien devient un **circuit QUADLUD complet** composé, dans l’ordre, de :
+  1. Couronnes ;
+  2. Soleil-Lune ;
+  3. Grille 6 ;
+  4. Rectangles.
+- Un bouton **Commencer/Reprendre le circuit** lance automatiquement le premier jeu du jour qui n’a pas encore été résolu.
+- Après chaque victoire quotidienne, l’écran de victoire propose directement **Jeu suivant** ; après le quatrième jeu, il mène au **Bilan du jour**.
+- Le seed quotidien historique reste inchangé : `logic4-v1.6:${day}:${game}`. Les grilles quotidiennes restent donc déterministes et compatibles avec les versions antérieures.
+- Nouveau **score logique officiel sur 400 points**, soit 100 points maximum par jeu.
+- Barème par jeu, fondé sur le niveau d’aide le plus profond réellement reçu :
+  - **100/100** : sans aide ;
+  - **90/100** : orientation seulement ;
+  - **75/100** : règle demandée ;
+  - **55/100** : explication demandée ;
+  - **25/100** : coup révélé.
+- Le score mesure volontairement **l’autonomie logique**, pas la vitesse.
+- Les **erreurs** et les **Undo/Redo / retours arrière** sont affichés dans le bilan mais ne retirent aucun point.
+- Le score officiel de chaque jeu est **figé lors de la première résolution réussie**. Rejouer une grille déjà connue peut améliorer le meilleur temps, mais ne peut pas améliorer le score logique officiel.
+- Une partie quotidienne révélée par le bouton Solution n’est pas considérée comme résolue et ne verrouille pas le score ; une résolution ultérieure peut encore établir le score officiel.
+- Le bilan quotidien indique, pour chacun des quatre jeux :
+  - score sur 100 ;
+  - niveau d’aide atteint ;
+  - temps ;
+  - nombre d’erreurs ;
+  - nombre de coups annulés.
+- Le total quotidien est affiché sur **400 points**.
+- Les anciens défis quotidiens déjà terminés avant v2.19 restent reconnus comme terminés mais sont signalés **non scorés**, car leur historique d’aide n’est pas disponible.
+- Le calendrier quotidien conserve l’indicateur 0/4 à 4/4 et ajoute le score sur 400 lorsque celui-ci est connu.
+- La carte Défi quotidien de l’accueil affiche désormais progression et score.
+- `logic4-daily-v1` reste la clé de stockage : les anciennes données sont conservées et enrichies sans migration destructive.
+- 18 nouveaux libellés du Défi QUADLUD et du score logique sont disponibles dans les **30 langues**.
+
+### Philosophie du score
+Le score v2.19 ne doit pas récompenser la précipitation. Un joueur qui réfléchit longtemps mais résout seul obtient 100/100. Un Undo n’est pas assimilé à une erreur et une erreur expliquée n’est pas sanctionnée par des points : ces informations servent au bilan pédagogique, tandis que le score mesure uniquement la profondeur d’aide demandée au Logic Coach.
+
+### Validation spécifique v2.19.0
+- Vérification du barème exact 100 / 90 / 75 / 55 / 25.
+- Vérification qu’erreurs, temps et retours arrière n’affectent pas le score.
+- Vérification du verrouillage du score à la première résolution.
+- Vérification qu’un replay peut améliorer le meilleur temps sans modifier le score logique.
+- Vérification qu’une partie révélée peut ensuite être réellement résolue et scorée.
+- Vérification de l’ordre des quatre jeux et du passage automatique au prochain jeu non terminé.
+- Vérification du total sur 400 et du bilan par jeu.
+- Vérification de la compatibilité des anciennes entrées `logic4-daily-v1`.
+- Vérification des 30 langues et des 238 clés de traduction.
+- Non-régression de la priorité « erreurs d’abord », du parcours Apprendre, de l’entraînement ciblé, du Logic Coach adaptatif, du profil de maîtrise, de l’historique arborescent, des générateurs et de la PWA.
+
+## v2.18.1 — Logic Coach : erreurs d’abord
+- Lorsqu’un joueur demande **Logic Coach**, QUADLUD recherche désormais **avant tout indice logique** les violations de règles actuellement visibles dans la grille.
+- Cette vérification porte sur **l’état courant complet**, pas seulement sur le dernier coup enregistré. Elle fonctionne donc également après une restauration, des Undo/Redo ou plusieurs coups successifs.
+- Si une ou plusieurs erreurs sont présentes :
+  - aucun nouvel indice de résolution n’est proposé ;
+  - aucune case correcte n’est révélée ;
+  - `hintUsed` reste inchangé ;
+  - les cellules en conflit sont mises en évidence ;
+  - chaque conflit est accompagné de la **règle concernée** et de son explication.
+- Logic Coach ne reprend la recherche du prochain coup logique qu’après correction des conflits visibles.
+- **Couronnes** : conflits ligne, colonne, zone et adjacence.
+- **Soleil-Lune** : dépassement 3/3, trois symboles identiques consécutifs et relations `=` / `×`.
+- **Grille 6** : doublons ligne, colonne et bloc 2×3.
+- **Rectangles** : deuxième indice dans une zone, taille devenue impossible et forme devenue impossible.
+- Plusieurs conflits simultanés peuvent être signalés dans une même demande de Coach.
+- Les gestes Rectangles rejetés avant modification de la grille restent également expliqués en priorité ; après cette explication ponctuelle, ils ne bloquent pas indéfiniment les demandes suivantes.
+- Le même comportement s’applique dans **S’entraîner** et dans le parcours **Apprendre** lorsqu’une véritable violation de règle est présente.
+- La détection et l’explication utilisent uniquement les **règles et l’état visible** ; elles ne consultent jamais la solution cachée.
+- Cette évolution ne modifie ni les générateurs, ni les 27 techniques, ni le scoring de maîtrise, ni le schéma statistique v2.18.
+
+### Validation spécifique v2.18.1
+- Test d’erreur prioritaire sur les quatre jeux.
+- Test de plusieurs conflits simultanés.
+- Vérification qu’aucun nœud historique et aucun `hintUsed` ne sont créés lors de l’explication.
+- Vérification qu’une grille propre laisse ensuite fonctionner normalement l’algorithme d’indice.
+- Test du comportement dans l’entraînement ciblé / parcours Apprendre.
+- Test du cas Rectangles rejeté : explication prioritaire mais non bloquante après acquittement.
+- Non-régression du parcours Apprendre, de l’entraînement ciblé, du Coach adaptatif, du profil de maîtrise, de l’historique et des générateurs.
+
+## v2.18.0 — parcours « Apprendre »
+- Nouvelle entrée **Apprendre** depuis l’accueil, distincte de **S’entraîner**.
+- QUADLUD propose désormais **27 leçons interactives**, soit une leçon pour chacune des 27 techniques pédagogiques de v2.13.
+- Chaque leçon suit quatre étapes :
+  1. **Explication** — nom de la technique, jeu, rang, zone d’observation, objectif et méthode.
+  2. **Exemple guidé** — une situation réellement générée/validée pour la technique ; le contexte, la règle et le raisonnement sont affichés avant que le joueur ne demande « Montrer le coup ».
+  3. **Exercice accompagné** — nouvelle situation ciblée avec Logic Coach forcé en mode pédagogique.
+  4. **Exercice autonome** — nouvelle situation ciblée avec Coach minimal ; la leçon n’est validée que si le joueur termine cette étape sans utiliser Logic Coach.
+- Les leçons réutilisent le moteur d’exercices ciblés v2.17 : la logique de la technique n’est donc pas dupliquée.
+- Le moteur peut utiliser la solution d’un générateur pour **construire** une position d’exercice, mais la technique affichée et la déduction attendue sont toujours **revalidées depuis l’état visible** avant présentation au joueur.
+- L’exemple guidé ne crédite jamais une résolution autonome.
+- L’exercice accompagné peut enrichir les statistiques d’aide du profil de maîtrise, mais ne valide pas l’autonomie.
+- L’exercice autonome réussi sans Coach crédite la technique comme résolue seul et valide la leçon.
+- Si Logic Coach est utilisé pendant l’étape autonome, l’exercice peut être terminé mais la leçon reste à refaire sans aide.
+- La progression pédagogique est séparée des statistiques d’entraînement libre : suivre une leçon ne gonfle pas artificiellement le nombre d’exercices d’entraînement.
+- Nouveau stockage `learning` dans `logic4-stats-v1` ; schéma statistique porté à **4**, avec migration automatique des schémas précédents.
+- Progression conservée par technique : explication, exemple guidé, exercice accompagné, exercice autonome, leçon terminée et meilleur temps autonome.
+- Les pages **Maîtrise** et **S’entraîner** proposent maintenant également un accès direct à **Apprendre** pour chaque technique.
+- Reprise de partie compatible : une étape de leçon sauvegardée reste identifiable comme leçon lors de la restauration.
+- Les 20 nouveaux textes du parcours sont disponibles dans les **30 langues**.
+
+### Validation spécifique v2.18.0
+- Vérification des **27/27 leçons**, une par technique.
+- Vérification de la progression 0/4 → 4/4 et des conditions de déverrouillage.
+- Vérification de l’exemple guidé et de son coup révélé.
+- Vérification que l’exemple guidé ne produit pas de crédit « résolu seul ».
+- Vérification de l’exercice accompagné avec Coach pédagogique.
+- Vérification qu’un exercice autonome utilisant Logic Coach ne valide pas la leçon.
+- Vérification qu’un exercice autonome sans Coach valide la leçon et crédite la maîtrise.
+- Vérification de la séparation entre statistiques `learning` et `training`.
+- Vérification de la migration du schéma `logic4-stats-v1` 3 → 4.
+- Vérification des 30 langues et des 220 clés de traduction.
+- Non-régression du Logic Coach adaptatif, du profil de maîtrise, d’« Explique mon erreur », de l’historique Annuler/Refaire/branches, des générateurs, de l’unicité et de la PWA.
+
+## v2.17.0 — entraînement ciblé par technique
+- Nouvelle entrée **Entraînement** sur l’accueil, avec un catalogue des **27 techniques** de Logic Coach regroupées par jeu.
+- Chaque technique peut lancer un **micro-exercice ciblé** : QUADLUD prépare une position où la technique choisie est effectivement applicable, puis le moteur logique revalide la déduction à partir de l’état visible.
+- Les **27/27 techniques** disposent d’un générateur d’exercice validé :
+  - Couronnes : 10/10, y compris contradictions rangs 1, 2 et 3 ;
+  - Soleil-Lune : 7/7 ;
+  - Grille 6 : 6/6 ;
+  - Rectangles : 4/4.
+- Les techniques directes utilisent des situations construites ou recherchées spécifiquement ; les 9 techniques par contradiction disposent de positions de référence prévalidées et revalidées au lancement par le moteur courant, avec une recherche bornée de position cohérente en secours si une évolution invalide une référence.
+- Le moteur peut utiliser la solution générée **uniquement pour fabriquer une position cohérente d’exercice** ; l’identification de la technique cible, les explications et Logic Coach restent fondés exclusivement sur l’**état visible**.
+- Le catalogue met en avant une technique **Recommandée** selon le profil de maîtrise : manque de données, score, erreurs observées et rang.
+- Chaque carte affiche le niveau de maîtrise, le nombre de tentatives et le nombre d’exercices réussis.
+- La page **Maîtrise** permet également de lancer directement un entraînement sur n’importe quelle technique.
+- En exercice :
+  - **Nouvel exercice** régénère une autre position de la même technique ;
+  - **Réinitialiser** revient exactement à la position de départ ;
+  - **Annuler / Refaire** restent disponibles ;
+  - **Logic Coach** reste disponible et suit le mode Minimal / Normal / Pédagogique de v2.16 ;
+  - la solution complète n’est pas proposée, afin de conserver l’objectif pédagogique ciblé.
+- Un coup différent de la déduction ciblée place l’exercice « hors trajectoire » ; le joueur peut utiliser Annuler ou Réinitialiser pour reprendre l’exercice.
+- Un coup correct termine immédiatement l’exercice. Sans recours au Coach, il est crédité comme **résolu seul** dans le profil de maîtrise ; avec le Coach, le niveau d’aide réellement reçu reste enregistré.
+- Les statistiques d’entraînement sont ajoutées à `logic4-stats-v1` : tentatives, réussites, réussites avec Coach et meilleur temps par technique. Le schéma passe à 3 tout en migrant les données antérieures.
+- Les exercices terminés ne restent pas artificiellement proposés comme parties « à reprendre ».
+- Correction de la bibliothèque Rectangles : **`P_SINGLE_RECTANGLE` / Rectangle unique** est désormais réellement atteignable ; auparavant la détection « Case obligatoire » interceptait toujours cette situation avant elle.
+- Les 12 nouveaux libellés de l’entraînement sont disponibles dans les **30 langues**.
+
+### Validation spécifique v2.17.0
+- Génération et revalidation automatique de **27/27 techniques**.
+- Vérification que l’identifiant retrouvé par le moteur est exactement celui demandé.
+- Test d’un exercice résolu sans Coach : réussite, crédit « seul », fusion dans le profil et statistiques d’entraînement.
+- Test d’un exercice résolu avec Logic Coach : aucune réussite automatique avant la révélation explicite et comptage `withCoach`.
+- Test d’un coup hors trajectoire puis Annuler jusqu’à la position initiale.
+- Test de la persistance du schéma de statistiques v3 et absence de sauvegarde « Reprendre » après exercice terminé.
+- Test spécifique de `P_SINGLE_RECTANGLE` désormais atteignable.
+- Vérification des 30 langues et des 200 clés de traduction.
+- Non-régression du Coach adaptatif, du profil de maîtrise, d’« Explique mon erreur », de l’historique arborescent, des générateurs, de l’unicité et de la PWA.
+
+## v2.16.0 — Logic Coach adaptatif
+- Logic Coach exploite désormais le **profil de maîtrise v2.15** pour adapter la profondeur de la première aide à la technique rencontrée.
+- Trois modes sont disponibles dans **Préférences** :
+  - **Minimal** : conserve systématiquement le parcours historique 1/4 → 2/4 → 3/4 → 4/4, une information par demande.
+  - **Normal** *(recommandé)* : une technique solide/excellente commence par une simple orientation ; une technique peu maîtrisée ou encore peu observée peut fournir directement **orientation + règle**.
+  - **Pédagogique** : une technique fragile ou nouvelle peut fournir dès la première demande **orientation + règle + explication**.
+- L’adaptation ne révèle **jamais automatiquement le coup** : l’étape 4/4 nécessite toujours une nouvelle action explicite du joueur.
+- Le choix manuel du joueur est prioritaire sur le profil : le mode Minimal désactive tout saut adaptatif.
+- Pour chaque technique, le plan adaptatif utilise :
+  - score de maîtrise ;
+  - nombre d’observations ;
+  - confiance ;
+  - niveau `Données insuffisantes / En développement / Acquis / Solide / Excellent`.
+- Le Coach prend également en compte les observations de la **session en cours**, sans attendre la fermeture de la partie.
+- En mode Normal :
+  - `Solide` ou `Excellent` → départ 1/4 ;
+  - maîtrise plus fragile ou données insuffisantes → départ 2/4.
+- En mode Pédagogique :
+  - `Excellent` → départ 1/4 ;
+  - `Acquis` ou `Solide` → départ 2/4 ;
+  - `En développement` ou données insuffisantes → départ 3/4.
+- Quand plusieurs niveaux sont délivrés lors d’une seule demande, `coachUsage` et le profil de maîtrise comptabilisent **exactement les informations réellement reçues**.
+- La décision adaptative est enregistrée avec le coup révélé (`adaptivePlan`) afin de préparer les futures analyses et l’entraînement ciblé.
+- Le réglage `coachMode` est ajouté à la clé historique `logic4-prefs-v1` ; les anciennes préférences sont migrées automatiquement vers **Normal**.
+- Dix nouveaux libellés d’interface sont disponibles dans les **30 langues**.
+
+### Validation spécifique v2.16.0
+- Vérification des trois modes Minimal / Normal / Pédagogique.
+- Vérification des profondeurs initiales 1/4, 2/4 ou 3/4 selon le profil.
+- Vérification qu’une technique fortement maîtrisée reçoit une aide légère.
+- Vérification qu’une technique fragile reçoit une aide renforcée.
+- Vérification qu’un profil sans assez de données déclenche le comportement d’apprentissage prévu.
+- Vérification qu’aucun mode ne peut atteindre automatiquement 4/4.
+- Vérification que la grille et `hintUsed` restent inchangés tant que le joueur ne demande pas explicitement la révélation.
+- Vérification du comptage correct des niveaux effectivement délivrés.
+- Vérification de la persistance du mode dans `logic4-prefs-v1`.
+- Vérification des 30 langues et des 188 clés de traduction.
+- Non-régression du profil de maîtrise, d’« Explique mon erreur », des 27 techniques, de l’historique arborescent, des générateurs et de la PWA.
+
+## v2.15.0 — profil de maîtrise logique
+- Nouvelle vue **Maîtrise** accessible depuis l’accueil.
+- Le profil est calculé **par technique** sur les 27 techniques pédagogiques de v2.13, puis agrégé par jeu et globalement.
+- Pour chaque technique, QUADLUD conserve :
+  - situations observées ;
+  - déductions directes reconnues comme **résolues seul** ;
+  - recours à **Où regarder ?** ;
+  - recours à la **règle** ;
+  - recours à l’**explication** ;
+  - coups **révélés** par Logic Coach ;
+  - erreurs directement rattachables à cette technique.
+- La reconnaissance « résolu seul » est volontairement **conservatrice** : elle ne crédite le joueur que lorsqu’une déduction directe identifiable depuis l’état visible correspond exactement au coup joué. Elle ne lit jamais la solution cachée et ne prétend pas détecter toutes les déductions avancées.
+- Les actions Couronnes avec auto-croix utilisent la cellule principale du geste afin d’éviter de créditer à tort une croix ajoutée automatiquement.
+- Une aide Logic Coach en cours empêche le même coup d’être compté comme « résolu seul ».
+- Les techniques avancées sans assez d’observations restent affichées **Données insuffisantes**, au lieu de recevoir un score artificiel.
+- Le score de maîtrise 0–100 privilégie :
+  - résolution autonome ;
+  - puis orientation seule ;
+  - puis règle ;
+  - puis explication ;
+  - puis révélation ;
+  - les erreurs liées réduisent le score.
+- Un indicateur de **confiance** augmente avec le nombre de situations réellement observées.
+- Niveaux affichés : **En développement · Acquis · Solide · Excellent**.
+- Le détail de l’aide est visible par technique avec les quatre niveaux du Coach.
+- Les données de maîtrise sont stockées dans la clé historique `logic4-stats-v1`, avec un schéma étendu compatible avec les anciennes statistiques.
+- Les anciennes parties v2.13/v2.14 présentes dans l’historique peuvent contribuer au profil via leurs données Logic Coach, sans double comptage des nouvelles parties v2.15.
+- Les sessions v2.15 stockent un `masterySession` et le fusionnent dans le profil persistant à la clôture de la partie.
+- Les 12 nouveaux libellés du profil sont disponibles dans les **30 langues**.
+
+### Validation spécifique v2.15.0
+- Test de reconnaissance autonome d’un candidat unique Grille 6.
+- Test qu’un coup précédé d’une aide Logic Coach n’est pas crédité comme autonome.
+- Test de comptage par technique des quatre niveaux d’aide.
+- Test d’une erreur Couronnes rattachée à la technique concernée.
+- Test du calcul score/confiance et du seuil « Données insuffisantes ».
+- Test de fusion persistante dans `logic4-stats-v1`.
+- Test de reprise des données historiques v2.13/v2.14 sans double comptage.
+- Vérification des 30 langues et des 178 clés de traduction.
+- Non-régression de **Explique mon erreur**, Logic Coach 4 étapes, des 27 techniques, Undo/Redo/branches, des générateurs, de l’unicité et de la PWA.
+
+## v2.14.0 — « Explique mon erreur »
+- QUADLUD détecte maintenant les **nouvelles violations de règle créées par le dernier coup**, uniquement à partir de l’état visible.
+- Lorsqu’une erreur est détectée, la grille conserve son affichage rouge et un bandeau **« Explique mon erreur »** apparaît.
+- L’explication indique la **règle concernée**, met en évidence les cellules en conflit et n’utilise jamais la solution cachée.
+- **Couronnes** : deux couronnes sur la même ligne, colonne ou zone ; couronnes adjacentes, y compris en diagonale.
+- **Soleil-Lune** : dépassement de l’équilibre 3/3, trois symboles identiques consécutifs, violation des relations `=` ou `×`.
+- **Grille 6** : chiffre en double dans une ligne, une colonne ou un bloc 2×3.
+- **Rectangles** : présence de deux indices dans une zone, dépassement impossible de la taille, incompatibilité de forme ; les rectangles rejetés avant validation peuvent également être expliqués (absence/multiplicité d’indice ou chevauchement).
+- Le bouton **« Revenir avant cette erreur »** repositionne directement la partie sur le nœud historique précédant le coup fautif.
+- Le coup erroné n’est pas détruit : il reste dans sa branche et peut être rejoué avec **Refaire**, conformément au modèle d’historique v2.11.
+- Demander l’explication d’une erreur **ne compte pas comme un indice révélant la solution** et ne positionne pas `hintUsed`.
+- Chaque nœud fautif de l’arbre peut conserver son objet d’erreur (`source: visible-state`) ; après un Redo vers ce nœud, l’explication redevient disponible.
+- Les statistiques mémorisent séparément `errorCoachUsage` : erreurs détectées, explications demandées, retours avant erreur et gestes Rectangles rejetés.
+- Les neuf nouveaux textes d’interface sont disponibles dans les **30 langues**.
+
+### Validation spécifique v2.14.0
+- Test d’une erreur Couronnes et identification de la règle exacte.
+- Test d’un doublon Grille 6.
+- Test d’un dépassement 3/3 Soleil-Lune.
+- Test d’une zone Rectangles devenue définitivement trop grande.
+- Test d’un rectangle rejeté sans création de coup historique.
+- Vérification que l’explication ne modifie pas la grille et ne déclenche pas `hintUsed`.
+- Vérification de **« Revenir avant cette erreur »**, puis de **Refaire** qui restaure le coup fautif et son explication.
+- Vérification que les objets d’erreur sont marqués `visible-state` et ne contiennent aucune solution cachée.
+- Vérification des nouveaux libellés dans les 30 langues.
+- Non-régression du Logic Coach 4 étapes, des 27 techniques, de l’historique arborescent, des générateurs et de la PWA.
+
+## v2.13.0 — bibliothèque pédagogique des techniques
+- Logic Coach s’appuie désormais sur une **bibliothèque de 27 techniques stables** réparties entre les quatre jeux.
+- Chaque technique possède un identifiant pérenne utilisable par le Coach, l’historique et les futurs profils de maîtrise.
+- **Couronnes (10 techniques)** : exclusions par ligne, colonne, zone et adjacence ; positions uniques par ligne, colonne et zone ; contradictions de rang 1 à 3.
+- **Soleil-Lune (7 techniques)** : équilibre 3/3 par ligne ou colonne ; règle des trois symboles ; relations `=` et `×` ; contradictions de rang 1 et 2.
+- **Grille 6 (6 techniques)** : candidat unique ; unique caché en ligne, colonne ou bloc 2×3 ; contradictions de rang 1 et 2.
+- **Rectangles (4 techniques)** : case obligatoire commune à tous les rectangles compatibles ; rectangle unique ; contradictions de rang 1 et 2.
+- Les déductions directes des moteurs portent maintenant explicitement leur identifiant de technique.
+- Les déductions par contradiction reçoivent automatiquement un identifiant stable selon le jeu et le rang.
+- L’étape **2/4** de Logic Coach affiche désormais le **nom pédagogique de la technique**, son identifiant stable et son niveau d’inférence.
+- Un nouveau bouton **Techniques** ouvre la bibliothèque du jeu courant et permet de voir toutes les techniques disponibles.
+- Les noms de techniques sont construits avec une terminologie localisée dans les **30 langues** de QUADLUD.
+- `coachUsage` mémorise désormais l’usage du Coach **par technique** (`where`, `rule`, `why`, `reveal`), ce qui prépare directement le futur profil de maîtrise v2.15.
+- Le moteur conserve la règle fondamentale : une technique et son explication sont déduites uniquement de l’**état visible**, jamais de la solution cachée.
+
+### Identifiants principaux v2.13
+- Couronnes : `Q_EXCLUSION_ROW`, `Q_EXCLUSION_COLUMN`, `Q_EXCLUSION_REGION`, `Q_EXCLUSION_ADJACENCY`, `Q_UNIQUE_ROW`, `Q_UNIQUE_COLUMN`, `Q_UNIQUE_REGION`, `Q_CONTRADICTION_R1..R3`.
+- Soleil-Lune : `T_BALANCE_ROW`, `T_BALANCE_COLUMN`, `T_NO_THREE`, `T_RELATION_EQUAL`, `T_RELATION_OPPOSITE`, `T_CONTRADICTION_R1..R2`.
+- Grille 6 : `S_NAKED_SINGLE`, `S_HIDDEN_ROW`, `S_HIDDEN_COLUMN`, `S_HIDDEN_BOX`, `S_CONTRADICTION_R1..R2`.
+- Rectangles : `P_MANDATORY_CELL`, `P_SINGLE_RECTANGLE`, `P_CONTRADICTION_R1..R2`.
+
+### Validation spécifique v2.13.0
+- Vérification des **27 identifiants uniques** et de leur rattachement au bon jeu/rang.
+- Vérification de la disponibilité d’un titre de technique dans les 30 langues.
+- Vérification de la classification directe Couronnes/Soleil-Lune/Grille 6/Rectangles.
+- Vérification du mapping automatique des contradictions de rang 1 à 3.
+- Vérification que chaque technique affichée dans la bibliothèque correspond à une entrée réelle du catalogue.
+- Vérification du suivi `coachUsage` par technique.
+- Non-régression du Coach en 4 étapes : aucune modification avant l’étape 4.
+- Non-régression de l’historique Annuler/Refaire/branches, des générateurs, de l’unicité, du Worker et de la PWA.
+
+## v2.12.0 — Logic Coach progressif en 4 étapes
+- Logic Coach suit désormais exactement quatre niveaux d’aide successifs :
+  1. **Où regarder ?** — met en évidence le contexte logique pertinent sans jouer le coup.
+  2. **Quelle règle ?** — indique la règle ou le niveau d’inférence à appliquer.
+  3. **Pourquoi ?** — expose la justification logique.
+  4. **Montrer le coup** — révèle et applique seulement alors le coup conseillé.
+- Les étapes 1 à 3 sont **non destructives** : elles ne modifient aucune case et ne créent aucun nœud dans l’historique.
+- Seule l’étape 4 est considérée comme un coup réellement révélé (`hintUsed`) et s’inscrit dans l’arbre Annuler/Refaire comme `COACH_APPLY`.
+- Un indicateur **1/4 → 4/4** est affiché dans la fenêtre du Coach.
+- L’orientation visuelle est progressive :
+  - étapes 1–2 : contexte de ligne/colonne, avec région/bloc lorsque pertinent ;
+  - étapes 3–4 : focalisation sur la case cible.
+- Pour Couronnes, le contexte inclut la zone colorée correspondante.
+- Pour Grille 6, le contexte inclut aussi le bloc 2×3.
+- Pour Rectangles, le Coach peut mettre en évidence le repère de la zone concernée.
+- Le niveau d’aide utilisé est conservé dans `coachUsage` (`where`, `rule`, `why`, `reveal`, `maxStage`) afin de préparer le futur profil de maîtrise.
+- Les statistiques de partie enregistrent désormais ce détail pédagogique en plus du simple indicateur `hintUsed`.
+- Les textes des quatre étapes réutilisent les ressources localisées existantes ; le fonctionnement reste disponible dans les **30 langues** sans ajouter de texte anglais de secours.
+- Les objets de raisonnement structurés v2.11 restent la source du Coach et restent limités à l’**état visible**.
+
+### Validation spécifique v2.12.0
+- Vérification qu’aucune des trois premières étapes ne modifie la grille.
+- Vérification qu’aucun nœud d’historique n’est créé avant l’étape 4.
+- Vérification que `hintUsed` reste faux aux étapes 1–3 et devient vrai uniquement lors de la révélation.
+- Vérification de `coachUsage` et de son niveau maximal.
+- Vérification que le coup appliqué au stade 4 reste compatible avec Annuler/Refaire.
+- Vérification des libellés nécessaires aux quatre étapes dans les 30 langues.
+- Non-régression de l’historique arborescent, des quatre moteurs, des générateurs, de l’unicité, du Worker et de la PWA.
 
 ## v2.11.0 — socle Logic Coach + historique Annuler/Refaire
 - Le bouton d’aide est désormais présenté comme **Logic Coach**.

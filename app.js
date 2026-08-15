@@ -5,7 +5,7 @@
  */
 'use strict';
 const $=s=>document.querySelector(s), app=$('#app'), toast=$('#toast'), timerEl=$('#timer');
-const VERSION='2.11.0', SAVE_KEY='logic4-save-v1';
+const VERSION='2.20.0', SAVE_KEY='logic4-save-v1';
 let current=null, tick=null, startedAt=0, elapsedBase=0, paused=false;
 const I18N={
 fr:{
@@ -120,6 +120,294 @@ Object.assign(I18N.ro,{"undo":"Anulează","redo":"Refă","logicCoach":"Logic Coa
 Object.assign(I18N.sk,{"undo":"Späť","redo":"Znova","logicCoach":"Logic Coach"});
 Object.assign(I18N.sl,{"undo":"Razveljavi","redo":"Ponovi","logicCoach":"Logic Coach"});
 Object.assign(I18N.sv,{"undo":"Ångra","redo":"Gör om","logicCoach":"Logic Coach"});
+
+/* v2.13.0 — technique library label */
+Object.assign(I18N.en,{techniques:"Techniques"});
+Object.assign(I18N.zh,{techniques:"技巧"});
+Object.assign(I18N.hi,{techniques:"तकनीकें"});
+Object.assign(I18N.es,{techniques:"Técnicas"});
+Object.assign(I18N.ar,{techniques:"التقنيات"});
+Object.assign(I18N.fr,{techniques:"Techniques"});
+Object.assign(I18N.bn,{techniques:"কৌশল"});
+Object.assign(I18N.pt,{techniques:"Técnicas"});
+Object.assign(I18N.id,{techniques:"Teknik"});
+Object.assign(I18N.ur,{techniques:"تکنیکیں"});
+Object.assign(I18N.bg,{techniques:"Техники"});
+Object.assign(I18N.hr,{techniques:"Tehnike"});
+Object.assign(I18N.cs,{techniques:"Techniky"});
+Object.assign(I18N.da,{techniques:"Teknikker"});
+Object.assign(I18N.nl,{techniques:"Technieken"});
+Object.assign(I18N.et,{techniques:"Tehnikad"});
+Object.assign(I18N.fi,{techniques:"Tekniikat"});
+Object.assign(I18N.de,{techniques:"Techniken"});
+Object.assign(I18N.el,{techniques:"Τεχνικές"});
+Object.assign(I18N.hu,{techniques:"Technikák"});
+Object.assign(I18N.ga,{techniques:"Teicnící"});
+Object.assign(I18N.it,{techniques:"Tecniche"});
+Object.assign(I18N.lv,{techniques:"Paņēmieni"});
+Object.assign(I18N.lt,{techniques:"Metodai"});
+Object.assign(I18N.mt,{techniques:"Tekniki"});
+Object.assign(I18N.pl,{techniques:"Techniki"});
+Object.assign(I18N.ro,{techniques:"Tehnici"});
+Object.assign(I18N.sk,{techniques:"Techniky"});
+Object.assign(I18N.sl,{techniques:"Tehnike"});
+Object.assign(I18N.sv,{techniques:"Tekniker"});
+
+/* v2.14.0 — Explain my error */
+Object.assign(I18N.en,{"explainError":"Explain my error","errorDetected":"Rule conflict detected","returnBeforeError":"Return before this error","errorRule":"Rule involved","errorConflict":"This move conflicts with the displayed rule. The highlighted cells cannot coexist in this state.","errorReturned":"Returned to the position before the error.","errorDuplicate":"Duplicate value","errorOverlap":"Overlapping regions","errorRejected":"This move was rejected."});
+Object.assign(I18N.zh,{"explainError":"解释我的错误","errorDetected":"检测到规则冲突","returnBeforeError":"返回错误前","errorRule":"相关规则","errorConflict":"这一步与显示的规则冲突。高亮的格子在当前状态下不能同时存在。","errorReturned":"已返回到错误发生前的位置。","errorDuplicate":"重复数值","errorOverlap":"区域重叠","errorRejected":"此操作已被拒绝。"});
+Object.assign(I18N.hi,{"explainError":"मेरी गलती समझाएँ","errorDetected":"नियम का टकराव मिला","returnBeforeError":"इस गलती से पहले लौटें","errorRule":"संबंधित नियम","errorConflict":"यह चाल दिखाए गए नियम से टकराती है। हाइलाइट किए गए खाने इस स्थिति में साथ नहीं रह सकते।","errorReturned":"गलती से पहले की स्थिति पर लौट आए।","errorDuplicate":"दोहराया मान","errorOverlap":"ओवरलैप क्षेत्र","errorRejected":"यह चाल अस्वीकार कर दी गई।"});
+Object.assign(I18N.es,{"explainError":"Explicar mi error","errorDetected":"Conflicto de regla detectado","returnBeforeError":"Volver antes de este error","errorRule":"Regla implicada","errorConflict":"Esta jugada entra en conflicto con la regla mostrada. Las casillas resaltadas no pueden coexistir en este estado.","errorReturned":"Se ha vuelto a la posición anterior al error.","errorDuplicate":"Valor duplicado","errorOverlap":"Regiones superpuestas","errorRejected":"Esta jugada ha sido rechazada."});
+Object.assign(I18N.ar,{"explainError":"اشرح خطئي","errorDetected":"تم اكتشاف تعارض مع قاعدة","returnBeforeError":"العودة إلى ما قبل هذا الخطأ","errorRule":"القاعدة المعنية","errorConflict":"تتعارض هذه النقلة مع القاعدة المعروضة. لا يمكن أن تتواجد الخلايا المميزة معًا في هذه الحالة.","errorReturned":"تم الرجوع إلى الوضع السابق للخطأ.","errorDuplicate":"قيمة مكررة","errorOverlap":"مناطق متداخلة","errorRejected":"تم رفض هذه النقلة."});
+Object.assign(I18N.fr,{"explainError":"Explique mon erreur","errorDetected":"Conflit de règle détecté","returnBeforeError":"Revenir avant cette erreur","errorRule":"Règle concernée","errorConflict":"Ce coup entre en conflit avec la règle affichée. Les cases surlignées ne peuvent pas coexister dans cet état.","errorReturned":"Retour à la position précédant l’erreur.","errorDuplicate":"Valeur en double","errorOverlap":"Zones qui se chevauchent","errorRejected":"Ce coup a été refusé."});
+Object.assign(I18N.bn,{"explainError":"আমার ভুল ব্যাখ্যা করুন","errorDetected":"নিয়মের সংঘাত ধরা পড়েছে","returnBeforeError":"এই ভুলের আগের অবস্থায় ফিরুন","errorRule":"সংশ্লিষ্ট নিয়ম","errorConflict":"এই চালটি দেখানো নিয়মের সঙ্গে সংঘর্ষ করে। হাইলাইট করা ঘরগুলো এই অবস্থায় একসঙ্গে থাকতে পারে না।","errorReturned":"ভুলের আগের অবস্থায় ফেরা হয়েছে।","errorDuplicate":"পুনরাবৃত্ত মান","errorOverlap":"ওভারল্যাপ অঞ্চল","errorRejected":"এই চালটি প্রত্যাখ্যাত হয়েছে।"});
+Object.assign(I18N.pt,{"explainError":"Explicar o meu erro","errorDetected":"Conflito de regra detetado","returnBeforeError":"Voltar antes deste erro","errorRule":"Regra envolvida","errorConflict":"Esta jogada entra em conflito com a regra apresentada. As casas destacadas não podem coexistir neste estado.","errorReturned":"Regressou à posição anterior ao erro.","errorDuplicate":"Valor duplicado","errorOverlap":"Regiões sobrepostas","errorRejected":"Esta jogada foi rejeitada."});
+Object.assign(I18N.id,{"explainError":"Jelaskan kesalahan saya","errorDetected":"Konflik aturan terdeteksi","returnBeforeError":"Kembali sebelum kesalahan ini","errorRule":"Aturan terkait","errorConflict":"Langkah ini bertentangan dengan aturan yang ditampilkan. Sel yang disorot tidak dapat berdampingan dalam keadaan ini.","errorReturned":"Kembali ke posisi sebelum kesalahan.","errorDuplicate":"Nilai ganda","errorOverlap":"Wilayah tumpang tindih","errorRejected":"Langkah ini ditolak."});
+Object.assign(I18N.ur,{"explainError":"میری غلطی سمجھائیں","errorDetected":"قاعدے کا تضاد ملا","returnBeforeError":"اس غلطی سے پہلے واپس جائیں","errorRule":"متعلقہ قاعدہ","errorConflict":"یہ چال دکھائے گئے قاعدے سے متصادم ہے۔ نمایاں خانے اس حالت میں اکٹھے نہیں رہ سکتے۔","errorReturned":"غلطی سے پہلے کی حالت پر واپس آ گئے۔","errorDuplicate":"دہرائی گئی قدر","errorOverlap":"اوورلیپ علاقے","errorRejected":"یہ چال مسترد کر دی گئی۔"});
+Object.assign(I18N.bg,{"explainError":"Обясни грешката ми","errorDetected":"Открит е конфликт с правило","returnBeforeError":"Върни преди тази грешка","errorRule":"Засегнато правило","errorConflict":"Този ход противоречи на показаното правило. Маркираните клетки не могат да съществуват заедно в това състояние.","errorReturned":"Върнато е до позицията преди грешката.","errorDuplicate":"Повтаряща се стойност","errorOverlap":"Припокриващи се области","errorRejected":"Този ход е отхвърлен."});
+Object.assign(I18N.hr,{"explainError":"Objasni moju pogrešku","errorDetected":"Otkriven sukob s pravilom","returnBeforeError":"Vrati se prije ove pogreške","errorRule":"Povezano pravilo","errorConflict":"Ovaj potez krši prikazano pravilo. Istaknuta polja ne mogu zajedno postojati u ovom stanju.","errorReturned":"Vraćeno na položaj prije pogreške.","errorDuplicate":"Dvostruka vrijednost","errorOverlap":"Preklapajuća područja","errorRejected":"Ovaj potez je odbijen."});
+Object.assign(I18N.cs,{"explainError":"Vysvětlit mou chybu","errorDetected":"Zjištěn konflikt pravidla","returnBeforeError":"Vrátit se před tuto chybu","errorRule":"Dotčené pravidlo","errorConflict":"Tento tah je v rozporu se zobrazeným pravidlem. Zvýrazněná pole v tomto stavu nemohou existovat současně.","errorReturned":"Návrat na pozici před chybou.","errorDuplicate":"Duplicitní hodnota","errorOverlap":"Překrývající se oblasti","errorRejected":"Tento tah byl odmítnut."});
+Object.assign(I18N.da,{"explainError":"Forklar min fejl","errorDetected":"Regelkonflikt fundet","returnBeforeError":"Gå tilbage før denne fejl","errorRule":"Berørt regel","errorConflict":"Dette træk strider mod den viste regel. De fremhævede felter kan ikke eksistere sammen i denne tilstand.","errorReturned":"Tilbage til positionen før fejlen.","errorDuplicate":"Dubletværdi","errorOverlap":"Overlappende regioner","errorRejected":"Dette træk blev afvist."});
+Object.assign(I18N.nl,{"explainError":"Leg mijn fout uit","errorDetected":"Regelconflict gedetecteerd","returnBeforeError":"Terug naar vóór deze fout","errorRule":"Betrokken regel","errorConflict":"Deze zet is in strijd met de getoonde regel. De gemarkeerde vakken kunnen in deze toestand niet samen bestaan.","errorReturned":"Teruggekeerd naar de positie vóór de fout.","errorDuplicate":"Dubbele waarde","errorOverlap":"Overlappende regio’s","errorRejected":"Deze zet is geweigerd."});
+Object.assign(I18N.et,{"explainError":"Selgita mu viga","errorDetected":"Tuvastati reeglikonflikt","returnBeforeError":"Tagasi enne seda viga","errorRule":"Seotud reegel","errorConflict":"See käik on vastuolus näidatud reegliga. Esiletõstetud ruudud ei saa selles seisus koos eksisteerida.","errorReturned":"Naasti vea eelsesse seisu.","errorDuplicate":"Korduv väärtus","errorOverlap":"Kattuvad piirkonnad","errorRejected":"See käik lükati tagasi."});
+Object.assign(I18N.fi,{"explainError":"Selitä virheeni","errorDetected":"Sääntöristiriita havaittu","returnBeforeError":"Palaa ennen tätä virhettä","errorRule":"Asiaan liittyvä sääntö","errorConflict":"Tämä siirto on ristiriidassa näytetyn säännön kanssa. Korostetut ruudut eivät voi olla yhdessä tässä tilanteessa.","errorReturned":"Palattiin virhettä edeltävään tilanteeseen.","errorDuplicate":"Kaksoisarvo","errorOverlap":"Päällekkäiset alueet","errorRejected":"Tämä siirto hylättiin."});
+Object.assign(I18N.de,{"explainError":"Meinen Fehler erklären","errorDetected":"Regelkonflikt erkannt","returnBeforeError":"Vor diesen Fehler zurückkehren","errorRule":"Betroffene Regel","errorConflict":"Dieser Zug widerspricht der angezeigten Regel. Die markierten Felder können in diesem Zustand nicht gleichzeitig bestehen.","errorReturned":"Zur Position vor dem Fehler zurückgekehrt.","errorDuplicate":"Doppelter Wert","errorOverlap":"Überlappende Regionen","errorRejected":"Dieser Zug wurde abgelehnt."});
+Object.assign(I18N.el,{"explainError":"Εξήγησε το λάθος μου","errorDetected":"Εντοπίστηκε σύγκρουση κανόνα","returnBeforeError":"Επιστροφή πριν από αυτό το λάθος","errorRule":"Σχετικός κανόνας","errorConflict":"Αυτή η κίνηση συγκρούεται με τον εμφανιζόμενο κανόνα. Τα επισημασμένα κελιά δεν μπορούν να συνυπάρχουν σε αυτή την κατάσταση.","errorReturned":"Επιστροφή στη θέση πριν από το λάθος.","errorDuplicate":"Διπλή τιμή","errorOverlap":"Επικαλυπτόμενες περιοχές","errorRejected":"Αυτή η κίνηση απορρίφθηκε."});
+Object.assign(I18N.hu,{"explainError":"Magyarázd el a hibámat","errorDetected":"Szabályütközés észlelve","returnBeforeError":"Vissza a hiba elé","errorRule":"Érintett szabály","errorConflict":"Ez a lépés ütközik a megjelenített szabállyal. A kiemelt mezők ebben az állapotban nem lehetnek együtt.","errorReturned":"Visszatérés a hiba előtti állapothoz.","errorDuplicate":"Ismétlődő érték","errorOverlap":"Átfedő régiók","errorRejected":"Ez a lépés elutasítva."});
+Object.assign(I18N.ga,{"explainError":"Mínigh mo bhotún","errorDetected":"Aimsíodh coinbhleacht rialach","returnBeforeError":"Fill roimh an mbotún seo","errorRule":"Riail lena mbaineann","errorConflict":"Tá an bogadh seo i gcoinbhleacht leis an riail atá ar taispeáint. Ní féidir leis na cealla aibhsithe a bheith le chéile sa staid seo.","errorReturned":"Fillte ar an suíomh roimh an mbotún.","errorDuplicate":"Luach dúblach","errorOverlap":"Réigiúin fhorluiteacha","errorRejected":"Diúltaíodh don bhogadh seo."});
+Object.assign(I18N.it,{"explainError":"Spiega il mio errore","errorDetected":"Conflitto di regola rilevato","returnBeforeError":"Torna prima di questo errore","errorRule":"Regola coinvolta","errorConflict":"Questa mossa è in conflitto con la regola mostrata. Le caselle evidenziate non possono coesistere in questo stato.","errorReturned":"Ritorno alla posizione precedente all’errore.","errorDuplicate":"Valore duplicato","errorOverlap":"Regioni sovrapposte","errorRejected":"Questa mossa è stata rifiutata."});
+Object.assign(I18N.lv,{"explainError":"Izskaidro manu kļūdu","errorDetected":"Konstatēts noteikuma konflikts","returnBeforeError":"Atgriezties pirms šīs kļūdas","errorRule":"Saistītais noteikums","errorConflict":"Šis gājiens ir pretrunā parādītajam noteikumam. Izceltās šūnas šajā stāvoklī nevar pastāvēt kopā.","errorReturned":"Atgriezts stāvoklis pirms kļūdas.","errorDuplicate":"Dublēta vērtība","errorOverlap":"Pārklājošies reģioni","errorRejected":"Šis gājiens tika noraidīts."});
+Object.assign(I18N.lt,{"explainError":"Paaiškinti mano klaidą","errorDetected":"Aptiktas taisyklės konfliktas","returnBeforeError":"Grįžti prieš šią klaidą","errorRule":"Susijusi taisyklė","errorConflict":"Šis ėjimas prieštarauja parodytai taisyklei. Pažymėti langeliai šioje būsenoje negali egzistuoti kartu.","errorReturned":"Grįžta į padėtį prieš klaidą.","errorDuplicate":"Pasikartojanti reikšmė","errorOverlap":"Persidengiančios sritys","errorRejected":"Šis ėjimas atmestas."});
+Object.assign(I18N.mt,{"explainError":"Spjega l-iżball tiegħi","errorDetected":"Instab kunflitt mar-regola","returnBeforeError":"Erġa’ lura qabel dan l-iżball","errorRule":"Regola involuta","errorConflict":"Din il-mossa tmur kontra r-regola murija. Iċ-ċelloli enfasizzati ma jistgħux jeżistu flimkien f’dan l-istat.","errorReturned":"Intbagħat lura għall-pożizzjoni qabel l-iżball.","errorDuplicate":"Valur duplikat","errorOverlap":"Reġjuni sovrapposti","errorRejected":"Din il-mossa ġiet miċħuda."});
+Object.assign(I18N.pl,{"explainError":"Wyjaśnij mój błąd","errorDetected":"Wykryto konflikt z regułą","returnBeforeError":"Wróć przed ten błąd","errorRule":"Powiązana reguła","errorConflict":"Ten ruch jest sprzeczny z pokazaną regułą. Podświetlone pola nie mogą współistnieć w tym stanie.","errorReturned":"Powrót do pozycji sprzed błędu.","errorDuplicate":"Powtórzona wartość","errorOverlap":"Nakładające się regiony","errorRejected":"Ten ruch został odrzucony."});
+Object.assign(I18N.ro,{"explainError":"Explică-mi greșeala","errorDetected":"Conflict de regulă detectat","returnBeforeError":"Revino înaintea acestei greșeli","errorRule":"Regula implicată","errorConflict":"Această mutare intră în conflict cu regula afișată. Celulele evidențiate nu pot coexista în această stare.","errorReturned":"Revenire la poziția dinaintea greșelii.","errorDuplicate":"Valoare duplicată","errorOverlap":"Regiuni suprapuse","errorRejected":"Această mutare a fost respinsă."});
+Object.assign(I18N.sk,{"explainError":"Vysvetli moju chybu","errorDetected":"Zistený konflikt pravidla","returnBeforeError":"Vrátiť sa pred túto chybu","errorRule":"Dotknuté pravidlo","errorConflict":"Tento ťah je v rozpore so zobrazeným pravidlom. Zvýraznené políčka nemôžu v tomto stave existovať spolu.","errorReturned":"Návrat na pozíciu pred chybou.","errorDuplicate":"Duplicitná hodnota","errorOverlap":"Prekrývajúce sa oblasti","errorRejected":"Tento ťah bol odmietnutý."});
+Object.assign(I18N.sl,{"explainError":"Pojasni mojo napako","errorDetected":"Zaznan konflikt s pravilom","returnBeforeError":"Vrni se pred to napako","errorRule":"Povezano pravilo","errorConflict":"Ta poteza je v nasprotju s prikazanim pravilom. Označena polja v tem stanju ne morejo obstajati skupaj.","errorReturned":"Vrnitev na položaj pred napako.","errorDuplicate":"Podvojena vrednost","errorOverlap":"Prekrivajoča območja","errorRejected":"Ta poteza je bila zavrnjena."});
+Object.assign(I18N.sv,{"explainError":"Förklara mitt misstag","errorDetected":"Regelkonflikt upptäckt","returnBeforeError":"Gå tillbaka före misstaget","errorRule":"Berörd regel","errorConflict":"Det här draget strider mot den visade regeln. De markerade rutorna kan inte finnas samtidigt i detta läge.","errorReturned":"Tillbaka till positionen före misstaget.","errorDuplicate":"Dubblettvärde","errorOverlap":"Överlappande regioner","errorRejected":"Det här draget avvisades."});
+
+/* v2.15.0 — mastery profile labels */
+Object.assign(I18N.en,{"mastery":"Mastery","masterySub":"Your logical strengths and techniques to improve.","masteryOverall":"Overall mastery","masteryObserved":"Observed","masterySolo":"Solved alone","masteryErrors":"Related errors","masteryConfidence":"Confidence","masteryInsufficient":"Not enough data","masteryDeveloping":"Developing","masteryAcquired":"Acquired","masteryStrong":"Strong","masteryExcellent":"Excellent"});
+Object.assign(I18N.zh,{"mastery":"掌握度","masterySub":"查看你的逻辑优势和需要提高的技巧。","masteryOverall":"总体掌握度","masteryObserved":"已观察","masterySolo":"独立解决","masteryErrors":"相关错误","masteryConfidence":"置信度","masteryInsufficient":"数据不足","masteryDeveloping":"发展中","masteryAcquired":"已掌握","masteryStrong":"熟练","masteryExcellent":"优秀"});
+Object.assign(I18N.hi,{"mastery":"दक्षता","masterySub":"अपनी तार्किक ताकत और सुधार की तकनीकें देखें।","masteryOverall":"समग्र दक्षता","masteryObserved":"देखी गई स्थितियाँ","masterySolo":"स्वयं हल किया","masteryErrors":"संबंधित गलतियाँ","masteryConfidence":"विश्वसनीयता","masteryInsufficient":"पर्याप्त डेटा नहीं","masteryDeveloping":"विकासशील","masteryAcquired":"अर्जित","masteryStrong":"मजबूत","masteryExcellent":"उत्कृष्ट"});
+Object.assign(I18N.es,{"mastery":"Dominio","masterySub":"Tus fortalezas lógicas y las técnicas a mejorar.","masteryOverall":"Dominio global","masteryObserved":"Observadas","masterySolo":"Resueltas solo","masteryErrors":"Errores relacionados","masteryConfidence":"Confianza","masteryInsufficient":"Datos insuficientes","masteryDeveloping":"En desarrollo","masteryAcquired":"Adquirido","masteryStrong":"Sólido","masteryExcellent":"Excelente"});
+Object.assign(I18N.ar,{"mastery":"الإتقان","masterySub":"نقاط قوتك المنطقية والتقنيات التي تحتاج إلى تحسين.","masteryOverall":"الإتقان العام","masteryObserved":"تمت ملاحظتها","masterySolo":"حُلّت دون مساعدة","masteryErrors":"أخطاء مرتبطة","masteryConfidence":"الثقة","masteryInsufficient":"بيانات غير كافية","masteryDeveloping":"قيد التطور","masteryAcquired":"مكتسب","masteryStrong":"قوي","masteryExcellent":"ممتاز"});
+Object.assign(I18N.fr,{"mastery":"Maîtrise","masterySub":"Tes points forts logiques et les techniques à travailler.","masteryOverall":"Maîtrise globale","masteryObserved":"Situations observées","masterySolo":"Résolues seul","masteryErrors":"Erreurs liées","masteryConfidence":"Confiance","masteryInsufficient":"Données insuffisantes","masteryDeveloping":"En développement","masteryAcquired":"Acquis","masteryStrong":"Solide","masteryExcellent":"Excellent"});
+Object.assign(I18N.bn,{"mastery":"দক্ষতা","masterySub":"আপনার যৌক্তিক শক্তি ও উন্নতির কৌশলগুলো দেখুন।","masteryOverall":"সামগ্রিক দক্ষতা","masteryObserved":"পর্যবেক্ষিত","masterySolo":"নিজে সমাধান","masteryErrors":"সম্পর্কিত ভুল","masteryConfidence":"আস্থা","masteryInsufficient":"পর্যাপ্ত তথ্য নেই","masteryDeveloping":"উন্নয়নশীল","masteryAcquired":"অর্জিত","masteryStrong":"দৃঢ়","masteryExcellent":"চমৎকার"});
+Object.assign(I18N.pt,{"mastery":"Domínio","masterySub":"Os teus pontos fortes lógicos e as técnicas a melhorar.","masteryOverall":"Domínio global","masteryObserved":"Observadas","masterySolo":"Resolvidas sozinho","masteryErrors":"Erros relacionados","masteryConfidence":"Confiança","masteryInsufficient":"Dados insuficientes","masteryDeveloping":"Em desenvolvimento","masteryAcquired":"Adquirido","masteryStrong":"Sólido","masteryExcellent":"Excelente"});
+Object.assign(I18N.id,{"mastery":"Penguasaan","masterySub":"Kekuatan logika dan teknik yang perlu ditingkatkan.","masteryOverall":"Penguasaan keseluruhan","masteryObserved":"Diamati","masterySolo":"Diselesaikan sendiri","masteryErrors":"Kesalahan terkait","masteryConfidence":"Keyakinan","masteryInsufficient":"Data belum cukup","masteryDeveloping":"Berkembang","masteryAcquired":"Dikuasai","masteryStrong":"Kuat","masteryExcellent":"Sangat baik"});
+Object.assign(I18N.ur,{"mastery":"مہارت","masterySub":"اپنی منطقی طاقت اور بہتر کرنے والی تکنیکیں دیکھیں۔","masteryOverall":"مجموعی مہارت","masteryObserved":"مشاہدہ شدہ","masterySolo":"خود حل کیا","masteryErrors":"متعلقہ غلطیاں","masteryConfidence":"اعتماد","masteryInsufficient":"ناکافی ڈیٹا","masteryDeveloping":"ترقی پذیر","masteryAcquired":"حاصل شدہ","masteryStrong":"مضبوط","masteryExcellent":"بہترین"});
+Object.assign(I18N.bg,{"mastery":"Овладяване","masterySub":"Логическите ти силни страни и техниките за подобрение.","masteryOverall":"Общо овладяване","masteryObserved":"Наблюдавани","masterySolo":"Решени самостоятелно","masteryErrors":"Свързани грешки","masteryConfidence":"Надеждност","masteryInsufficient":"Недостатъчно данни","masteryDeveloping":"В развитие","masteryAcquired":"Усвоено","masteryStrong":"Стабилно","masteryExcellent":"Отлично"});
+Object.assign(I18N.hr,{"mastery":"Ovladavanje","masterySub":"Tvoje logičke snage i tehnike za poboljšanje.","masteryOverall":"Ukupno ovladavanje","masteryObserved":"Promatrano","masterySolo":"Riješeno samostalno","masteryErrors":"Povezane pogreške","masteryConfidence":"Pouzdanost","masteryInsufficient":"Nedovoljno podataka","masteryDeveloping":"U razvoju","masteryAcquired":"Usvojeno","masteryStrong":"Snažno","masteryExcellent":"Izvrsno"});
+Object.assign(I18N.cs,{"mastery":"Zvládnutí","masterySub":"Tvé logické silné stránky a techniky ke zlepšení.","masteryOverall":"Celkové zvládnutí","masteryObserved":"Pozorováno","masterySolo":"Vyřešeno samostatně","masteryErrors":"Související chyby","masteryConfidence":"Spolehlivost","masteryInsufficient":"Nedostatek dat","masteryDeveloping":"Ve vývoji","masteryAcquired":"Osvojeno","masteryStrong":"Silné","masteryExcellent":"Výborné"});
+Object.assign(I18N.da,{"mastery":"Mestring","masterySub":"Dine logiske styrker og teknikker at forbedre.","masteryOverall":"Samlet mestring","masteryObserved":"Observeret","masterySolo":"Løst selv","masteryErrors":"Relaterede fejl","masteryConfidence":"Sikkerhed","masteryInsufficient":"Ikke nok data","masteryDeveloping":"Under udvikling","masteryAcquired":"Tilegnet","masteryStrong":"Stærk","masteryExcellent":"Fremragende"});
+Object.assign(I18N.nl,{"mastery":"Beheersing","masterySub":"Je logische sterke punten en technieken om te verbeteren.","masteryOverall":"Totale beheersing","masteryObserved":"Geobserveerd","masterySolo":"Zelf opgelost","masteryErrors":"Gerelateerde fouten","masteryConfidence":"Betrouwbaarheid","masteryInsufficient":"Onvoldoende gegevens","masteryDeveloping":"In ontwikkeling","masteryAcquired":"Verworven","masteryStrong":"Sterk","masteryExcellent":"Uitstekend"});
+Object.assign(I18N.et,{"mastery":"Valdamine","masterySub":"Sinu loogilised tugevused ja arendatavad tehnikad.","masteryOverall":"Üldine valdamine","masteryObserved":"Vaadeldud","masterySolo":"Iseseisvalt lahendatud","masteryErrors":"Seotud vead","masteryConfidence":"Usaldus","masteryInsufficient":"Andmeid pole piisavalt","masteryDeveloping":"Arenev","masteryAcquired":"Omandatud","masteryStrong":"Tugev","masteryExcellent":"Suurepärane"});
+Object.assign(I18N.fi,{"mastery":"Hallinta","masterySub":"Loogiset vahvuutesi ja kehitettäviä tekniikoita.","masteryOverall":"Kokonaishallinta","masteryObserved":"Havaittu","masterySolo":"Ratkaistu itse","masteryErrors":"Liittyvät virheet","masteryConfidence":"Luotettavuus","masteryInsufficient":"Ei riittävästi tietoa","masteryDeveloping":"Kehittyvä","masteryAcquired":"Omaksuttu","masteryStrong":"Vahva","masteryExcellent":"Erinomainen"});
+Object.assign(I18N.de,{"mastery":"Beherrschung","masterySub":"Deine logischen Stärken und Techniken mit Verbesserungspotenzial.","masteryOverall":"Gesamtbeherrschung","masteryObserved":"Beobachtet","masterySolo":"Allein gelöst","masteryErrors":"Zugehörige Fehler","masteryConfidence":"Sicherheit","masteryInsufficient":"Nicht genügend Daten","masteryDeveloping":"In Entwicklung","masteryAcquired":"Erworben","masteryStrong":"Stark","masteryExcellent":"Ausgezeichnet"});
+Object.assign(I18N.el,{"mastery":"Κατάκτηση","masterySub":"Τα λογικά δυνατά σου σημεία και οι τεχνικές προς βελτίωση.","masteryOverall":"Συνολική κατάκτηση","masteryObserved":"Παρατηρήθηκαν","masterySolo":"Λύθηκαν χωρίς βοήθεια","masteryErrors":"Σχετικά λάθη","masteryConfidence":"Βεβαιότητα","masteryInsufficient":"Ανεπαρκή δεδομένα","masteryDeveloping":"Σε ανάπτυξη","masteryAcquired":"Κατακτημένο","masteryStrong":"Ισχυρό","masteryExcellent":"Εξαιρετικό"});
+Object.assign(I18N.hu,{"mastery":"Elsajátítás","masterySub":"Logikai erősségeid és a fejlesztendő technikák.","masteryOverall":"Összesített elsajátítás","masteryObserved":"Megfigyelt","masterySolo":"Önállóan megoldott","masteryErrors":"Kapcsolódó hibák","masteryConfidence":"Biztonság","masteryInsufficient":"Nincs elég adat","masteryDeveloping":"Fejlődő","masteryAcquired":"Elsajátított","masteryStrong":"Erős","masteryExcellent":"Kiváló"});
+Object.assign(I18N.ga,{"mastery":"Máistreacht","masterySub":"Do láidreachtaí loighciúla agus na teicnící le feabhsú.","masteryOverall":"Máistreacht iomlán","masteryObserved":"Breathnaithe","masterySolo":"Réitithe leat féin","masteryErrors":"Earráidí gaolmhara","masteryConfidence":"Muinín","masteryInsufficient":"Gan dóthain sonraí","masteryDeveloping":"Ag forbairt","masteryAcquired":"Sealbhaithe","masteryStrong":"Láidir","masteryExcellent":"Ar fheabhas"});
+Object.assign(I18N.it,{"mastery":"Padronanza","masterySub":"I tuoi punti di forza logici e le tecniche da migliorare.","masteryOverall":"Padronanza complessiva","masteryObserved":"Osservate","masterySolo":"Risolte da solo","masteryErrors":"Errori correlati","masteryConfidence":"Affidabilità","masteryInsufficient":"Dati insufficienti","masteryDeveloping":"In sviluppo","masteryAcquired":"Acquisita","masteryStrong":"Solida","masteryExcellent":"Eccellente"});
+Object.assign(I18N.lv,{"mastery":"Prasme","masterySub":"Tavas loģikas stiprās puses un pilnveidojamie paņēmieni.","masteryOverall":"Kopējā prasme","masteryObserved":"Novērotas","masterySolo":"Atrisinātas patstāvīgi","masteryErrors":"Saistītās kļūdas","masteryConfidence":"Pārliecība","masteryInsufficient":"Nepietiek datu","masteryDeveloping":"Attīstās","masteryAcquired":"Apgūts","masteryStrong":"Spēcīgs","masteryExcellent":"Izcili"});
+Object.assign(I18N.lt,{"mastery":"Įvaldymas","masterySub":"Tavo loginės stiprybės ir tobulintini metodai.","masteryOverall":"Bendras įvaldymas","masteryObserved":"Stebėta","masterySolo":"Išspręsta savarankiškai","masteryErrors":"Susijusios klaidos","masteryConfidence":"Patikimumas","masteryInsufficient":"Nepakanka duomenų","masteryDeveloping":"Tobulėjama","masteryAcquired":"Įvaldyta","masteryStrong":"Stipru","masteryExcellent":"Puiku"});
+Object.assign(I18N.mt,{"mastery":"Ħakma","masterySub":"Il-punti b’saħħithom loġiċi tiegħek u t-tekniki li għandek ittejjeb.","masteryOverall":"Ħakma ġenerali","masteryObserved":"Osservati","masterySolo":"Solvuti waħdek","masteryErrors":"Żbalji relatati","masteryConfidence":"Fiduċja","masteryInsufficient":"Mhux biżżejjed data","masteryDeveloping":"Qed tiżviluppa","masteryAcquired":"Miksuba","masteryStrong":"B’saħħitha","masteryExcellent":"Eċċellenti"});
+Object.assign(I18N.pl,{"mastery":"Opanowanie","masterySub":"Twoje mocne strony logiczne i techniki do poprawy.","masteryOverall":"Ogólne opanowanie","masteryObserved":"Zaobserwowane","masterySolo":"Rozwiązane samodzielnie","masteryErrors":"Powiązane błędy","masteryConfidence":"Pewność","masteryInsufficient":"Za mało danych","masteryDeveloping":"W rozwoju","masteryAcquired":"Opanowane","masteryStrong":"Mocne","masteryExcellent":"Doskonałe"});
+Object.assign(I18N.ro,{"mastery":"Stăpânire","masterySub":"Punctele tale forte logice și tehnicile de îmbunătățit.","masteryOverall":"Stăpânire generală","masteryObserved":"Observate","masterySolo":"Rezolvate singur","masteryErrors":"Erori asociate","masteryConfidence":"Încredere","masteryInsufficient":"Date insuficiente","masteryDeveloping":"În dezvoltare","masteryAcquired":"Dobândit","masteryStrong":"Solid","masteryExcellent":"Excelent"});
+Object.assign(I18N.sk,{"mastery":"Zvládnutie","masterySub":"Tvoje logické silné stránky a techniky na zlepšenie.","masteryOverall":"Celkové zvládnutie","masteryObserved":"Pozorované","masterySolo":"Vyriešené samostatne","masteryErrors":"Súvisiace chyby","masteryConfidence":"Spoľahlivosť","masteryInsufficient":"Nedostatok údajov","masteryDeveloping":"Vo vývoji","masteryAcquired":"Osvojené","masteryStrong":"Silné","masteryExcellent":"Výborné"});
+Object.assign(I18N.sl,{"mastery":"Obvladovanje","masterySub":"Tvoje logične prednosti in tehnike za izboljšanje.","masteryOverall":"Skupno obvladovanje","masteryObserved":"Opaženo","masterySolo":"Rešeno samostojno","masteryErrors":"Povezane napake","masteryConfidence":"Zanesljivost","masteryInsufficient":"Premalo podatkov","masteryDeveloping":"V razvoju","masteryAcquired":"Usvojeno","masteryStrong":"Močno","masteryExcellent":"Odlično"});
+Object.assign(I18N.sv,{"mastery":"Bemästring","masterySub":"Dina logiska styrkor och tekniker att förbättra.","masteryOverall":"Total bemästring","masteryObserved":"Observerade","masterySolo":"Lösta själv","masteryErrors":"Relaterade fel","masteryConfidence":"Tillförlitlighet","masteryInsufficient":"Inte tillräckligt med data","masteryDeveloping":"Under utveckling","masteryAcquired":"Inlärt","masteryStrong":"Starkt","masteryExcellent":"Utmärkt"});
+
+/* v2.16.0 — adaptive Coach labels */
+Object.assign(I18N.en,{"coachMode":"Coach mode","coachModeSub":"Choose how much help Logic Coach gives automatically.","coachMinimal":"Minimal","coachNormal":"Normal","coachPedagogical":"Pedagogical","adaptiveHelp":"Adaptive help","adaptiveLight":"Light guidance","adaptiveReinforced":"Reinforced guidance","adaptiveLearning":"Learning mode","recommended":"Recommended"});
+Object.assign(I18N.zh,{"coachMode":"教练模式","coachModeSub":"选择 Logic Coach 自动提供多少帮助。","coachMinimal":"最少","coachNormal":"正常","coachPedagogical":"教学","adaptiveHelp":"自适应帮助","adaptiveLight":"轻度提示","adaptiveReinforced":"加强提示","adaptiveLearning":"学习模式","recommended":"建议"});
+Object.assign(I18N.hi,{"coachMode":"कोच मोड","coachModeSub":"Logic Coach अपने आप कितनी मदद दे, चुनें।","coachMinimal":"न्यूनतम","coachNormal":"सामान्य","coachPedagogical":"शैक्षिक","adaptiveHelp":"अनुकूली सहायता","adaptiveLight":"हल्का मार्गदर्शन","adaptiveReinforced":"अधिक मार्गदर्शन","adaptiveLearning":"सीखने का मोड","recommended":"अनुशंसित"});
+Object.assign(I18N.es,{"coachMode":"Modo del Coach","coachModeSub":"Elige cuánta ayuda ofrece Logic Coach automáticamente.","coachMinimal":"Mínimo","coachNormal":"Normal","coachPedagogical":"Pedagógico","adaptiveHelp":"Ayuda adaptativa","adaptiveLight":"Orientación ligera","adaptiveReinforced":"Ayuda reforzada","adaptiveLearning":"Modo aprendizaje","recommended":"Recomendado"});
+Object.assign(I18N.ar,{"coachMode":"وضع المدرب","coachModeSub":"اختر مقدار المساعدة التي يقدمها Logic Coach تلقائيًا.","coachMinimal":"الحد الأدنى","coachNormal":"عادي","coachPedagogical":"تعليمي","adaptiveHelp":"مساعدة تكيفية","adaptiveLight":"توجيه خفيف","adaptiveReinforced":"مساعدة معززة","adaptiveLearning":"وضع التعلم","recommended":"موصى به"});
+Object.assign(I18N.fr,{"coachMode":"Mode du Coach","coachModeSub":"Choisis la quantité d’aide que Logic Coach peut fournir automatiquement.","coachMinimal":"Minimal","coachNormal":"Normal","coachPedagogical":"Pédagogique","adaptiveHelp":"Aide adaptative","adaptiveLight":"Orientation légère","adaptiveReinforced":"Aide renforcée","adaptiveLearning":"Mode apprentissage","recommended":"Recommandé"});
+Object.assign(I18N.bn,{"coachMode":"কোচ মোড","coachModeSub":"Logic Coach স্বয়ংক্রিয়ভাবে কতটা সাহায্য দেবে তা বেছে নিন।","coachMinimal":"সর্বনিম্ন","coachNormal":"স্বাভাবিক","coachPedagogical":"শিক্ষামূলক","adaptiveHelp":"অভিযোজিত সহায়তা","adaptiveLight":"হালকা নির্দেশনা","adaptiveReinforced":"বর্ধিত সহায়তা","adaptiveLearning":"শেখার মোড","recommended":"প্রস্তাবিত"});
+Object.assign(I18N.pt,{"coachMode":"Modo do Coach","coachModeSub":"Escolhe quanta ajuda o Logic Coach fornece automaticamente.","coachMinimal":"Mínimo","coachNormal":"Normal","coachPedagogical":"Pedagógico","adaptiveHelp":"Ajuda adaptativa","adaptiveLight":"Orientação ligeira","adaptiveReinforced":"Ajuda reforçada","adaptiveLearning":"Modo de aprendizagem","recommended":"Recomendado"});
+Object.assign(I18N.id,{"coachMode":"Mode Coach","coachModeSub":"Pilih seberapa banyak bantuan yang diberikan Logic Coach secara otomatis.","coachMinimal":"Minimal","coachNormal":"Normal","coachPedagogical":"Pedagogis","adaptiveHelp":"Bantuan adaptif","adaptiveLight":"Panduan ringan","adaptiveReinforced":"Bantuan diperkuat","adaptiveLearning":"Mode belajar","recommended":"Direkomendasikan"});
+Object.assign(I18N.ur,{"coachMode":"کوچ موڈ","coachModeSub":"منتخب کریں کہ Logic Coach خودکار طور پر کتنی مدد دے۔","coachMinimal":"کم سے کم","coachNormal":"عام","coachPedagogical":"تعلیمی","adaptiveHelp":"موافق مدد","adaptiveLight":"ہلکی رہنمائی","adaptiveReinforced":"زیادہ مدد","adaptiveLearning":"سیکھنے کا موڈ","recommended":"تجویز کردہ"});
+Object.assign(I18N.bg,{"coachMode":"Режим на Coach","coachModeSub":"Избери колко помощ да дава Logic Coach автоматично.","coachMinimal":"Минимален","coachNormal":"Нормален","coachPedagogical":"Педагогически","adaptiveHelp":"Адаптивна помощ","adaptiveLight":"Леко насочване","adaptiveReinforced":"Засилена помощ","adaptiveLearning":"Режим обучение","recommended":"Препоръчано"});
+Object.assign(I18N.hr,{"coachMode":"Način Coacha","coachModeSub":"Odaberi koliko pomoći Logic Coach daje automatski.","coachMinimal":"Minimalno","coachNormal":"Normalno","coachPedagogical":"Pedagoški","adaptiveHelp":"Prilagodljiva pomoć","adaptiveLight":"Lagana smjernica","adaptiveReinforced":"Pojačana pomoć","adaptiveLearning":"Način učenja","recommended":"Preporučeno"});
+Object.assign(I18N.cs,{"coachMode":"Režim Coache","coachModeSub":"Zvolte, kolik pomoci má Logic Coach poskytovat automaticky.","coachMinimal":"Minimální","coachNormal":"Normální","coachPedagogical":"Pedagogický","adaptiveHelp":"Adaptivní pomoc","adaptiveLight":"Lehké vedení","adaptiveReinforced":"Posílená pomoc","adaptiveLearning":"Režim učení","recommended":"Doporučeno"});
+Object.assign(I18N.da,{"coachMode":"Coach-tilstand","coachModeSub":"Vælg hvor meget hjælp Logic Coach automatisk giver.","coachMinimal":"Minimal","coachNormal":"Normal","coachPedagogical":"Pædagogisk","adaptiveHelp":"Adaptiv hjælp","adaptiveLight":"Let vejledning","adaptiveReinforced":"Forstærket hjælp","adaptiveLearning":"Læringstilstand","recommended":"Anbefalet"});
+Object.assign(I18N.nl,{"coachMode":"Coach-modus","coachModeSub":"Kies hoeveel hulp Logic Coach automatisch geeft.","coachMinimal":"Minimaal","coachNormal":"Normaal","coachPedagogical":"Pedagogisch","adaptiveHelp":"Adaptieve hulp","adaptiveLight":"Lichte begeleiding","adaptiveReinforced":"Versterkte hulp","adaptiveLearning":"Leermodus","recommended":"Aanbevolen"});
+Object.assign(I18N.et,{"coachMode":"Coach-režiim","coachModeSub":"Vali, kui palju abi Logic Coach automaatselt annab.","coachMinimal":"Minimaalne","coachNormal":"Tavaline","coachPedagogical":"Õpetav","adaptiveHelp":"Kohanduv abi","adaptiveLight":"Kerge suunamine","adaptiveReinforced":"Tugevdatud abi","adaptiveLearning":"Õpperežiim","recommended":"Soovitatud"});
+Object.assign(I18N.fi,{"coachMode":"Coach-tila","coachModeSub":"Valitse, kuinka paljon apua Logic Coach antaa automaattisesti.","coachMinimal":"Minimaalinen","coachNormal":"Normaali","coachPedagogical":"Pedagoginen","adaptiveHelp":"Mukautuva apu","adaptiveLight":"Kevyt ohjaus","adaptiveReinforced":"Vahvistettu apu","adaptiveLearning":"Oppimistila","recommended":"Suositeltu"});
+Object.assign(I18N.de,{"coachMode":"Coach-Modus","coachModeSub":"Wähle, wie viel Hilfe Logic Coach automatisch geben darf.","coachMinimal":"Minimal","coachNormal":"Normal","coachPedagogical":"Pädagogisch","adaptiveHelp":"Adaptive Hilfe","adaptiveLight":"Leichte Orientierung","adaptiveReinforced":"Verstärkte Hilfe","adaptiveLearning":"Lernmodus","recommended":"Empfohlen"});
+Object.assign(I18N.el,{"coachMode":"Λειτουργία Coach","coachModeSub":"Επίλεξε πόση βοήθεια θα δίνει αυτόματα το Logic Coach.","coachMinimal":"Ελάχιστη","coachNormal":"Κανονική","coachPedagogical":"Παιδαγωγική","adaptiveHelp":"Προσαρμοστική βοήθεια","adaptiveLight":"Ελαφριά καθοδήγηση","adaptiveReinforced":"Ενισχυμένη βοήθεια","adaptiveLearning":"Λειτουργία μάθησης","recommended":"Προτεινόμενο"});
+Object.assign(I18N.hu,{"coachMode":"Coach mód","coachModeSub":"Válaszd ki, mennyi segítséget adjon automatikusan a Logic Coach.","coachMinimal":"Minimális","coachNormal":"Normál","coachPedagogical":"Pedagógiai","adaptiveHelp":"Adaptív segítség","adaptiveLight":"Enyhe útmutatás","adaptiveReinforced":"Megerősített segítség","adaptiveLearning":"Tanulási mód","recommended":"Ajánlott"});
+Object.assign(I18N.ga,{"coachMode":"Mód Coach","coachModeSub":"Roghnaigh cé mhéad cabhrach a thugann Logic Coach go huathoibríoch.","coachMinimal":"Íosta","coachNormal":"Gnáth","coachPedagogical":"Oideachasúil","adaptiveHelp":"Cabhair oiriúnaitheach","adaptiveLight":"Treoir éadrom","adaptiveReinforced":"Cabhair fheabhsaithe","adaptiveLearning":"Mód foghlama","recommended":"Molta"});
+Object.assign(I18N.it,{"coachMode":"Modalità Coach","coachModeSub":"Scegli quanta assistenza Logic Coach può fornire automaticamente.","coachMinimal":"Minimo","coachNormal":"Normale","coachPedagogical":"Pedagogico","adaptiveHelp":"Aiuto adattivo","adaptiveLight":"Orientamento leggero","adaptiveReinforced":"Aiuto rinforzato","adaptiveLearning":"Modalità apprendimento","recommended":"Consigliato"});
+Object.assign(I18N.lv,{"coachMode":"Coach režīms","coachModeSub":"Izvēlies, cik daudz palīdzības Logic Coach sniedz automātiski.","coachMinimal":"Minimāls","coachNormal":"Normāls","coachPedagogical":"Pedagoģisks","adaptiveHelp":"Adaptīva palīdzība","adaptiveLight":"Viegla norāde","adaptiveReinforced":"Pastiprināta palīdzība","adaptiveLearning":"Mācību režīms","recommended":"Ieteicams"});
+Object.assign(I18N.lt,{"coachMode":"Coach režimas","coachModeSub":"Pasirink, kiek pagalbos Logic Coach teikia automatiškai.","coachMinimal":"Minimalus","coachNormal":"Normalus","coachPedagogical":"Pedagoginis","adaptiveHelp":"Prisitaikanti pagalba","adaptiveLight":"Lengvas nukreipimas","adaptiveReinforced":"Sustiprinta pagalba","adaptiveLearning":"Mokymosi režimas","recommended":"Rekomenduojama"});
+Object.assign(I18N.mt,{"coachMode":"Modalità Coach","coachModeSub":"Agħżel kemm għajnuna jagħti Logic Coach awtomatikament.","coachMinimal":"Minimu","coachNormal":"Normali","coachPedagogical":"Pedagoġiku","adaptiveHelp":"Għajnuna adattiva","adaptiveLight":"Gwida ħafifa","adaptiveReinforced":"Għajnuna msaħħa","adaptiveLearning":"Modalità tagħlim","recommended":"Rakkomandat"});
+Object.assign(I18N.pl,{"coachMode":"Tryb Coacha","coachModeSub":"Wybierz, ile pomocy Logic Coach ma udzielać automatycznie.","coachMinimal":"Minimalny","coachNormal":"Normalny","coachPedagogical":"Pedagogiczny","adaptiveHelp":"Pomoc adaptacyjna","adaptiveLight":"Lekka wskazówka","adaptiveReinforced":"Wzmocniona pomoc","adaptiveLearning":"Tryb nauki","recommended":"Zalecane"});
+Object.assign(I18N.ro,{"coachMode":"Mod Coach","coachModeSub":"Alege cât ajutor oferă automat Logic Coach.","coachMinimal":"Minimal","coachNormal":"Normal","coachPedagogical":"Pedagogic","adaptiveHelp":"Ajutor adaptiv","adaptiveLight":"Ghidare ușoară","adaptiveReinforced":"Ajutor consolidat","adaptiveLearning":"Mod de învățare","recommended":"Recomandat"});
+Object.assign(I18N.sk,{"coachMode":"Režim Coacha","coachModeSub":"Vyber, koľko pomoci má Logic Coach poskytovať automaticky.","coachMinimal":"Minimálny","coachNormal":"Normálny","coachPedagogical":"Pedagogický","adaptiveHelp":"Adaptívna pomoc","adaptiveLight":"Ľahké usmernenie","adaptiveReinforced":"Posilnená pomoc","adaptiveLearning":"Režim učenia","recommended":"Odporúčané"});
+Object.assign(I18N.sl,{"coachMode":"Način Coacha","coachModeSub":"Izberi, koliko pomoči Logic Coach samodejno ponudi.","coachMinimal":"Minimalno","coachNormal":"Normalno","coachPedagogical":"Pedagoško","adaptiveHelp":"Prilagodljiva pomoč","adaptiveLight":"Lahka usmeritev","adaptiveReinforced":"Okrepljena pomoč","adaptiveLearning":"Način učenja","recommended":"Priporočeno"});
+Object.assign(I18N.sv,{"coachMode":"Coach-läge","coachModeSub":"Välj hur mycket hjälp Logic Coach ger automatiskt.","coachMinimal":"Minimal","coachNormal":"Normal","coachPedagogical":"Pedagogiskt","adaptiveHelp":"Adaptiv hjälp","adaptiveLight":"Lätt vägledning","adaptiveReinforced":"Förstärkt hjälp","adaptiveLearning":"Inlärningsläge","recommended":"Rekommenderat"});
+
+/* v2.17.0 — targeted training labels */
+Object.assign(I18N.en,{"training":"Training","trainingSub":"Practice one logical technique at a time.","train":"Practice","trainTechnique":"Practice this technique","trainingTarget":"Target technique","newExercise":"New exercise","trainingComplete":"Exercise complete","trainingTryAgain":"This move does not solve the targeted deduction. Undo or reset to try again.","trainingUnavailable":"No validated exercise could be generated for this technique. Try again.","trainingCompleted":"Completed","trainingAttempts":"Attempts","trainingRecommended":"Recommended"});
+Object.assign(I18N.zh,{"training":"训练","trainingSub":"一次练习一种逻辑技巧。","train":"练习","trainTechnique":"练习此技巧","trainingTarget":"目标技巧","newExercise":"新练习","trainingComplete":"练习完成","trainingTryAgain":"这一步没有解决目标推理。请撤销或重置后再试。","trainingUnavailable":"无法为此技巧生成已验证的练习，请重试。","trainingCompleted":"已完成","trainingAttempts":"尝试次数","trainingRecommended":"推荐"});
+Object.assign(I18N.hi,{"training":"अभ्यास","trainingSub":"एक समय में एक तार्किक तकनीक का अभ्यास करें।","train":"अभ्यास करें","trainTechnique":"इस तकनीक का अभ्यास करें","trainingTarget":"लक्षित तकनीक","newExercise":"नया अभ्यास","trainingComplete":"अभ्यास पूरा","trainingTryAgain":"यह चाल लक्षित निष्कर्ष को हल नहीं करती। वापस जाएँ या रीसेट करके फिर प्रयास करें।","trainingUnavailable":"इस तकनीक के लिए सत्यापित अभ्यास नहीं बन सका। फिर प्रयास करें।","trainingCompleted":"पूर्ण","trainingAttempts":"प्रयास","trainingRecommended":"अनुशंसित"});
+Object.assign(I18N.es,{"training":"Entrenamiento","trainingSub":"Practica una técnica lógica cada vez.","train":"Entrenar","trainTechnique":"Practicar esta técnica","trainingTarget":"Técnica objetivo","newExercise":"Nuevo ejercicio","trainingComplete":"Ejercicio completado","trainingTryAgain":"Esta jugada no resuelve la deducción objetivo. Deshaz o reinicia para intentarlo de nuevo.","trainingUnavailable":"No se pudo generar un ejercicio validado para esta técnica. Inténtalo de nuevo.","trainingCompleted":"Completados","trainingAttempts":"Intentos","trainingRecommended":"Recomendado"});
+Object.assign(I18N.ar,{"training":"تدريب","trainingSub":"تدرّب على تقنية منطقية واحدة في كل مرة.","train":"تدرّب","trainTechnique":"تدرّب على هذه التقنية","trainingTarget":"التقنية المستهدفة","newExercise":"تمرين جديد","trainingComplete":"اكتمل التمرين","trainingTryAgain":"هذه النقلة لا تحل الاستنتاج المستهدف. تراجع أو أعد الضبط وحاول مجددًا.","trainingUnavailable":"تعذر إنشاء تمرين موثّق لهذه التقنية. حاول مرة أخرى.","trainingCompleted":"مكتمل","trainingAttempts":"محاولات","trainingRecommended":"موصى به"});
+Object.assign(I18N.fr,{"training":"Entraînement","trainingSub":"Travaille une technique logique à la fois.","train":"S’entraîner","trainTechnique":"Travailler cette technique","trainingTarget":"Technique ciblée","newExercise":"Nouvel exercice","trainingComplete":"Exercice réussi","trainingTryAgain":"Ce coup ne résout pas la déduction ciblée. Annule ou réinitialise pour réessayer.","trainingUnavailable":"Impossible de générer une situation validée pour cette technique. Réessaie.","trainingCompleted":"Réussis","trainingAttempts":"Tentatives","trainingRecommended":"Recommandé"});
+Object.assign(I18N.bn,{"training":"অনুশীলন","trainingSub":"একবারে একটি যৌক্তিক কৌশল অনুশীলন করুন।","train":"অনুশীলন","trainTechnique":"এই কৌশল অনুশীলন করুন","trainingTarget":"লক্ষ্য কৌশল","newExercise":"নতুন অনুশীলন","trainingComplete":"অনুশীলন সম্পন্ন","trainingTryAgain":"এই চালটি লক্ষ্যযুক্ত সিদ্ধান্ত সমাধান করে না। পূর্বাবস্থায় ফিরুন বা রিসেট করে আবার চেষ্টা করুন।","trainingUnavailable":"এই কৌশলের জন্য যাচাইকৃত অনুশীলন তৈরি করা যায়নি। আবার চেষ্টা করুন।","trainingCompleted":"সম্পন্ন","trainingAttempts":"চেষ্টা","trainingRecommended":"প্রস্তাবিত"});
+Object.assign(I18N.pt,{"training":"Treino","trainingSub":"Pratica uma técnica lógica de cada vez.","train":"Treinar","trainTechnique":"Treinar esta técnica","trainingTarget":"Técnica-alvo","newExercise":"Novo exercício","trainingComplete":"Exercício concluído","trainingTryAgain":"Esta jogada não resolve a dedução alvo. Desfaz ou reinicia para tentar novamente.","trainingUnavailable":"Não foi possível gerar um exercício validado para esta técnica. Tenta novamente.","trainingCompleted":"Concluídos","trainingAttempts":"Tentativas","trainingRecommended":"Recomendado"});
+Object.assign(I18N.id,{"training":"Latihan","trainingSub":"Latih satu teknik logika pada satu waktu.","train":"Berlatih","trainTechnique":"Latih teknik ini","trainingTarget":"Teknik target","newExercise":"Latihan baru","trainingComplete":"Latihan selesai","trainingTryAgain":"Langkah ini tidak menyelesaikan deduksi target. Urungkan atau reset lalu coba lagi.","trainingUnavailable":"Latihan tervalidasi untuk teknik ini tidak dapat dibuat. Coba lagi.","trainingCompleted":"Selesai","trainingAttempts":"Percobaan","trainingRecommended":"Direkomendasikan"});
+Object.assign(I18N.ur,{"training":"مشق","trainingSub":"ایک وقت میں ایک منطقی تکنیک کی مشق کریں۔","train":"مشق","trainTechnique":"اس تکنیک کی مشق کریں","trainingTarget":"ہدف تکنیک","newExercise":"نئی مشق","trainingComplete":"مشق مکمل","trainingTryAgain":"یہ چال ہدف نتیجے کو حل نہیں کرتی۔ واپس کریں یا ری سیٹ کر کے دوبارہ کوشش کریں۔","trainingUnavailable":"اس تکنیک کے لیے تصدیق شدہ مشق نہیں بن سکی۔ دوبارہ کوشش کریں۔","trainingCompleted":"مکمل","trainingAttempts":"کوششیں","trainingRecommended":"تجویز کردہ"});
+Object.assign(I18N.bg,{"training":"Тренировка","trainingSub":"Упражнявай по една логическа техника.","train":"Тренирай","trainTechnique":"Упражни тази техника","trainingTarget":"Целева техника","newExercise":"Ново упражнение","trainingComplete":"Упражнението е завършено","trainingTryAgain":"Този ход не решава целевото заключение. Отмени или нулирай и опитай пак.","trainingUnavailable":"Не можа да се генерира валидирано упражнение за тази техника. Опитай отново.","trainingCompleted":"Завършени","trainingAttempts":"Опити","trainingRecommended":"Препоръчано"});
+Object.assign(I18N.hr,{"training":"Vježbanje","trainingSub":"Vježbaj jednu logičku tehniku odjednom.","train":"Vježbaj","trainTechnique":"Vježbaj ovu tehniku","trainingTarget":"Ciljana tehnika","newExercise":"Nova vježba","trainingComplete":"Vježba završena","trainingTryAgain":"Ovaj potez ne rješava ciljanu dedukciju. Poništi ili resetiraj i pokušaj ponovno.","trainingUnavailable":"Nije moguće generirati potvrđenu vježbu za ovu tehniku. Pokušaj ponovno.","trainingCompleted":"Završeno","trainingAttempts":"Pokušaji","trainingRecommended":"Preporučeno"});
+Object.assign(I18N.cs,{"training":"Trénink","trainingSub":"Procvičuj jednu logickou techniku po druhé.","train":"Trénovat","trainTechnique":"Procvičit tuto techniku","trainingTarget":"Cílová technika","newExercise":"Nové cvičení","trainingComplete":"Cvičení dokončeno","trainingTryAgain":"Tento tah neřeší cílovou dedukci. Vrať tah nebo resetuj a zkus to znovu.","trainingUnavailable":"Pro tuto techniku se nepodařilo vytvořit ověřené cvičení. Zkus to znovu.","trainingCompleted":"Dokončeno","trainingAttempts":"Pokusy","trainingRecommended":"Doporučeno"});
+Object.assign(I18N.da,{"training":"Træning","trainingSub":"Øv én logisk teknik ad gangen.","train":"Træn","trainTechnique":"Øv denne teknik","trainingTarget":"Målteknik","newExercise":"Ny øvelse","trainingComplete":"Øvelse gennemført","trainingTryAgain":"Dette træk løser ikke den målrettede deduktion. Fortryd eller nulstil og prøv igen.","trainingUnavailable":"Der kunne ikke genereres en valideret øvelse til denne teknik. Prøv igen.","trainingCompleted":"Gennemført","trainingAttempts":"Forsøg","trainingRecommended":"Anbefalet"});
+Object.assign(I18N.nl,{"training":"Training","trainingSub":"Oefen één logische techniek tegelijk.","train":"Oefenen","trainTechnique":"Deze techniek oefenen","trainingTarget":"Doeltechniek","newExercise":"Nieuwe oefening","trainingComplete":"Oefening voltooid","trainingTryAgain":"Deze zet lost de beoogde deductie niet op. Maak ongedaan of reset en probeer opnieuw.","trainingUnavailable":"Er kon geen gevalideerde oefening voor deze techniek worden gemaakt. Probeer opnieuw.","trainingCompleted":"Voltooid","trainingAttempts":"Pogingen","trainingRecommended":"Aanbevolen"});
+Object.assign(I18N.et,{"training":"Harjutamine","trainingSub":"Harjuta korraga üht loogikatehnikat.","train":"Harjuta","trainTechnique":"Harjuta seda tehnikat","trainingTarget":"Sihttehnika","newExercise":"Uus harjutus","trainingComplete":"Harjutus tehtud","trainingTryAgain":"See käik ei lahenda sihitud järeldust. Võta tagasi või lähtesta ja proovi uuesti.","trainingUnavailable":"Selle tehnika jaoks ei õnnestunud valideeritud harjutust luua. Proovi uuesti.","trainingCompleted":"Tehtud","trainingAttempts":"Katsed","trainingRecommended":"Soovitatud"});
+Object.assign(I18N.fi,{"training":"Harjoittelu","trainingSub":"Harjoittele yhtä logiikkatekniikkaa kerrallaan.","train":"Harjoittele","trainTechnique":"Harjoittele tätä tekniikkaa","trainingTarget":"Kohdetekniikka","newExercise":"Uusi harjoitus","trainingComplete":"Harjoitus valmis","trainingTryAgain":"Tämä siirto ei ratkaise kohdededuktiota. Kumoa tai nollaa ja yritä uudelleen.","trainingUnavailable":"Tälle tekniikalle ei voitu luoda validoitua harjoitusta. Yritä uudelleen.","trainingCompleted":"Valmiit","trainingAttempts":"Yritykset","trainingRecommended":"Suositeltu"});
+Object.assign(I18N.de,{"training":"Training","trainingSub":"Übe jeweils eine logische Technik.","train":"Trainieren","trainTechnique":"Diese Technik üben","trainingTarget":"Zieltechnik","newExercise":"Neue Übung","trainingComplete":"Übung abgeschlossen","trainingTryAgain":"Dieser Zug löst die Zieldeduktion nicht. Rückgängig machen oder zurücksetzen und erneut versuchen.","trainingUnavailable":"Für diese Technik konnte keine validierte Übung erzeugt werden. Bitte erneut versuchen.","trainingCompleted":"Abgeschlossen","trainingAttempts":"Versuche","trainingRecommended":"Empfohlen"});
+Object.assign(I18N.el,{"training":"Εξάσκηση","trainingSub":"Εξασκήσου σε μία λογική τεχνική κάθε φορά.","train":"Εξάσκηση","trainTechnique":"Εξάσκηση αυτής της τεχνικής","trainingTarget":"Τεχνική στόχος","newExercise":"Νέα άσκηση","trainingComplete":"Η άσκηση ολοκληρώθηκε","trainingTryAgain":"Αυτή η κίνηση δεν λύνει τη στοχευμένη παραγωγή. Αναίρεσε ή επανάφερε και προσπάθησε ξανά.","trainingUnavailable":"Δεν δημιουργήθηκε επικυρωμένη άσκηση για αυτή την τεχνική. Δοκίμασε ξανά.","trainingCompleted":"Ολοκληρωμένα","trainingAttempts":"Προσπάθειες","trainingRecommended":"Προτεινόμενο"});
+Object.assign(I18N.hu,{"training":"Gyakorlás","trainingSub":"Egyszerre egy logikai technikát gyakorolj.","train":"Gyakorlás","trainTechnique":"E technika gyakorlása","trainingTarget":"Céltechnika","newExercise":"Új gyakorlat","trainingComplete":"Gyakorlat teljesítve","trainingTryAgain":"Ez a lépés nem oldja meg a célzott következtetést. Vond vissza vagy állítsd vissza, majd próbáld újra.","trainingUnavailable":"Ehhez a technikához nem sikerült ellenőrzött gyakorlatot létrehozni. Próbáld újra.","trainingCompleted":"Teljesítve","trainingAttempts":"Próbálkozások","trainingRecommended":"Ajánlott"});
+Object.assign(I18N.ga,{"training":"Cleachtadh","trainingSub":"Cleachtaigh teicníc loighciúil amháin ag an am.","train":"Cleachtadh","trainTechnique":"Cleachtaigh an teicníc seo","trainingTarget":"Sprioc-theicníc","newExercise":"Cleachtadh nua","trainingComplete":"Cleachtadh críochnaithe","trainingTryAgain":"Ní réitíonn an bogadh seo an tátal spriocdhírithe. Cealaigh nó athshocraigh agus bain triail eile as.","trainingUnavailable":"Níorbh fhéidir cleachtadh bailíochtaithe a chruthú don teicníc seo. Bain triail eile as.","trainingCompleted":"Críochnaithe","trainingAttempts":"Iarrachtaí","trainingRecommended":"Molta"});
+Object.assign(I18N.it,{"training":"Allenamento","trainingSub":"Esercita una tecnica logica alla volta.","train":"Allenati","trainTechnique":"Esercita questa tecnica","trainingTarget":"Tecnica obiettivo","newExercise":"Nuovo esercizio","trainingComplete":"Esercizio completato","trainingTryAgain":"Questa mossa non risolve la deduzione obiettivo. Annulla o reimposta e riprova.","trainingUnavailable":"Non è stato possibile generare un esercizio validato per questa tecnica. Riprova.","trainingCompleted":"Completati","trainingAttempts":"Tentativi","trainingRecommended":"Consigliato"});
+Object.assign(I18N.lv,{"training":"Treniņš","trainingSub":"Vienlaikus trenē vienu loģikas paņēmienu.","train":"Trenēties","trainTechnique":"Trenēt šo paņēmienu","trainingTarget":"Mērķa paņēmiens","newExercise":"Jauns uzdevums","trainingComplete":"Uzdevums pabeigts","trainingTryAgain":"Šis gājiens neatrisina mērķa secinājumu. Atsauc vai atiestati un mēģini vēlreiz.","trainingUnavailable":"Šim paņēmienam neizdevās izveidot validētu uzdevumu. Mēģini vēlreiz.","trainingCompleted":"Pabeigti","trainingAttempts":"Mēģinājumi","trainingRecommended":"Ieteicams"});
+Object.assign(I18N.lt,{"training":"Treniruotė","trainingSub":"Vienu metu lavink vieną loginį metodą.","train":"Treniruotis","trainTechnique":"Lavinti šį metodą","trainingTarget":"Tikslinis metodas","newExercise":"Naujas pratimas","trainingComplete":"Pratimas baigtas","trainingTryAgain":"Šis ėjimas neišsprendžia tikslinės išvados. Anuliuok arba nustatyk iš naujo ir bandyk dar kartą.","trainingUnavailable":"Šiam metodui nepavyko sugeneruoti patvirtinto pratimo. Bandyk dar kartą.","trainingCompleted":"Baigta","trainingAttempts":"Bandymai","trainingRecommended":"Rekomenduojama"});
+Object.assign(I18N.mt,{"training":"Taħriġ","trainingSub":"Ipprattika teknika loġika waħda kull darba.","train":"Tħarreġ","trainTechnique":"Ipprattika din it-teknika","trainingTarget":"Teknika fil-mira","newExercise":"Eżerċizzju ġdid","trainingComplete":"Eżerċizzju lest","trainingTryAgain":"Din il-mossa ma ssolvix id-deduzzjoni fil-mira. Ħoll jew irrisettja u erġa’ pprova.","trainingUnavailable":"Ma setax jinħoloq eżerċizzju validat għal din it-teknika. Erġa’ pprova.","trainingCompleted":"Lesti","trainingAttempts":"Tentattivi","trainingRecommended":"Rakkomandat"});
+Object.assign(I18N.pl,{"training":"Trening","trainingSub":"Ćwicz po jednej technice logicznej.","train":"Trenuj","trainTechnique":"Ćwicz tę technikę","trainingTarget":"Technika docelowa","newExercise":"Nowe ćwiczenie","trainingComplete":"Ćwiczenie ukończone","trainingTryAgain":"Ten ruch nie rozwiązuje docelowej dedukcji. Cofnij lub zresetuj i spróbuj ponownie.","trainingUnavailable":"Nie udało się wygenerować zweryfikowanego ćwiczenia dla tej techniki. Spróbuj ponownie.","trainingCompleted":"Ukończone","trainingAttempts":"Próby","trainingRecommended":"Zalecane"});
+Object.assign(I18N.ro,{"training":"Antrenament","trainingSub":"Exersează câte o tehnică logică.","train":"Exersează","trainTechnique":"Exersează această tehnică","trainingTarget":"Tehnică țintă","newExercise":"Exercițiu nou","trainingComplete":"Exercițiu finalizat","trainingTryAgain":"Această mutare nu rezolvă deducția țintă. Anulează sau resetează și încearcă din nou.","trainingUnavailable":"Nu s-a putut genera un exercițiu validat pentru această tehnică. Încearcă din nou.","trainingCompleted":"Finalizate","trainingAttempts":"Încercări","trainingRecommended":"Recomandat"});
+Object.assign(I18N.sk,{"training":"Tréning","trainingSub":"Precvičuj jednu logickú techniku naraz.","train":"Trénovať","trainTechnique":"Precvičiť túto techniku","trainingTarget":"Cieľová technika","newExercise":"Nové cvičenie","trainingComplete":"Cvičenie dokončené","trainingTryAgain":"Tento ťah nerieši cieľovú dedukciu. Vráť ho alebo resetuj a skús znova.","trainingUnavailable":"Pre túto techniku sa nepodarilo vytvoriť overené cvičenie. Skús znova.","trainingCompleted":"Dokončené","trainingAttempts":"Pokusy","trainingRecommended":"Odporúčané"});
+Object.assign(I18N.sl,{"training":"Vadba","trainingSub":"Vadi eno logično tehniko naenkrat.","train":"Vadi","trainTechnique":"Vadi to tehniko","trainingTarget":"Ciljna tehnika","newExercise":"Nova vaja","trainingComplete":"Vaja končana","trainingTryAgain":"Ta poteza ne reši ciljne dedukcije. Razveljavi ali ponastavi in poskusi znova.","trainingUnavailable":"Za to tehniko ni bilo mogoče ustvariti preverjene vaje. Poskusi znova.","trainingCompleted":"Končano","trainingAttempts":"Poskusi","trainingRecommended":"Priporočeno"});
+Object.assign(I18N.sv,{"training":"Träning","trainingSub":"Öva en logisk teknik i taget.","train":"Träna","trainTechnique":"Öva denna teknik","trainingTarget":"Målteknik","newExercise":"Ny övning","trainingComplete":"Övningen klar","trainingTryAgain":"Det här draget löser inte måldeduktionen. Ångra eller återställ och försök igen.","trainingUnavailable":"Ingen validerad övning kunde skapas för denna teknik. Försök igen.","trainingCompleted":"Klara","trainingAttempts":"Försök","trainingRecommended":"Rekommenderat"});
+
+/* v2.18.0 — interactive learning path */
+Object.assign(I18N.en,{"learn":"Learn","learnSub":"Interactive lessons: understand, observe, practise with guidance, then solve alone.","lesson":"Lesson","lessonExplanation":"Explanation","lessonGuided":"Guided example","lessonAssisted":"Assisted exercise","lessonIndependent":"Independent exercise","lessonStartGuided":"Start guided example","lessonStartAssisted":"Start assisted exercise","lessonStartIndependent":"Start independent exercise","lessonComplete":"Lesson completed","lessonProgress":"Lesson progress","lessonObserve":"What to observe","lessonGoal":"Goal","lessonDirectMethod":"Use the visible constraints to eliminate impossible choices and identify the forced move.","lessonContradictionMethod":"Test a hypothesis, follow its visible consequences, and reject it when a rule becomes impossible.","lessonShowMove":"Show the move","lessonIndependentRetry":"Finish this step again without Logic Coach to validate the independent stage.","lessonContinue":"Continue","lessonCompletedCount":"Lessons completed"});
+Object.assign(I18N.zh,{"learn":"学习","learnSub":"互动课程：理解、观察、在指导下练习，然后独立解决。","lesson":"课程","lessonExplanation":"讲解","lessonGuided":"引导示例","lessonAssisted":"辅助练习","lessonIndependent":"独立练习","lessonStartGuided":"开始引导示例","lessonStartAssisted":"开始辅助练习","lessonStartIndependent":"开始独立练习","lessonComplete":"课程完成","lessonProgress":"课程进度","lessonObserve":"观察什么","lessonGoal":"目标","lessonDirectMethod":"利用可见约束排除不可能的选择并找出必然的一步。","lessonContradictionMethod":"测试一个假设，追踪其可见后果，并在规则变得不可能时排除它。","lessonShowMove":"显示这一步","lessonIndependentRetry":"请在不使用 Logic Coach 的情况下再次完成此步骤，以验证独立阶段。","lessonContinue":"继续","lessonCompletedCount":"已完成课程"});
+Object.assign(I18N.hi,{"learn":"सीखें","learnSub":"इंटरैक्टिव पाठ: समझें, देखें, मार्गदर्शन के साथ अभ्यास करें, फिर स्वयं हल करें।","lesson":"पाठ","lessonExplanation":"व्याख्या","lessonGuided":"मार्गदर्शित उदाहरण","lessonAssisted":"सहायता वाला अभ्यास","lessonIndependent":"स्वतंत्र अभ्यास","lessonStartGuided":"मार्गदर्शित उदाहरण शुरू करें","lessonStartAssisted":"सहायता वाला अभ्यास शुरू करें","lessonStartIndependent":"स्वतंत्र अभ्यास शुरू करें","lessonComplete":"पाठ पूरा","lessonProgress":"पाठ प्रगति","lessonObserve":"क्या देखें","lessonGoal":"लक्ष्य","lessonDirectMethod":"दिखाई देने वाली बाधाओं से असंभव विकल्प हटाएँ और अनिवार्य चाल पहचानें।","lessonContradictionMethod":"एक परिकल्पना जाँचें, उसके दिखाई देने वाले परिणामों का अनुसरण करें और नियम असंभव होने पर उसे अस्वीकार करें।","lessonShowMove":"चाल दिखाएँ","lessonIndependentRetry":"स्वतंत्र चरण मान्य करने के लिए इसे Logic Coach के बिना फिर पूरा करें।","lessonContinue":"जारी रखें","lessonCompletedCount":"पूरे पाठ"});
+Object.assign(I18N.es,{"learn":"Aprender","learnSub":"Lecciones interactivas: comprender, observar, practicar con ayuda y después resolver solo.","lesson":"Lección","lessonExplanation":"Explicación","lessonGuided":"Ejemplo guiado","lessonAssisted":"Ejercicio acompañado","lessonIndependent":"Ejercicio autónomo","lessonStartGuided":"Iniciar ejemplo guiado","lessonStartAssisted":"Iniciar ejercicio acompañado","lessonStartIndependent":"Iniciar ejercicio autónomo","lessonComplete":"Lección completada","lessonProgress":"Progreso de la lección","lessonObserve":"Qué observar","lessonGoal":"Objetivo","lessonDirectMethod":"Usa las restricciones visibles para eliminar opciones imposibles e identificar la jugada forzada.","lessonContradictionMethod":"Prueba una hipótesis, sigue sus consecuencias visibles y descártala cuando una regla se vuelva imposible.","lessonShowMove":"Mostrar la jugada","lessonIndependentRetry":"Completa de nuevo este paso sin Logic Coach para validar la etapa autónoma.","lessonContinue":"Continuar","lessonCompletedCount":"Lecciones completadas"});
+Object.assign(I18N.ar,{"learn":"تعلّم","learnSub":"دروس تفاعلية: افهم، راقب، تدرب مع التوجيه، ثم حل بمفردك.","lesson":"درس","lessonExplanation":"شرح","lessonGuided":"مثال موجّه","lessonAssisted":"تمرين بمساعدة","lessonIndependent":"تمرين مستقل","lessonStartGuided":"ابدأ المثال الموجّه","lessonStartAssisted":"ابدأ التمرين بمساعدة","lessonStartIndependent":"ابدأ التمرين المستقل","lessonComplete":"اكتمل الدرس","lessonProgress":"تقدم الدرس","lessonObserve":"ما الذي تراقبه","lessonGoal":"الهدف","lessonDirectMethod":"استخدم القيود الظاهرة لاستبعاد الخيارات المستحيلة وتحديد النقلة المفروضة.","lessonContradictionMethod":"اختبر فرضية، واتبع نتائجها الظاهرة، وارفضها عندما تجعل قاعدة ما مستحيلة.","lessonShowMove":"أظهر النقلة","lessonIndependentRetry":"أكمل هذه المرحلة مرة أخرى من دون Logic Coach لاعتماد المرحلة المستقلة.","lessonContinue":"متابعة","lessonCompletedCount":"الدروس المكتملة"});
+Object.assign(I18N.fr,{"learn":"Apprendre","learnSub":"Des leçons interactives : comprendre, observer, pratiquer accompagné, puis résoudre seul.","lesson":"Leçon","lessonExplanation":"Explication","lessonGuided":"Exemple guidé","lessonAssisted":"Exercice accompagné","lessonIndependent":"Exercice autonome","lessonStartGuided":"Commencer l’exemple guidé","lessonStartAssisted":"Commencer l’exercice accompagné","lessonStartIndependent":"Commencer l’exercice autonome","lessonComplete":"Leçon terminée","lessonProgress":"Progression de la leçon","lessonObserve":"Ce qu’il faut observer","lessonGoal":"Objectif","lessonDirectMethod":"Utilise les contraintes visibles pour éliminer les choix impossibles et identifier le coup forcé.","lessonContradictionMethod":"Teste une hypothèse, suis ses conséquences visibles et rejette-la dès qu’une règle devient impossible.","lessonShowMove":"Montrer le coup","lessonIndependentRetry":"Termine à nouveau cette étape sans Logic Coach pour valider l’étape autonome.","lessonContinue":"Continuer","lessonCompletedCount":"Leçons terminées"});
+Object.assign(I18N.bn,{"learn":"শিখুন","learnSub":"ইন্টার‌্যাক্টিভ পাঠ: বুঝুন, পর্যবেক্ষণ করুন, সহায়তায় অনুশীলন করুন, তারপর নিজে সমাধান করুন।","lesson":"পাঠ","lessonExplanation":"ব্যাখ্যা","lessonGuided":"নির্দেশিত উদাহরণ","lessonAssisted":"সহায়তাপূর্ণ অনুশীলন","lessonIndependent":"স্বাধীন অনুশীলন","lessonStartGuided":"নির্দেশিত উদাহরণ শুরু করুন","lessonStartAssisted":"সহায়তাপূর্ণ অনুশীলন শুরু করুন","lessonStartIndependent":"স্বাধীন অনুশীলন শুরু করুন","lessonComplete":"পাঠ সম্পূর্ণ","lessonProgress":"পাঠের অগ্রগতি","lessonObserve":"কী লক্ষ্য করবেন","lessonGoal":"লক্ষ্য","lessonDirectMethod":"দৃশ্যমান নিয়ম ব্যবহার করে অসম্ভব বিকল্প বাদ দিন এবং বাধ্যতামূলক চালটি শনাক্ত করুন।","lessonContradictionMethod":"একটি অনুমান পরীক্ষা করুন, তার দৃশ্যমান ফল অনুসরণ করুন এবং কোনো নিয়ম অসম্ভব হলে অনুমানটি বাদ দিন।","lessonShowMove":"চাল দেখান","lessonIndependentRetry":"স্বাধীন ধাপ যাচাই করতে Logic Coach ছাড়া ধাপটি আবার শেষ করুন।","lessonContinue":"চালিয়ে যান","lessonCompletedCount":"সম্পূর্ণ পাঠ"});
+Object.assign(I18N.pt,{"learn":"Aprender","learnSub":"Lições interativas: compreender, observar, praticar com orientação e depois resolver sozinho.","lesson":"Lição","lessonExplanation":"Explicação","lessonGuided":"Exemplo guiado","lessonAssisted":"Exercício acompanhado","lessonIndependent":"Exercício autónomo","lessonStartGuided":"Iniciar exemplo guiado","lessonStartAssisted":"Iniciar exercício acompanhado","lessonStartIndependent":"Iniciar exercício autónomo","lessonComplete":"Lição concluída","lessonProgress":"Progresso da lição","lessonObserve":"O que observar","lessonGoal":"Objetivo","lessonDirectMethod":"Usa as restrições visíveis para eliminar escolhas impossíveis e identificar a jogada forçada.","lessonContradictionMethod":"Testa uma hipótese, segue as suas consequências visíveis e rejeita-a quando uma regra se torna impossível.","lessonShowMove":"Mostrar a jogada","lessonIndependentRetry":"Conclui novamente esta etapa sem Logic Coach para validar a fase autónoma.","lessonContinue":"Continuar","lessonCompletedCount":"Lições concluídas"});
+Object.assign(I18N.id,{"learn":"Belajar","learnSub":"Pelajaran interaktif: pahami, amati, berlatih dengan panduan, lalu selesaikan sendiri.","lesson":"Pelajaran","lessonExplanation":"Penjelasan","lessonGuided":"Contoh terpandu","lessonAssisted":"Latihan terbimbing","lessonIndependent":"Latihan mandiri","lessonStartGuided":"Mulai contoh terpandu","lessonStartAssisted":"Mulai latihan terbimbing","lessonStartIndependent":"Mulai latihan mandiri","lessonComplete":"Pelajaran selesai","lessonProgress":"Progres pelajaran","lessonObserve":"Yang perlu diamati","lessonGoal":"Tujuan","lessonDirectMethod":"Gunakan batasan yang terlihat untuk menyingkirkan pilihan mustahil dan menemukan langkah yang dipaksa.","lessonContradictionMethod":"Uji sebuah hipotesis, ikuti konsekuensi yang terlihat, lalu tolak jika suatu aturan menjadi mustahil.","lessonShowMove":"Tampilkan langkah","lessonIndependentRetry":"Selesaikan tahap ini lagi tanpa Logic Coach untuk mengesahkan tahap mandiri.","lessonContinue":"Lanjutkan","lessonCompletedCount":"Pelajaran selesai"});
+Object.assign(I18N.ur,{"learn":"سیکھیں","learnSub":"انٹرایکٹو اسباق: سمجھیں، مشاہدہ کریں، رہنمائی کے ساتھ مشق کریں، پھر خود حل کریں۔","lesson":"سبق","lessonExplanation":"وضاحت","lessonGuided":"رہنمائی والا نمونہ","lessonAssisted":"مدد والا مشق","lessonIndependent":"آزاد مشق","lessonStartGuided":"رہنمائی والا نمونہ شروع کریں","lessonStartAssisted":"مدد والا مشق شروع کریں","lessonStartIndependent":"آزاد مشق شروع کریں","lessonComplete":"سبق مکمل","lessonProgress":"سبق کی پیش رفت","lessonObserve":"کیا دیکھنا ہے","lessonGoal":"مقصد","lessonDirectMethod":"نظر آنے والی پابندیوں سے ناممکن انتخاب ختم کریں اور لازمی چال پہچانیں۔","lessonContradictionMethod":"ایک مفروضہ آزمائیں، اس کے نظر آنے والے نتائج کا پیچھا کریں اور جب کوئی قاعدہ ناممکن ہو جائے تو اسے رد کریں۔","lessonShowMove":"چال دکھائیں","lessonIndependentRetry":"آزاد مرحلہ منظور کرنے کے لیے یہ مرحلہ Logic Coach کے بغیر دوبارہ مکمل کریں۔","lessonContinue":"جاری رکھیں","lessonCompletedCount":"مکمل اسباق"});
+Object.assign(I18N.bg,{"learn":"Учи","learnSub":"Интерактивни уроци: разбери, наблюдавай, упражнявай с помощ и после реши сам.","lesson":"Урок","lessonExplanation":"Обяснение","lessonGuided":"Воден пример","lessonAssisted":"Упражнение с помощ","lessonIndependent":"Самостоятелно упражнение","lessonStartGuided":"Започни водения пример","lessonStartAssisted":"Започни упражнението с помощ","lessonStartIndependent":"Започни самостоятелното упражнение","lessonComplete":"Урокът е завършен","lessonProgress":"Напредък на урока","lessonObserve":"Какво да наблюдаваш","lessonGoal":"Цел","lessonDirectMethod":"Използвай видимите ограничения, за да изключиш невъзможните избори и да намериш задължителния ход.","lessonContradictionMethod":"Провери хипотеза, проследи видимите ѝ последици и я отхвърли, когато правило стане невъзможно.","lessonShowMove":"Покажи хода","lessonIndependentRetry":"Завърши тази стъпка отново без Logic Coach, за да потвърдиш самостоятелния етап.","lessonContinue":"Продължи","lessonCompletedCount":"Завършени уроци"});
+Object.assign(I18N.hr,{"learn":"Uči","learnSub":"Interaktivne lekcije: razumij, promatraj, vježbaj uz pomoć pa riješi samostalno.","lesson":"Lekcija","lessonExplanation":"Objašnjenje","lessonGuided":"Vođeni primjer","lessonAssisted":"Vježba uz pomoć","lessonIndependent":"Samostalna vježba","lessonStartGuided":"Pokreni vođeni primjer","lessonStartAssisted":"Pokreni vježbu uz pomoć","lessonStartIndependent":"Pokreni samostalnu vježbu","lessonComplete":"Lekcija završena","lessonProgress":"Napredak lekcije","lessonObserve":"Što promatrati","lessonGoal":"Cilj","lessonDirectMethod":"Koristi vidljiva ograničenja da ukloniš nemoguće izbore i prepoznaš prisilni potez.","lessonContradictionMethod":"Isprobaj hipotezu, slijedi njezine vidljive posljedice i odbaci je kada neko pravilo postane nemoguće.","lessonShowMove":"Prikaži potez","lessonIndependentRetry":"Ponovno završi ovaj korak bez Logic Coacha kako bi potvrdio samostalnu fazu.","lessonContinue":"Nastavi","lessonCompletedCount":"Završene lekcije"});
+Object.assign(I18N.cs,{"learn":"Učit se","learnSub":"Interaktivní lekce: pochop, pozoruj, procvičuj s vedením a pak řeš samostatně.","lesson":"Lekce","lessonExplanation":"Vysvětlení","lessonGuided":"Vedený příklad","lessonAssisted":"Cvičení s pomocí","lessonIndependent":"Samostatné cvičení","lessonStartGuided":"Spustit vedený příklad","lessonStartAssisted":"Spustit cvičení s pomocí","lessonStartIndependent":"Spustit samostatné cvičení","lessonComplete":"Lekce dokončena","lessonProgress":"Postup lekcí","lessonObserve":"Co sledovat","lessonGoal":"Cíl","lessonDirectMethod":"Použij viditelná omezení k vyloučení nemožných možností a určení vynuceného tahu.","lessonContradictionMethod":"Otestuj hypotézu, sleduj její viditelné důsledky a zamítni ji, když některé pravidlo přestane být možné.","lessonShowMove":"Ukázat tah","lessonIndependentRetry":"Dokonči tento krok znovu bez Logic Coache pro potvrzení samostatné fáze.","lessonContinue":"Pokračovat","lessonCompletedCount":"Dokončené lekce"});
+Object.assign(I18N.da,{"learn":"Lær","learnSub":"Interaktive lektioner: forstå, observer, øv med vejledning og løs derefter selv.","lesson":"Lektion","lessonExplanation":"Forklaring","lessonGuided":"Guidet eksempel","lessonAssisted":"Øvelse med hjælp","lessonIndependent":"Selvstændig øvelse","lessonStartGuided":"Start guidet eksempel","lessonStartAssisted":"Start øvelse med hjælp","lessonStartIndependent":"Start selvstændig øvelse","lessonComplete":"Lektion gennemført","lessonProgress":"Lektionsfremskridt","lessonObserve":"Hvad du skal se efter","lessonGoal":"Mål","lessonDirectMethod":"Brug de synlige begrænsninger til at udelukke umulige valg og finde det tvungne træk.","lessonContradictionMethod":"Test en hypotese, følg dens synlige konsekvenser, og forkast den når en regel bliver umulig.","lessonShowMove":"Vis trækket","lessonIndependentRetry":"Gennemfør dette trin igen uden Logic Coach for at godkende den selvstændige fase.","lessonContinue":"Fortsæt","lessonCompletedCount":"Gennemførte lektioner"});
+Object.assign(I18N.nl,{"learn":"Leren","learnSub":"Interactieve lessen: begrijpen, observeren, oefenen met begeleiding en daarna zelfstandig oplossen.","lesson":"Les","lessonExplanation":"Uitleg","lessonGuided":"Begeleid voorbeeld","lessonAssisted":"Begeleide oefening","lessonIndependent":"Zelfstandige oefening","lessonStartGuided":"Start begeleid voorbeeld","lessonStartAssisted":"Start begeleide oefening","lessonStartIndependent":"Start zelfstandige oefening","lessonComplete":"Les voltooid","lessonProgress":"Lesvoortgang","lessonObserve":"Waarop letten","lessonGoal":"Doel","lessonDirectMethod":"Gebruik zichtbare beperkingen om onmogelijke keuzes uit te sluiten en de gedwongen zet te vinden.","lessonContradictionMethod":"Test een hypothese, volg de zichtbare gevolgen en verwerp haar zodra een regel onmogelijk wordt.","lessonShowMove":"Toon de zet","lessonIndependentRetry":"Voltooi deze stap opnieuw zonder Logic Coach om de zelfstandige fase te valideren.","lessonContinue":"Doorgaan","lessonCompletedCount":"Voltooide lessen"});
+Object.assign(I18N.et,{"learn":"Õpi","learnSub":"Interaktiivsed õppetunnid: mõista, jälgi, harjuta juhendatult ja lahenda seejärel iseseisvalt.","lesson":"Õppetund","lessonExplanation":"Selgitus","lessonGuided":"Juhendatud näide","lessonAssisted":"Abistatud harjutus","lessonIndependent":"Iseseisev harjutus","lessonStartGuided":"Alusta juhendatud näidet","lessonStartAssisted":"Alusta abistatud harjutust","lessonStartIndependent":"Alusta iseseisvat harjutust","lessonComplete":"Õppetund lõpetatud","lessonProgress":"Õppetunni edenemine","lessonObserve":"Mida jälgida","lessonGoal":"Eesmärk","lessonDirectMethod":"Kasuta nähtavaid piiranguid võimatute valikute välistamiseks ja sundkäigu leidmiseks.","lessonContradictionMethod":"Kontrolli hüpoteesi, jälgi selle nähtavaid tagajärgi ja lükka see tagasi, kui mõni reegel muutub võimatuks.","lessonShowMove":"Näita käiku","lessonIndependentRetry":"Iseseisva etapi kinnitamiseks lõpeta see samm uuesti ilma Logic Coachita.","lessonContinue":"Jätka","lessonCompletedCount":"Lõpetatud õppetunnid"});
+Object.assign(I18N.fi,{"learn":"Opi","learnSub":"Vuorovaikutteiset oppitunnit: ymmärrä, havainnoi, harjoittele ohjatusti ja ratkaise sitten itse.","lesson":"Oppitunti","lessonExplanation":"Selitys","lessonGuided":"Ohjattu esimerkki","lessonAssisted":"Avustettu harjoitus","lessonIndependent":"Itsenäinen harjoitus","lessonStartGuided":"Aloita ohjattu esimerkki","lessonStartAssisted":"Aloita avustettu harjoitus","lessonStartIndependent":"Aloita itsenäinen harjoitus","lessonComplete":"Oppitunti valmis","lessonProgress":"Oppitunnin eteneminen","lessonObserve":"Mitä tarkkailla","lessonGoal":"Tavoite","lessonDirectMethod":"Käytä näkyviä rajoitteita mahdottomien vaihtoehtojen poistamiseen ja pakotetun siirron tunnistamiseen.","lessonContradictionMethod":"Testaa oletus, seuraa sen näkyviä seurauksia ja hylkää se, kun jokin sääntö käy mahdottomaksi.","lessonShowMove":"Näytä siirto","lessonIndependentRetry":"Suorita tämä vaihe uudelleen ilman Logic Coachia vahvistaaksesi itsenäisen vaiheen.","lessonContinue":"Jatka","lessonCompletedCount":"Suoritetut oppitunnit"});
+Object.assign(I18N.de,{"learn":"Lernen","learnSub":"Interaktive Lektionen: verstehen, beobachten, geführt üben und anschließend selbst lösen.","lesson":"Lektion","lessonExplanation":"Erklärung","lessonGuided":"Geführtes Beispiel","lessonAssisted":"Begleitete Übung","lessonIndependent":"Selbstständige Übung","lessonStartGuided":"Geführtes Beispiel starten","lessonStartAssisted":"Begleitete Übung starten","lessonStartIndependent":"Selbstständige Übung starten","lessonComplete":"Lektion abgeschlossen","lessonProgress":"Lektionsfortschritt","lessonObserve":"Worauf achten","lessonGoal":"Ziel","lessonDirectMethod":"Nutze die sichtbaren Einschränkungen, um unmögliche Optionen auszuschließen und den erzwungenen Zug zu erkennen.","lessonContradictionMethod":"Teste eine Hypothese, verfolge ihre sichtbaren Folgen und verwerfe sie, sobald eine Regel unmöglich wird.","lessonShowMove":"Zug zeigen","lessonIndependentRetry":"Schließe diesen Schritt erneut ohne Logic Coach ab, um die selbstständige Stufe zu bestätigen.","lessonContinue":"Weiter","lessonCompletedCount":"Abgeschlossene Lektionen"});
+Object.assign(I18N.el,{"learn":"Μάθηση","learnSub":"Διαδραστικά μαθήματα: κατανόησε, παρατήρησε, εξασκήσου με καθοδήγηση και μετά λύσε μόνος σου.","lesson":"Μάθημα","lessonExplanation":"Εξήγηση","lessonGuided":"Καθοδηγούμενο παράδειγμα","lessonAssisted":"Υποστηριζόμενη άσκηση","lessonIndependent":"Αυτόνομη άσκηση","lessonStartGuided":"Έναρξη καθοδηγούμενου παραδείγματος","lessonStartAssisted":"Έναρξη υποστηριζόμενης άσκησης","lessonStartIndependent":"Έναρξη αυτόνομης άσκησης","lessonComplete":"Το μάθημα ολοκληρώθηκε","lessonProgress":"Πρόοδος μαθήματος","lessonObserve":"Τι να παρατηρήσεις","lessonGoal":"Στόχος","lessonDirectMethod":"Χρησιμοποίησε τους ορατούς περιορισμούς για να αποκλείσεις αδύνατες επιλογές και να εντοπίσεις την αναγκαστική κίνηση.","lessonContradictionMethod":"Δοκίμασε μια υπόθεση, ακολούθησε τις ορατές συνέπειές της και απέρριψέ την όταν ένας κανόνας γίνεται αδύνατος.","lessonShowMove":"Δείξε την κίνηση","lessonIndependentRetry":"Ολοκλήρωσε ξανά αυτό το βήμα χωρίς Logic Coach για να επικυρώσεις το αυτόνομο στάδιο.","lessonContinue":"Συνέχεια","lessonCompletedCount":"Ολοκληρωμένα μαθήματα"});
+Object.assign(I18N.hu,{"learn":"Tanulás","learnSub":"Interaktív leckék: értsd meg, figyeld meg, gyakorolj segítséggel, majd oldd meg önállóan.","lesson":"Lecke","lessonExplanation":"Magyarázat","lessonGuided":"Vezetett példa","lessonAssisted":"Segített gyakorlat","lessonIndependent":"Önálló gyakorlat","lessonStartGuided":"Vezetett példa indítása","lessonStartAssisted":"Segített gyakorlat indítása","lessonStartIndependent":"Önálló gyakorlat indítása","lessonComplete":"Lecke befejezve","lessonProgress":"Lecke előrehaladása","lessonObserve":"Mit figyelj","lessonGoal":"Cél","lessonDirectMethod":"A látható korlátok segítségével zárd ki a lehetetlen választásokat és azonosítsd a kényszerített lépést.","lessonContradictionMethod":"Tesztelj egy feltevést, kövesd a látható következményeit, és vesd el, amikor egy szabály lehetetlenné válik.","lessonShowMove":"Lépés megmutatása","lessonIndependentRetry":"Az önálló szakasz igazolásához teljesítsd újra ezt a lépést Logic Coach nélkül.","lessonContinue":"Folytatás","lessonCompletedCount":"Befejezett leckék"});
+Object.assign(I18N.ga,{"learn":"Foghlaim","learnSub":"Ceachtanna idirghníomhacha: tuig, breathnaigh, cleacht le treoir, ansin réitigh leat féin.","lesson":"Ceacht","lessonExplanation":"Míniú","lessonGuided":"Sampla treoraithe","lessonAssisted":"Cleachtadh le cúnamh","lessonIndependent":"Cleachtadh neamhspleách","lessonStartGuided":"Tosaigh an sampla treoraithe","lessonStartAssisted":"Tosaigh an cleachtadh le cúnamh","lessonStartIndependent":"Tosaigh an cleachtadh neamhspleách","lessonComplete":"Ceacht críochnaithe","lessonProgress":"Dul chun cinn an cheachta","lessonObserve":"Cad le breathnú air","lessonGoal":"Sprioc","lessonDirectMethod":"Úsáid na srianta infheicthe chun roghanna dodhéanta a chur as an áireamh agus an bogadh éigeantach a aithint.","lessonContradictionMethod":"Tástáil hipitéis, lean a hiarmhairtí infheicthe agus diúltaigh di nuair a éiríonn riail dodhéanta.","lessonShowMove":"Taispeáin an bogadh","lessonIndependentRetry":"Críochnaigh an chéim seo arís gan Logic Coach chun an chéim neamhspleách a dheimhniú.","lessonContinue":"Lean ar aghaidh","lessonCompletedCount":"Ceachtanna críochnaithe"});
+Object.assign(I18N.it,{"learn":"Impara","learnSub":"Lezioni interattive: comprendi, osserva, esercitati con guida e poi risolvi da solo.","lesson":"Lezione","lessonExplanation":"Spiegazione","lessonGuided":"Esempio guidato","lessonAssisted":"Esercizio assistito","lessonIndependent":"Esercizio autonomo","lessonStartGuided":"Avvia esempio guidato","lessonStartAssisted":"Avvia esercizio assistito","lessonStartIndependent":"Avvia esercizio autonomo","lessonComplete":"Lezione completata","lessonProgress":"Progresso della lezione","lessonObserve":"Cosa osservare","lessonGoal":"Obiettivo","lessonDirectMethod":"Usa i vincoli visibili per eliminare le scelte impossibili e individuare la mossa forzata.","lessonContradictionMethod":"Prova un’ipotesi, segui le sue conseguenze visibili e scartala quando una regola diventa impossibile.","lessonShowMove":"Mostra la mossa","lessonIndependentRetry":"Completa di nuovo questo passaggio senza Logic Coach per convalidare la fase autonoma.","lessonContinue":"Continua","lessonCompletedCount":"Lezioni completate"});
+Object.assign(I18N.lv,{"learn":"Mācies","learnSub":"Interaktīvas nodarbības: saproti, vēro, vingrinies ar vadību un pēc tam risini patstāvīgi.","lesson":"Nodarbība","lessonExplanation":"Skaidrojums","lessonGuided":"Vadīts piemērs","lessonAssisted":"Atbalstīts vingrinājums","lessonIndependent":"Patstāvīgs vingrinājums","lessonStartGuided":"Sākt vadīto piemēru","lessonStartAssisted":"Sākt atbalstīto vingrinājumu","lessonStartIndependent":"Sākt patstāvīgo vingrinājumu","lessonComplete":"Nodarbība pabeigta","lessonProgress":"Nodarbības progress","lessonObserve":"Ko vērot","lessonGoal":"Mērķis","lessonDirectMethod":"Izmanto redzamos ierobežojumus, lai izslēgtu neiespējamas izvēles un atrastu piespiedu gājienu.","lessonContradictionMethod":"Pārbaudi hipotēzi, seko tās redzamajām sekām un noraidi to, kad kāds noteikums kļūst neiespējams.","lessonShowMove":"Parādīt gājienu","lessonIndependentRetry":"Pabeidz šo soli vēlreiz bez Logic Coach, lai apstiprinātu patstāvīgo posmu.","lessonContinue":"Turpināt","lessonCompletedCount":"Pabeigtās nodarbības"});
+Object.assign(I18N.lt,{"learn":"Mokykis","learnSub":"Interaktyvios pamokos: suprask, stebėk, praktikuokis su pagalba, tada spręsk savarankiškai.","lesson":"Pamoka","lessonExplanation":"Paaiškinimas","lessonGuided":"Vedamas pavyzdys","lessonAssisted":"Pratimas su pagalba","lessonIndependent":"Savarankiškas pratimas","lessonStartGuided":"Pradėti vedamą pavyzdį","lessonStartAssisted":"Pradėti pratimą su pagalba","lessonStartIndependent":"Pradėti savarankišką pratimą","lessonComplete":"Pamoka baigta","lessonProgress":"Pamokos pažanga","lessonObserve":"Ką stebėti","lessonGoal":"Tikslas","lessonDirectMethod":"Naudok matomus apribojimus, kad atmestum neįmanomus pasirinkimus ir rastum priverstinį ėjimą.","lessonContradictionMethod":"Patikrink hipotezę, sek jos matomas pasekmes ir atmesk ją, kai taisyklė tampa neįmanoma.","lessonShowMove":"Rodyti ėjimą","lessonIndependentRetry":"Užbaik šį žingsnį dar kartą be Logic Coach, kad patvirtintum savarankišką etapą.","lessonContinue":"Tęsti","lessonCompletedCount":"Baigtos pamokos"});
+Object.assign(I18N.mt,{"learn":"Tgħallem","learnSub":"Lezzjonijiet interattivi: ifhem, osserva, ipprattika bi gwida u mbagħad solvi waħdek.","lesson":"Lezzjoni","lessonExplanation":"Spjegazzjoni","lessonGuided":"Eżempju mmexxi","lessonAssisted":"Eżerċizzju assistit","lessonIndependent":"Eżerċizzju indipendenti","lessonStartGuided":"Ibda l-eżempju mmexxi","lessonStartAssisted":"Ibda l-eżerċizzju assistit","lessonStartIndependent":"Ibda l-eżerċizzju indipendenti","lessonComplete":"Lezzjoni kompluta","lessonProgress":"Progress tal-lezzjoni","lessonObserve":"X’għandek tosserva","lessonGoal":"Għan","lessonDirectMethod":"Uża r-restrizzjonijiet viżibbli biex teskludi għażliet impossibbli u ssib il-mossa obbligatorja.","lessonContradictionMethod":"Ittestja ipoteżi, segwi l-konsegwenzi viżibbli tagħha u ċaħadha meta regola ssir impossibbli.","lessonShowMove":"Uri l-mossa","lessonIndependentRetry":"Erġa’ temm dan il-pass mingħajr Logic Coach biex tivvalida l-istadju indipendenti.","lessonContinue":"Kompli","lessonCompletedCount":"Lezzjonijiet kompluti"});
+Object.assign(I18N.pl,{"learn":"Ucz się","learnSub":"Interaktywne lekcje: zrozum, obserwuj, ćwicz z pomocą, a potem rozwiązuj samodzielnie.","lesson":"Lekcja","lessonExplanation":"Wyjaśnienie","lessonGuided":"Przykład z prowadzeniem","lessonAssisted":"Ćwiczenie wspomagane","lessonIndependent":"Ćwiczenie samodzielne","lessonStartGuided":"Uruchom przykład z prowadzeniem","lessonStartAssisted":"Uruchom ćwiczenie wspomagane","lessonStartIndependent":"Uruchom ćwiczenie samodzielne","lessonComplete":"Lekcja ukończona","lessonProgress":"Postęp lekcji","lessonObserve":"Co obserwować","lessonGoal":"Cel","lessonDirectMethod":"Użyj widocznych ograniczeń, aby wykluczyć niemożliwe wybory i znaleźć wymuszony ruch.","lessonContradictionMethod":"Sprawdź hipotezę, śledź jej widoczne konsekwencje i odrzuć ją, gdy jakaś reguła stanie się niemożliwa.","lessonShowMove":"Pokaż ruch","lessonIndependentRetry":"Ukończ ten krok ponownie bez Logic Coach, aby zatwierdzić etap samodzielny.","lessonContinue":"Kontynuuj","lessonCompletedCount":"Ukończone lekcje"});
+Object.assign(I18N.ro,{"learn":"Învață","learnSub":"Lecții interactive: înțelege, observă, exersează cu ghidare, apoi rezolvă singur.","lesson":"Lecție","lessonExplanation":"Explicație","lessonGuided":"Exemplu ghidat","lessonAssisted":"Exercițiu asistat","lessonIndependent":"Exercițiu autonom","lessonStartGuided":"Pornește exemplul ghidat","lessonStartAssisted":"Pornește exercițiul asistat","lessonStartIndependent":"Pornește exercițiul autonom","lessonComplete":"Lecție finalizată","lessonProgress":"Progresul lecției","lessonObserve":"Ce să observi","lessonGoal":"Obiectiv","lessonDirectMethod":"Folosește constrângerile vizibile pentru a elimina opțiunile imposibile și a identifica mutarea forțată.","lessonContradictionMethod":"Testează o ipoteză, urmărește consecințele ei vizibile și respinge-o când o regulă devine imposibilă.","lessonShowMove":"Arată mutarea","lessonIndependentRetry":"Finalizează din nou acest pas fără Logic Coach pentru a valida etapa autonomă.","lessonContinue":"Continuă","lessonCompletedCount":"Lecții finalizate"});
+Object.assign(I18N.sk,{"learn":"Učiť sa","learnSub":"Interaktívne lekcie: pochop, pozoruj, cvič s vedením a potom rieš samostatne.","lesson":"Lekcia","lessonExplanation":"Vysvetlenie","lessonGuided":"Vedený príklad","lessonAssisted":"Cvičenie s pomocou","lessonIndependent":"Samostatné cvičenie","lessonStartGuided":"Spustiť vedený príklad","lessonStartAssisted":"Spustiť cvičenie s pomocou","lessonStartIndependent":"Spustiť samostatné cvičenie","lessonComplete":"Lekcia dokončená","lessonProgress":"Postup lekcie","lessonObserve":"Čo sledovať","lessonGoal":"Cieľ","lessonDirectMethod":"Použi viditeľné obmedzenia na vylúčenie nemožných možností a určenie vynúteného ťahu.","lessonContradictionMethod":"Otestuj hypotézu, sleduj jej viditeľné dôsledky a zamietni ju, keď sa pravidlo stane nemožným.","lessonShowMove":"Ukázať ťah","lessonIndependentRetry":"Dokonči tento krok znova bez Logic Coach, aby sa potvrdila samostatná fáza.","lessonContinue":"Pokračovať","lessonCompletedCount":"Dokončené lekcie"});
+Object.assign(I18N.sl,{"learn":"Uči se","learnSub":"Interaktivne lekcije: razumi, opazuj, vadi z usmerjanjem in nato reši samostojno.","lesson":"Lekcija","lessonExplanation":"Razlaga","lessonGuided":"Voden primer","lessonAssisted":"Vodena vaja","lessonIndependent":"Samostojna vaja","lessonStartGuided":"Začni voden primer","lessonStartAssisted":"Začni vodeno vajo","lessonStartIndependent":"Začni samostojno vajo","lessonComplete":"Lekcija zaključena","lessonProgress":"Napredek lekcije","lessonObserve":"Kaj opazovati","lessonGoal":"Cilj","lessonDirectMethod":"Uporabi vidne omejitve za izločanje nemogočih možnosti in prepoznaj prisilno potezo.","lessonContradictionMethod":"Preizkusi hipotezo, sledi njenim vidnim posledicam in jo zavrni, ko pravilo postane nemogoče.","lessonShowMove":"Prikaži potezo","lessonIndependentRetry":"Ponovno dokončaj ta korak brez Logic Coach, da potrdiš samostojno stopnjo.","lessonContinue":"Nadaljuj","lessonCompletedCount":"Zaključene lekcije"});
+Object.assign(I18N.sv,{"learn":"Lär dig","learnSub":"Interaktiva lektioner: förstå, observera, öva med vägledning och lös sedan själv.","lesson":"Lektion","lessonExplanation":"Förklaring","lessonGuided":"Guidat exempel","lessonAssisted":"Assisterad övning","lessonIndependent":"Självständig övning","lessonStartGuided":"Starta guidat exempel","lessonStartAssisted":"Starta assisterad övning","lessonStartIndependent":"Starta självständig övning","lessonComplete":"Lektion klar","lessonProgress":"Lektionsframsteg","lessonObserve":"Vad du ska observera","lessonGoal":"Mål","lessonDirectMethod":"Använd synliga begränsningar för att utesluta omöjliga val och hitta det tvingade draget.","lessonContradictionMethod":"Testa en hypotes, följ dess synliga konsekvenser och förkasta den när en regel blir omöjlig.","lessonShowMove":"Visa draget","lessonIndependentRetry":"Slutför detta steg igen utan Logic Coach för att validera den självständiga fasen.","lessonContinue":"Fortsätt","lessonCompletedCount":"Avslutade lektioner"});
+
+/* v2.19.0 — Daily QUADLUD circuit */
+Object.assign(I18N.en,{"dailyCircuit":"QUADLUD Circuit","dailyCircuitSub":"Complete the four daily games and measure how independently you reason.","dailyStartCircuit":"Start the circuit","dailyResumeCircuit":"Resume the circuit","dailyLogicScore":"Logic score","dailyNoHelp":"No help","dailyOrientation":"Orientation","dailyRuleHelp":"Rule help","dailyExplanationHelp":"Explanation","dailyRevealHelp":"Revealed move","dailyErrorsCount":"Errors","dailyBacktracksCount":"Backtracks","dailyNextGame":"Next game","dailyReport":"Daily report","dailyCompleteReport":"Circuit completed","dailyScoreNote":"100 points per game. The score measures assistance, not speed; errors and backtracks do not remove points.","dailyScoreLocked":"The official score is locked on the first solved attempt.","dailyUnscoredLegacy":"Completed before logic scoring was available"});
+Object.assign(I18N.fr,{"dailyCircuit":"Circuit QUADLUD","dailyCircuitSub":"Résous les quatre jeux du jour et mesure ton autonomie logique.","dailyStartCircuit":"Commencer le circuit","dailyResumeCircuit":"Reprendre le circuit","dailyLogicScore":"Score logique","dailyNoHelp":"Sans aide","dailyOrientation":"Orientation","dailyRuleHelp":"Aide sur la règle","dailyExplanationHelp":"Explication","dailyRevealHelp":"Coup révélé","dailyErrorsCount":"Erreurs","dailyBacktracksCount":"Retours arrière","dailyNextGame":"Jeu suivant","dailyReport":"Bilan du jour","dailyCompleteReport":"Circuit terminé","dailyScoreNote":"100 points par jeu. Le score mesure l’aide reçue, pas la vitesse ; erreurs et retours arrière ne retirent pas de points.","dailyScoreLocked":"Le score officiel est figé à la première résolution réussie.","dailyUnscoredLegacy":"Terminé avant la disponibilité du score logique"});
+Object.assign(I18N.es,{"dailyCircuit":"Circuito QUADLUD","dailyCircuitSub":"Completa los cuatro juegos diarios y mide tu autonomía lógica.","dailyStartCircuit":"Iniciar circuito","dailyResumeCircuit":"Reanudar circuito","dailyLogicScore":"Puntuación lógica","dailyNoHelp":"Sin ayuda","dailyOrientation":"Orientación","dailyRuleHelp":"Ayuda de regla","dailyExplanationHelp":"Explicación","dailyRevealHelp":"Jugada revelada","dailyErrorsCount":"Errores","dailyBacktracksCount":"Retrocesos","dailyNextGame":"Juego siguiente","dailyReport":"Informe diario","dailyCompleteReport":"Circuito completado","dailyScoreNote":"100 puntos por juego. La puntuación mide la ayuda, no la velocidad; errores y retrocesos no restan puntos.","dailyScoreLocked":"La puntuación oficial queda fijada en la primera resolución.","dailyUnscoredLegacy":"Completado antes de que existiera la puntuación lógica"});
+Object.assign(I18N.pt,{"dailyCircuit":"Circuito QUADLUD","dailyCircuitSub":"Completa os quatro jogos diários e mede a tua autonomia lógica.","dailyStartCircuit":"Iniciar circuito","dailyResumeCircuit":"Retomar circuito","dailyLogicScore":"Pontuação lógica","dailyNoHelp":"Sem ajuda","dailyOrientation":"Orientação","dailyRuleHelp":"Ajuda de regra","dailyExplanationHelp":"Explicação","dailyRevealHelp":"Jogada revelada","dailyErrorsCount":"Erros","dailyBacktracksCount":"Retrocessos","dailyNextGame":"Jogo seguinte","dailyReport":"Relatório diário","dailyCompleteReport":"Circuito concluído","dailyScoreNote":"100 pontos por jogo. A pontuação mede a ajuda, não a velocidade; erros e retrocessos não retiram pontos.","dailyScoreLocked":"A pontuação oficial fica fixada na primeira resolução.","dailyUnscoredLegacy":"Concluído antes da pontuação lógica estar disponível"});
+Object.assign(I18N.it,{"dailyCircuit":"Circuito QUADLUD","dailyCircuitSub":"Completa i quattro giochi giornalieri e misura la tua autonomia logica.","dailyStartCircuit":"Avvia il circuito","dailyResumeCircuit":"Riprendi il circuito","dailyLogicScore":"Punteggio logico","dailyNoHelp":"Senza aiuto","dailyOrientation":"Orientamento","dailyRuleHelp":"Aiuto sulla regola","dailyExplanationHelp":"Spiegazione","dailyRevealHelp":"Mossa rivelata","dailyErrorsCount":"Errori","dailyBacktracksCount":"Passi indietro","dailyNextGame":"Gioco successivo","dailyReport":"Resoconto giornaliero","dailyCompleteReport":"Circuito completato","dailyScoreNote":"100 punti per gioco. Il punteggio misura l’aiuto, non la velocità; errori e passi indietro non sottraggono punti.","dailyScoreLocked":"Il punteggio ufficiale viene fissato alla prima soluzione.","dailyUnscoredLegacy":"Completato prima della disponibilità del punteggio logico"});
+Object.assign(I18N.de,{"dailyCircuit":"QUADLUD-Runde","dailyCircuitSub":"Löse die vier täglichen Spiele und miss deine logische Selbstständigkeit.","dailyStartCircuit":"Runde starten","dailyResumeCircuit":"Runde fortsetzen","dailyLogicScore":"Logikpunktzahl","dailyNoHelp":"Ohne Hilfe","dailyOrientation":"Orientierung","dailyRuleHelp":"Regelhilfe","dailyExplanationHelp":"Erklärung","dailyRevealHelp":"Aufgedeckter Zug","dailyErrorsCount":"Fehler","dailyBacktracksCount":"Rückschritte","dailyNextGame":"Nächstes Spiel","dailyReport":"Tagesbericht","dailyCompleteReport":"Runde abgeschlossen","dailyScoreNote":"100 Punkte pro Spiel. Gewertet wird die erhaltene Hilfe, nicht die Geschwindigkeit; Fehler und Rückschritte kosten keine Punkte.","dailyScoreLocked":"Die offizielle Punktzahl wird beim ersten erfolgreichen Lösen festgeschrieben.","dailyUnscoredLegacy":"Abgeschlossen, bevor die Logikwertung verfügbar war"});
+Object.assign(I18N.nl,{"dailyCircuit":"QUADLUD-circuit","dailyCircuitSub":"Voltooi de vier dagelijkse spellen en meet je logische zelfstandigheid.","dailyStartCircuit":"Circuit starten","dailyResumeCircuit":"Circuit hervatten","dailyLogicScore":"Logicascore","dailyNoHelp":"Zonder hulp","dailyOrientation":"Oriëntatie","dailyRuleHelp":"Regelhulp","dailyExplanationHelp":"Uitleg","dailyRevealHelp":"Onthulde zet","dailyErrorsCount":"Fouten","dailyBacktracksCount":"Terugstappen","dailyNextGame":"Volgend spel","dailyReport":"Dagrapport","dailyCompleteReport":"Circuit voltooid","dailyScoreNote":"100 punten per spel. De score meet hulp, niet snelheid; fouten en terugstappen kosten geen punten.","dailyScoreLocked":"De officiële score wordt vastgezet bij de eerste oplossing.","dailyUnscoredLegacy":"Voltooid voordat logicascore beschikbaar was"});
+Object.assign(I18N.zh,{"dailyCircuit":"QUADLUD 每日巡回","dailyCircuitSub":"完成四个每日游戏，衡量你的独立逻辑推理。","dailyStartCircuit":"开始巡回","dailyResumeCircuit":"继续巡回","dailyLogicScore":"逻辑得分","dailyNoHelp":"无帮助","dailyOrientation":"方向提示","dailyRuleHelp":"规则提示","dailyExplanationHelp":"解释","dailyRevealHelp":"揭示一步","dailyErrorsCount":"错误","dailyBacktracksCount":"回退","dailyNextGame":"下一个游戏","dailyReport":"每日报告","dailyCompleteReport":"巡回完成","dailyScoreNote":"每个游戏100分。得分衡量所获帮助而非速度；错误和回退不扣分。","dailyScoreLocked":"官方得分以首次成功完成为准。","dailyUnscoredLegacy":"在逻辑评分推出前已完成"});
+Object.assign(I18N.hi,{"dailyCircuit":"QUADLUD सर्किट","dailyCircuitSub":"चारों दैनिक खेल पूरे करें और अपनी स्वतंत्र तार्किक क्षमता मापें।","dailyStartCircuit":"सर्किट शुरू करें","dailyResumeCircuit":"सर्किट जारी रखें","dailyLogicScore":"तार्किक स्कोर","dailyNoHelp":"बिना मदद","dailyOrientation":"दिशा संकेत","dailyRuleHelp":"नियम सहायता","dailyExplanationHelp":"व्याख्या","dailyRevealHelp":"चाल दिखाई गई","dailyErrorsCount":"गलतियाँ","dailyBacktracksCount":"वापसी","dailyNextGame":"अगला खेल","dailyReport":"दैनिक रिपोर्ट","dailyCompleteReport":"सर्किट पूरा","dailyScoreNote":"हर खेल 100 अंक। स्कोर मदद को मापता है, गति को नहीं; गलतियों और वापसी पर अंक नहीं कटते।","dailyScoreLocked":"आधिकारिक स्कोर पहली सफल पूर्णता पर तय होता है।","dailyUnscoredLegacy":"तार्किक स्कोर उपलब्ध होने से पहले पूरा किया गया"});
+Object.assign(I18N.ar,{"dailyCircuit":"دورة QUADLUD","dailyCircuitSub":"أكمل الألعاب اليومية الأربع وقِس استقلالك المنطقي.","dailyStartCircuit":"ابدأ الدورة","dailyResumeCircuit":"استأنف الدورة","dailyLogicScore":"النتيجة المنطقية","dailyNoHelp":"بدون مساعدة","dailyOrientation":"توجيه","dailyRuleHelp":"مساعدة القاعدة","dailyExplanationHelp":"شرح","dailyRevealHelp":"نقلة مكشوفة","dailyErrorsCount":"أخطاء","dailyBacktracksCount":"تراجعات","dailyNextGame":"اللعبة التالية","dailyReport":"التقرير اليومي","dailyCompleteReport":"اكتملت الدورة","dailyScoreNote":"100 نقطة لكل لعبة. تقيس النتيجة مقدار المساعدة لا السرعة؛ الأخطاء والتراجع لا تخصم نقاطًا.","dailyScoreLocked":"تُثبّت النتيجة الرسمية عند أول حل ناجح.","dailyUnscoredLegacy":"أُنجز قبل توفر التقييم المنطقي"});
+Object.assign(I18N.bn,{"dailyCircuit":"QUADLUD সার্কিট","dailyCircuitSub":"চারটি দৈনিক খেলা শেষ করে আপনার স্বাধীন যুক্তি পরিমাপ করুন।","dailyStartCircuit":"সার্কিট শুরু করুন","dailyResumeCircuit":"সার্কিট চালিয়ে যান","dailyLogicScore":"যুক্তি স্কোর","dailyNoHelp":"সহায়তা ছাড়া","dailyOrientation":"দিকনির্দেশ","dailyRuleHelp":"নিয়ম সহায়তা","dailyExplanationHelp":"ব্যাখ্যা","dailyRevealHelp":"চাল প্রকাশ","dailyErrorsCount":"ভুল","dailyBacktracksCount":"পিছিয়ে যাওয়া","dailyNextGame":"পরবর্তী খেলা","dailyReport":"দৈনিক প্রতিবেদন","dailyCompleteReport":"সার্কিট সম্পূর্ণ","dailyScoreNote":"প্রতি খেলায় ১০০ পয়েন্ট। স্কোর সাহায্যের মাত্রা মাপে, গতি নয়; ভুল বা পিছিয়ে যাওয়ায় পয়েন্ট কমে না।","dailyScoreLocked":"প্রথম সফল সমাধানেই সরকারি স্কোর স্থির হয়।","dailyUnscoredLegacy":"যুক্তি স্কোর চালুর আগে সম্পন্ন"});
+Object.assign(I18N.id,{"dailyCircuit":"Sirkuit QUADLUD","dailyCircuitSub":"Selesaikan empat permainan harian dan ukur kemandirian logika Anda.","dailyStartCircuit":"Mulai sirkuit","dailyResumeCircuit":"Lanjutkan sirkuit","dailyLogicScore":"Skor logika","dailyNoHelp":"Tanpa bantuan","dailyOrientation":"Orientasi","dailyRuleHelp":"Bantuan aturan","dailyExplanationHelp":"Penjelasan","dailyRevealHelp":"Langkah dibuka","dailyErrorsCount":"Kesalahan","dailyBacktracksCount":"Mundur","dailyNextGame":"Permainan berikutnya","dailyReport":"Laporan harian","dailyCompleteReport":"Sirkuit selesai","dailyScoreNote":"100 poin per permainan. Skor mengukur bantuan, bukan kecepatan; kesalahan dan mundur tidak mengurangi poin.","dailyScoreLocked":"Skor resmi dikunci pada penyelesaian pertama.","dailyUnscoredLegacy":"Selesai sebelum skor logika tersedia"});
+Object.assign(I18N.ur,{"dailyCircuit":"QUADLUD سرکٹ","dailyCircuitSub":"چاروں روزانہ کھیل مکمل کریں اور اپنی آزاد منطقی صلاحیت ناپیں۔","dailyStartCircuit":"سرکٹ شروع کریں","dailyResumeCircuit":"سرکٹ جاری رکھیں","dailyLogicScore":"منطقی اسکور","dailyNoHelp":"بغیر مدد","dailyOrientation":"رہنمائی","dailyRuleHelp":"قاعدے کی مدد","dailyExplanationHelp":"وضاحت","dailyRevealHelp":"چال ظاہر","dailyErrorsCount":"غلطیاں","dailyBacktracksCount":"واپسی","dailyNextGame":"اگلا کھیل","dailyReport":"روزانہ رپورٹ","dailyCompleteReport":"سرکٹ مکمل","dailyScoreNote":"ہر کھیل 100 پوائنٹس۔ اسکور مدد کو ناپتا ہے، رفتار کو نہیں؛ غلطیوں اور واپسی سے پوائنٹس کم نہیں ہوتے۔","dailyScoreLocked":"سرکاری اسکور پہلی کامیاب تکمیل پر لاک ہو جاتا ہے۔","dailyUnscoredLegacy":"منطقی اسکور سے پہلے مکمل کیا گیا"});
+Object.assign(I18N.bg,{"dailyCircuit":"QUADLUD кръг","dailyCircuitSub":"Завърши четирите дневни игри и измери логическата си самостоятелност.","dailyStartCircuit":"Започни кръга","dailyResumeCircuit":"Продължи кръга","dailyLogicScore":"Логически резултат","dailyNoHelp":"Без помощ","dailyOrientation":"Насока","dailyRuleHelp":"Помощ с правило","dailyExplanationHelp":"Обяснение","dailyRevealHelp":"Разкрит ход","dailyErrorsCount":"Грешки","dailyBacktracksCount":"Връщания","dailyNextGame":"Следваща игра","dailyReport":"Дневен отчет","dailyCompleteReport":"Кръгът е завършен","dailyScoreNote":"100 точки на игра. Резултатът измерва помощта, не скоростта; грешките и връщанията не отнемат точки.","dailyScoreLocked":"Официалният резултат се фиксира при първото успешно решаване.","dailyUnscoredLegacy":"Завършено преди логическото оценяване"});
+Object.assign(I18N.hr,{"dailyCircuit":"QUADLUD krug","dailyCircuitSub":"Dovrši četiri dnevne igre i izmjeri svoju logičku samostalnost.","dailyStartCircuit":"Pokreni krug","dailyResumeCircuit":"Nastavi krug","dailyLogicScore":"Logički rezultat","dailyNoHelp":"Bez pomoći","dailyOrientation":"Usmjerenje","dailyRuleHelp":"Pomoć pravilom","dailyExplanationHelp":"Objašnjenje","dailyRevealHelp":"Otkriven potez","dailyErrorsCount":"Pogreške","dailyBacktracksCount":"Povratci","dailyNextGame":"Sljedeća igra","dailyReport":"Dnevno izvješće","dailyCompleteReport":"Krug završen","dailyScoreNote":"100 bodova po igri. Rezultat mjeri pomoć, ne brzinu; pogreške i povratci ne oduzimaju bodove.","dailyScoreLocked":"Službeni rezultat zaključava se pri prvom uspješnom rješenju.","dailyUnscoredLegacy":"Završeno prije logičkog bodovanja"});
+Object.assign(I18N.cs,{"dailyCircuit":"Okruh QUADLUD","dailyCircuitSub":"Dokonči čtyři denní hry a změř svou logickou samostatnost.","dailyStartCircuit":"Spustit okruh","dailyResumeCircuit":"Pokračovat v okruhu","dailyLogicScore":"Logické skóre","dailyNoHelp":"Bez pomoci","dailyOrientation":"Nasměrování","dailyRuleHelp":"Pomoc s pravidlem","dailyExplanationHelp":"Vysvětlení","dailyRevealHelp":"Odhalený tah","dailyErrorsCount":"Chyby","dailyBacktracksCount":"Návraty","dailyNextGame":"Další hra","dailyReport":"Denní přehled","dailyCompleteReport":"Okruh dokončen","dailyScoreNote":"100 bodů za hru. Skóre měří míru pomoci, ne rychlost; chyby a návraty body nesnižují.","dailyScoreLocked":"Oficiální skóre se uzamkne při prvním úspěšném vyřešení.","dailyUnscoredLegacy":"Dokončeno před zavedením logického skóre"});
+Object.assign(I18N.da,{"dailyCircuit":"QUADLUD-runde","dailyCircuitSub":"Gennemfør de fire daglige spil og mål din logiske selvstændighed.","dailyStartCircuit":"Start runden","dailyResumeCircuit":"Fortsæt runden","dailyLogicScore":"Logikscore","dailyNoHelp":"Uden hjælp","dailyOrientation":"Orientering","dailyRuleHelp":"Regelhjælp","dailyExplanationHelp":"Forklaring","dailyRevealHelp":"Afsløret træk","dailyErrorsCount":"Fejl","dailyBacktracksCount":"Tilbagetrin","dailyNextGame":"Næste spil","dailyReport":"Dagsrapport","dailyCompleteReport":"Runden er gennemført","dailyScoreNote":"100 point pr. spil. Scoren måler hjælp, ikke hastighed; fejl og tilbagetrin koster ikke point.","dailyScoreLocked":"Den officielle score låses ved første gennemførte løsning.","dailyUnscoredLegacy":"Gennemført før logikscore var tilgængelig"});
+Object.assign(I18N.et,{"dailyCircuit":"QUADLUD ring","dailyCircuitSub":"Lõpeta neli päevamängu ja mõõda oma loogilist iseseisvust.","dailyStartCircuit":"Alusta ringi","dailyResumeCircuit":"Jätka ringi","dailyLogicScore":"Loogikaskoor","dailyNoHelp":"Ilma abita","dailyOrientation":"Suunamine","dailyRuleHelp":"Reegliabi","dailyExplanationHelp":"Selgitus","dailyRevealHelp":"Näidatud käik","dailyErrorsCount":"Vead","dailyBacktracksCount":"Tagasikäigud","dailyNextGame":"Järgmine mäng","dailyReport":"Päevaraport","dailyCompleteReport":"Ring lõpetatud","dailyScoreNote":"100 punkti mängu kohta. Skoor mõõdab abi, mitte kiirust; vead ja tagasikäigud punkte ei vähenda.","dailyScoreLocked":"Ametlik skoor lukustub esimesel edukal lahendamisel.","dailyUnscoredLegacy":"Lõpetatud enne loogikaskoori kasutuselevõttu"});
+Object.assign(I18N.fi,{"dailyCircuit":"QUADLUD-kierros","dailyCircuitSub":"Suorita neljä päivittäistä peliä ja mittaa loogista itsenäisyyttäsi.","dailyStartCircuit":"Aloita kierros","dailyResumeCircuit":"Jatka kierrosta","dailyLogicScore":"Logiikkapisteet","dailyNoHelp":"Ilman apua","dailyOrientation":"Suuntaus","dailyRuleHelp":"Sääntöapu","dailyExplanationHelp":"Selitys","dailyRevealHelp":"Paljastettu siirto","dailyErrorsCount":"Virheet","dailyBacktracksCount":"Takaisinpaluut","dailyNextGame":"Seuraava peli","dailyReport":"Päiväraportti","dailyCompleteReport":"Kierros valmis","dailyScoreNote":"100 pistettä peliä kohti. Pisteet mittaavat apua, eivät nopeutta; virheet ja takaisinpaluut eivät vähennä pisteitä.","dailyScoreLocked":"Virallinen pistemäärä lukitaan ensimmäisellä onnistuneella ratkaisulla.","dailyUnscoredLegacy":"Valmis ennen logiikkapisteiden käyttöönottoa"});
+Object.assign(I18N.el,{"dailyCircuit":"Κύκλος QUADLUD","dailyCircuitSub":"Ολοκλήρωσε τα τέσσερα καθημερινά παιχνίδια και μέτρησε τη λογική σου αυτονομία.","dailyStartCircuit":"Έναρξη κύκλου","dailyResumeCircuit":"Συνέχιση κύκλου","dailyLogicScore":"Λογικό σκορ","dailyNoHelp":"Χωρίς βοήθεια","dailyOrientation":"Κατεύθυνση","dailyRuleHelp":"Βοήθεια κανόνα","dailyExplanationHelp":"Εξήγηση","dailyRevealHelp":"Αποκαλυμμένη κίνηση","dailyErrorsCount":"Λάθη","dailyBacktracksCount":"Επιστροφές","dailyNextGame":"Επόμενο παιχνίδι","dailyReport":"Ημερήσια αναφορά","dailyCompleteReport":"Ο κύκλος ολοκληρώθηκε","dailyScoreNote":"100 βαθμοί ανά παιχνίδι. Το σκορ μετρά τη βοήθεια, όχι την ταχύτητα· λάθη και επιστροφές δεν αφαιρούν βαθμούς.","dailyScoreLocked":"Το επίσημο σκορ κλειδώνει στην πρώτη επιτυχή λύση.","dailyUnscoredLegacy":"Ολοκληρώθηκε πριν διατεθεί το λογικό σκορ"});
+Object.assign(I18N.hu,{"dailyCircuit":"QUADLUD kör","dailyCircuitSub":"Teljesítsd a négy napi játékot, és mérd a logikai önállóságodat.","dailyStartCircuit":"Kör indítása","dailyResumeCircuit":"Kör folytatása","dailyLogicScore":"Logikai pontszám","dailyNoHelp":"Segítség nélkül","dailyOrientation":"Irányítás","dailyRuleHelp":"Szabálysegítség","dailyExplanationHelp":"Magyarázat","dailyRevealHelp":"Felfedett lépés","dailyErrorsCount":"Hibák","dailyBacktracksCount":"Visszalépések","dailyNextGame":"Következő játék","dailyReport":"Napi jelentés","dailyCompleteReport":"Kör teljesítve","dailyScoreNote":"Játékonként 100 pont. A pontszám a segítséget méri, nem a sebességet; a hibák és visszalépések nem vonnak le pontot.","dailyScoreLocked":"A hivatalos pontszám az első sikeres megoldáskor rögzül.","dailyUnscoredLegacy":"A logikai pontozás előtt teljesítve"});
+Object.assign(I18N.ga,{"dailyCircuit":"Ciorcad QUADLUD","dailyCircuitSub":"Críochnaigh na ceithre chluiche laethúla agus tomhais do neamhspleáchas loighciúil.","dailyStartCircuit":"Tosaigh an ciorcad","dailyResumeCircuit":"Lean leis an gciorcad","dailyLogicScore":"Scór loighce","dailyNoHelp":"Gan chabhair","dailyOrientation":"Treoshuíomh","dailyRuleHelp":"Cabhair rialach","dailyExplanationHelp":"Míniú","dailyRevealHelp":"Bogadh nochta","dailyErrorsCount":"Earráidí","dailyBacktracksCount":"Céimeanna siar","dailyNextGame":"An chéad chluiche eile","dailyReport":"Tuairisc laethúil","dailyCompleteReport":"Ciorcad críochnaithe","dailyScoreNote":"100 pointe in aghaidh an chluiche. Tomhaiseann an scór an chabhair, ní an luas; ní bhaintear pointí as earráidí ná céimeanna siar.","dailyScoreLocked":"Glasáiltear an scór oifigiúil ar an gcéad réiteach rathúil.","dailyUnscoredLegacy":"Críochnaithe sula raibh scór loighce ar fáil"});
+Object.assign(I18N.lv,{"dailyCircuit":"QUADLUD aplis","dailyCircuitSub":"Pabeidz četras dienas spēles un novērtē savu loģisko patstāvību.","dailyStartCircuit":"Sākt apli","dailyResumeCircuit":"Turpināt apli","dailyLogicScore":"Loģikas rezultāts","dailyNoHelp":"Bez palīdzības","dailyOrientation":"Virziens","dailyRuleHelp":"Noteikuma palīdzība","dailyExplanationHelp":"Skaidrojums","dailyRevealHelp":"Atklāts gājiens","dailyErrorsCount":"Kļūdas","dailyBacktracksCount":"Atgriešanās","dailyNextGame":"Nākamā spēle","dailyReport":"Dienas pārskats","dailyCompleteReport":"Aplis pabeigts","dailyScoreNote":"100 punkti par spēli. Rezultāts mēra saņemto palīdzību, nevis ātrumu; kļūdas un atgriešanās punktus neatņem.","dailyScoreLocked":"Oficiālais rezultāts tiek fiksēts pirmajā veiksmīgajā atrisināšanā.","dailyUnscoredLegacy":"Pabeigts pirms loģikas rezultāta ieviešanas"});
+Object.assign(I18N.lt,{"dailyCircuit":"QUADLUD ciklas","dailyCircuitSub":"Užbaik keturis dienos žaidimus ir įvertink savo loginį savarankiškumą.","dailyStartCircuit":"Pradėti ciklą","dailyResumeCircuit":"Tęsti ciklą","dailyLogicScore":"Loginis balas","dailyNoHelp":"Be pagalbos","dailyOrientation":"Kryptis","dailyRuleHelp":"Taisyklės pagalba","dailyExplanationHelp":"Paaiškinimas","dailyRevealHelp":"Parodytas ėjimas","dailyErrorsCount":"Klaidos","dailyBacktracksCount":"Grįžimai","dailyNextGame":"Kitas žaidimas","dailyReport":"Dienos ataskaita","dailyCompleteReport":"Ciklas baigtas","dailyScoreNote":"100 taškų už žaidimą. Balas vertina pagalbą, ne greitį; klaidos ir grįžimai taškų nemažina.","dailyScoreLocked":"Oficialus balas užfiksuojamas pirmą kartą sėkmingai išsprendus.","dailyUnscoredLegacy":"Baigta prieš įvedant loginį balą"});
+Object.assign(I18N.mt,{"dailyCircuit":"Ċirkwit QUADLUD","dailyCircuitSub":"Imla l-erba’ logħob ta’ kuljum u kejjel l-indipendenza loġika tiegħek.","dailyStartCircuit":"Ibda ċ-ċirkwit","dailyResumeCircuit":"Kompli ċ-ċirkwit","dailyLogicScore":"Punteġġ loġiku","dailyNoHelp":"Mingħajr għajnuna","dailyOrientation":"Orjentazzjoni","dailyRuleHelp":"Għajnuna bir-regola","dailyExplanationHelp":"Spjegazzjoni","dailyRevealHelp":"Mossa murija","dailyErrorsCount":"Żbalji","dailyBacktracksCount":"Passi lura","dailyNextGame":"Logħba li jmiss","dailyReport":"Rapport ta’ kuljum","dailyCompleteReport":"Ċirkwit komplut","dailyScoreNote":"100 punt għal kull logħba. Il-punteġġ ikejjel l-għajnuna, mhux il-veloċità; żbalji u passi lura ma jneħħux punti.","dailyScoreLocked":"Il-punteġġ uffiċjali jissakkar mal-ewwel soluzzjoni b’suċċess.","dailyUnscoredLegacy":"Komplut qabel ma kien disponibbli l-punteġġ loġiku"});
+Object.assign(I18N.pl,{"dailyCircuit":"Obwód QUADLUD","dailyCircuitSub":"Ukończ cztery gry dnia i zmierz swoją logiczną samodzielność.","dailyStartCircuit":"Rozpocznij obwód","dailyResumeCircuit":"Wznów obwód","dailyLogicScore":"Wynik logiczny","dailyNoHelp":"Bez pomocy","dailyOrientation":"Ukierunkowanie","dailyRuleHelp":"Pomoc z regułą","dailyExplanationHelp":"Wyjaśnienie","dailyRevealHelp":"Ujawniony ruch","dailyErrorsCount":"Błędy","dailyBacktracksCount":"Cofnięcia","dailyNextGame":"Następna gra","dailyReport":"Raport dnia","dailyCompleteReport":"Obwód ukończony","dailyScoreNote":"100 punktów za grę. Wynik mierzy poziom pomocy, nie szybkość; błędy i cofnięcia nie odejmują punktów.","dailyScoreLocked":"Oficjalny wynik jest blokowany przy pierwszym poprawnym rozwiązaniu.","dailyUnscoredLegacy":"Ukończono przed wprowadzeniem wyniku logicznego"});
+Object.assign(I18N.ro,{"dailyCircuit":"Circuit QUADLUD","dailyCircuitSub":"Finalizează cele patru jocuri zilnice și măsoară-ți autonomia logică.","dailyStartCircuit":"Pornește circuitul","dailyResumeCircuit":"Reia circuitul","dailyLogicScore":"Scor logic","dailyNoHelp":"Fără ajutor","dailyOrientation":"Orientare","dailyRuleHelp":"Ajutor cu regula","dailyExplanationHelp":"Explicație","dailyRevealHelp":"Mutare dezvăluită","dailyErrorsCount":"Erori","dailyBacktracksCount":"Reveniri","dailyNextGame":"Jocul următor","dailyReport":"Raport zilnic","dailyCompleteReport":"Circuit finalizat","dailyScoreNote":"100 de puncte pe joc. Scorul măsoară ajutorul, nu viteza; erorile și revenirile nu scad puncte.","dailyScoreLocked":"Scorul oficial se fixează la prima rezolvare reușită.","dailyUnscoredLegacy":"Finalizat înainte de apariția scorului logic"});
+Object.assign(I18N.sk,{"dailyCircuit":"Okruh QUADLUD","dailyCircuitSub":"Dokonči štyri denné hry a zmeraj svoju logickú samostatnosť.","dailyStartCircuit":"Spustiť okruh","dailyResumeCircuit":"Pokračovať v okruhu","dailyLogicScore":"Logické skóre","dailyNoHelp":"Bez pomoci","dailyOrientation":"Nasmerovanie","dailyRuleHelp":"Pomoc s pravidlom","dailyExplanationHelp":"Vysvetlenie","dailyRevealHelp":"Odhalený ťah","dailyErrorsCount":"Chyby","dailyBacktracksCount":"Návraty","dailyNextGame":"Ďalšia hra","dailyReport":"Denný prehľad","dailyCompleteReport":"Okruh dokončený","dailyScoreNote":"100 bodov za hru. Skóre meria pomoc, nie rýchlosť; chyby a návraty body neznižujú.","dailyScoreLocked":"Oficiálne skóre sa uzamkne pri prvom úspešnom vyriešení.","dailyUnscoredLegacy":"Dokončené pred zavedením logického skóre"});
+Object.assign(I18N.sl,{"dailyCircuit":"Krog QUADLUD","dailyCircuitSub":"Dokončaj štiri dnevne igre in izmeri svojo logično samostojnost.","dailyStartCircuit":"Začni krog","dailyResumeCircuit":"Nadaljuj krog","dailyLogicScore":"Logični rezultat","dailyNoHelp":"Brez pomoči","dailyOrientation":"Usmeritev","dailyRuleHelp":"Pomoč pri pravilu","dailyExplanationHelp":"Razlaga","dailyRevealHelp":"Razkrita poteza","dailyErrorsCount":"Napake","dailyBacktracksCount":"Povratki","dailyNextGame":"Naslednja igra","dailyReport":"Dnevno poročilo","dailyCompleteReport":"Krog zaključen","dailyScoreNote":"100 točk na igro. Rezultat meri pomoč, ne hitrosti; napake in povratki ne odvzemajo točk.","dailyScoreLocked":"Uradni rezultat se zaklene ob prvi uspešni rešitvi.","dailyUnscoredLegacy":"Zaključeno pred uvedbo logičnega rezultata"});
+Object.assign(I18N.sv,{"dailyCircuit":"QUADLUD-runda","dailyCircuitSub":"Slutför de fyra dagliga spelen och mät din logiska självständighet.","dailyStartCircuit":"Starta rundan","dailyResumeCircuit":"Fortsätt rundan","dailyLogicScore":"Logikpoäng","dailyNoHelp":"Utan hjälp","dailyOrientation":"Orientering","dailyRuleHelp":"Regelhjälp","dailyExplanationHelp":"Förklaring","dailyRevealHelp":"Avslöjat drag","dailyErrorsCount":"Fel","dailyBacktracksCount":"Tillbakagångar","dailyNextGame":"Nästa spel","dailyReport":"Dagsrapport","dailyCompleteReport":"Rundan slutförd","dailyScoreNote":"100 poäng per spel. Poängen mäter hjälp, inte hastighet; fel och tillbakagångar ger inget poängavdrag.","dailyScoreLocked":"Den officiella poängen låses vid första lyckade lösningen.","dailyUnscoredLegacy":"Slutfört innan logikpoäng fanns"});
+
+/* v2.19.1 — move justification audit */
+Object.assign(I18N.en,{"moveJustified":"Justified move","moveUnjustified":"Legal move, but not justified","moveHypothesis":"Hypothesis","treatAsHypothesis":"Treat as hypothesis","hypothesisAccepted":"Hypothesis accepted","unjustifiedExplain":"This move violates no rule, but QUADLUD cannot currently derive it from the visible constraints with its known techniques. It is therefore an assumption, not a certified deduction.","knownLogicalMove":"A currently demonstrable move is","undoThisMove":"Undo this move","reasoningAudit":"Reasoning audit"});
+Object.assign(I18N.fr,{"moveJustified":"Coup justifié","moveUnjustified":"Coup légal, mais non justifié","moveHypothesis":"Hypothèse","treatAsHypothesis":"Traiter comme hypothèse","hypothesisAccepted":"Hypothèse acceptée","unjustifiedExplain":"Ce coup ne viole aucune règle, mais QUADLUD ne parvient pas actuellement à le déduire des contraintes visibles avec les techniques qu’il connaît. Il s’agit donc d’une hypothèse, et non d’une déduction certifiée.","knownLogicalMove":"Un coup actuellement démontrable est","undoThisMove":"Annuler ce coup","reasoningAudit":"Audit du raisonnement"});
+Object.assign(I18N.es,{"moveJustified":"Jugada justificada","moveUnjustified":"Jugada legal, pero no justificada","moveHypothesis":"Hipótesis","treatAsHypothesis":"Tratar como hipótesis","hypothesisAccepted":"Hipótesis aceptada","unjustifiedExplain":"Esta jugada no viola ninguna regla, pero QUADLUD no puede deducirla actualmente a partir de las restricciones visibles con sus técnicas conocidas. Por tanto es una hipótesis, no una deducción certificada.","knownLogicalMove":"Una jugada demostrable ahora es","undoThisMove":"Deshacer esta jugada","reasoningAudit":"Auditoría del razonamiento"});
+Object.assign(I18N.pt,{"moveJustified":"Jogada justificada","moveUnjustified":"Jogada legal, mas não justificada","moveHypothesis":"Hipótese","treatAsHypothesis":"Tratar como hipótese","hypothesisAccepted":"Hipótese aceite","unjustifiedExplain":"Esta jogada não viola nenhuma regra, mas QUADLUD não consegue atualmente deduzi-la das restrições visíveis com as técnicas conhecidas. É portanto uma hipótese, não uma dedução certificada.","knownLogicalMove":"Uma jogada demonstrável agora é","undoThisMove":"Desfazer esta jogada","reasoningAudit":"Auditoria do raciocínio"});
+Object.assign(I18N.it,{"moveJustified":"Mossa giustificata","moveUnjustified":"Mossa legale, ma non giustificata","moveHypothesis":"Ipotesi","treatAsHypothesis":"Tratta come ipotesi","hypothesisAccepted":"Ipotesi accettata","unjustifiedExplain":"Questa mossa non viola alcuna regola, ma QUADLUD al momento non riesce a dedurla dai vincoli visibili con le tecniche conosciute. È quindi un’ipotesi, non una deduzione certificata.","knownLogicalMove":"Una mossa attualmente dimostrabile è","undoThisMove":"Annulla questa mossa","reasoningAudit":"Verifica del ragionamento"});
+Object.assign(I18N.de,{"moveJustified":"Begründeter Zug","moveUnjustified":"Legal, aber nicht begründet","moveHypothesis":"Hypothese","treatAsHypothesis":"Als Hypothese behandeln","hypothesisAccepted":"Hypothese übernommen","unjustifiedExplain":"Dieser Zug verletzt keine Regel, lässt sich von QUADLUD mit den bekannten Techniken derzeit aber nicht aus den sichtbaren Einschränkungen ableiten. Er gilt daher als Annahme, nicht als bestätigte Schlussfolgerung.","knownLogicalMove":"Ein derzeit beweisbarer Zug ist","undoThisMove":"Diesen Zug rückgängig machen","reasoningAudit":"Logikprüfung"});
+Object.assign(I18N.nl,{"moveJustified":"Gerechtvaardigde zet","moveUnjustified":"Legale maar niet gerechtvaardigde zet","moveHypothesis":"Hypothese","treatAsHypothesis":"Behandel als hypothese","hypothesisAccepted":"Hypothese geaccepteerd","unjustifiedExplain":"Deze zet overtreedt geen regel, maar QUADLUD kan hem momenteel niet afleiden uit de zichtbare beperkingen met de bekende technieken. Het is dus een aanname, geen gecertificeerde deductie.","knownLogicalMove":"Een momenteel aantoonbare zet is","undoThisMove":"Deze zet ongedaan maken","reasoningAudit":"Redeneeraudit"});
+Object.assign(I18N.zh,{"moveJustified":"有依据的一步","moveUnjustified":"合法但尚无逻辑依据","moveHypothesis":"假设","treatAsHypothesis":"作为假设处理","hypothesisAccepted":"已接受为假设","unjustifiedExplain":"这一步没有违反规则，但 QUADLUD 目前无法用已知技巧从可见约束中推导出来。因此它属于假设，而不是已证明的推理。","knownLogicalMove":"当前可以证明的一步是","undoThisMove":"撤销这一步","reasoningAudit":"推理审计"});
+Object.assign(I18N.hi,{"moveJustified":"तार्किक रूप से सिद्ध चाल","moveUnjustified":"वैध, पर सिद्ध नहीं","moveHypothesis":"परिकल्पना","treatAsHypothesis":"परिकल्पना मानें","hypothesisAccepted":"परिकल्पना स्वीकार की गई","unjustifiedExplain":"यह चाल किसी नियम का उल्लंघन नहीं करती, लेकिन QUADLUD ज्ञात तकनीकों से दिखाई देने वाली बाधाओं के आधार पर अभी इसे सिद्ध नहीं कर सकता। इसलिए यह प्रमाणित निष्कर्ष नहीं, एक परिकल्पना है।","knownLogicalMove":"अभी सिद्ध की जा सकने वाली चाल है","undoThisMove":"यह चाल पूर्ववत करें","reasoningAudit":"तर्क ऑडिट"});
+Object.assign(I18N.ar,{"moveJustified":"نقلة مبررة","moveUnjustified":"نقلة قانونية لكنها غير مبررة","moveHypothesis":"فرضية","treatAsHypothesis":"اعتبرها فرضية","hypothesisAccepted":"تم قبول الفرضية","unjustifiedExplain":"لا تخالف هذه النقلة أي قاعدة، لكن QUADLUD لا يستطيع حاليًا استنتاجها من القيود الظاهرة بالتقنيات المعروفة لديه. لذلك فهي فرضية وليست استنتاجًا مثبتًا.","knownLogicalMove":"نقلة يمكن إثباتها الآن هي","undoThisMove":"تراجع عن هذه النقلة","reasoningAudit":"تدقيق الاستدلال"});
+Object.assign(I18N.bn,{"moveJustified":"যুক্তিসিদ্ধ চাল","moveUnjustified":"বৈধ কিন্তু যুক্তিসিদ্ধ নয়","moveHypothesis":"অনুমান","treatAsHypothesis":"অনুমান হিসেবে নিন","hypothesisAccepted":"অনুমান গ্রহণ করা হয়েছে","unjustifiedExplain":"এই চালটি কোনো নিয়ম ভাঙে না, কিন্তু QUADLUD তার জানা কৌশল দিয়ে দৃশ্যমান শর্ত থেকে এখনই এটি প্রমাণ করতে পারে না। তাই এটি নিশ্চিত সিদ্ধান্ত নয়, একটি অনুমান।","knownLogicalMove":"এখন প্রমাণযোগ্য একটি চাল হলো","undoThisMove":"এই চালটি পূর্বাবস্থায় নিন","reasoningAudit":"যুক্তি নিরীক্ষা"});
+Object.assign(I18N.id,{"moveJustified":"Langkah terjustifikasi","moveUnjustified":"Langkah legal, tetapi belum terjustifikasi","moveHypothesis":"Hipotesis","treatAsHypothesis":"Perlakukan sebagai hipotesis","hypothesisAccepted":"Hipotesis diterima","unjustifiedExplain":"Langkah ini tidak melanggar aturan, tetapi QUADLUD saat ini tidak dapat menurunkannya dari batasan yang terlihat dengan teknik yang dikenal. Jadi ini adalah asumsi, bukan deduksi yang telah terbukti.","knownLogicalMove":"Langkah yang saat ini dapat dibuktikan adalah","undoThisMove":"Urungkan langkah ini","reasoningAudit":"Audit penalaran"});
+Object.assign(I18N.ur,{"moveJustified":"منطقی طور پر ثابت چال","moveUnjustified":"قانونی مگر غیر ثابت چال","moveHypothesis":"مفروضہ","treatAsHypothesis":"مفروضہ سمجھیں","hypothesisAccepted":"مفروضہ قبول ہوگیا","unjustifiedExplain":"یہ چال کسی اصول کی خلاف ورزی نہیں کرتی، لیکن QUADLUD معلوم تکنیکوں سے نظر آنے والی پابندیوں کی بنیاد پر اسے ابھی ثابت نہیں کر سکتا۔ اس لیے یہ ثابت شدہ نتیجہ نہیں بلکہ مفروضہ ہے۔","knownLogicalMove":"اس وقت ثابت کی جا سکنے والی چال ہے","undoThisMove":"یہ چال واپس کریں","reasoningAudit":"منطقی جائزہ"});
+Object.assign(I18N.bg,{"moveJustified":"Обоснован ход","moveUnjustified":"Позволен, но необоснован ход","moveHypothesis":"Хипотеза","treatAsHypothesis":"Приеми като хипотеза","hypothesisAccepted":"Хипотезата е приета","unjustifiedExplain":"Този ход не нарушава правило, но QUADLUD в момента не може да го изведе от видимите ограничения с познатите техники. Затова той е хипотеза, а не доказано заключение.","knownLogicalMove":"Ход, който в момента може да се докаже, е","undoThisMove":"Отмени този ход","reasoningAudit":"Одит на разсъждението"});
+Object.assign(I18N.hr,{"moveJustified":"Opravdan potez","moveUnjustified":"Dopušten, ali neopravdan potez","moveHypothesis":"Hipoteza","treatAsHypothesis":"Tretiraj kao hipotezu","hypothesisAccepted":"Hipoteza prihvaćena","unjustifiedExplain":"Ovaj potez ne krši nijedno pravilo, ali ga QUADLUD trenutačno ne može izvesti iz vidljivih ograničenja poznatim tehnikama. Zato je to hipoteza, a ne potvrđena dedukcija.","knownLogicalMove":"Potez koji se sada može dokazati je","undoThisMove":"Poništi ovaj potez","reasoningAudit":"Provjera zaključivanja"});
+Object.assign(I18N.cs,{"moveJustified":"Odůvodněný tah","moveUnjustified":"Legální, ale neodůvodněný tah","moveHypothesis":"Hypotéza","treatAsHypothesis":"Považovat za hypotézu","hypothesisAccepted":"Hypotéza přijata","unjustifiedExplain":"Tento tah neporušuje žádné pravidlo, ale QUADLUD jej nyní nedokáže odvodit z viditelných omezení pomocí známých technik. Jde tedy o hypotézu, nikoli o potvrzenou dedukci.","knownLogicalMove":"Tah, který lze nyní dokázat, je","undoThisMove":"Vrátit tento tah","reasoningAudit":"Audit uvažování"});
+Object.assign(I18N.da,{"moveJustified":"Begrundet træk","moveUnjustified":"Lovligt, men ikke begrundet træk","moveHypothesis":"Hypotese","treatAsHypothesis":"Behandl som hypotese","hypothesisAccepted":"Hypotese accepteret","unjustifiedExplain":"Trækket bryder ingen regel, men QUADLUD kan ikke på nuværende tidspunkt udlede det af de synlige begrænsninger med de kendte teknikker. Det er derfor en antagelse, ikke en dokumenteret slutning.","knownLogicalMove":"Et træk der kan bevises nu er","undoThisMove":"Fortryd dette træk","reasoningAudit":"Ræsonneringskontrol"});
+Object.assign(I18N.et,{"moveJustified":"Põhjendatud käik","moveUnjustified":"Lubatud, kuid põhjendamata käik","moveHypothesis":"Hüpotees","treatAsHypothesis":"Käsitle hüpoteesina","hypothesisAccepted":"Hüpotees vastu võetud","unjustifiedExplain":"See käik ei riku ühtegi reeglit, kuid QUADLUD ei suuda seda praegu nähtavatest piirangutest tuntud tehnikatega tuletada. Seega on see hüpotees, mitte kinnitatud järeldus.","knownLogicalMove":"Praegu tõestatava käigu näide on","undoThisMove":"Võta see käik tagasi","reasoningAudit":"Arutluskontroll"});
+Object.assign(I18N.fi,{"moveJustified":"Perusteltu siirto","moveUnjustified":"Laillinen mutta perustelematon siirto","moveHypothesis":"Hypoteesi","treatAsHypothesis":"Käsittele hypoteesina","hypothesisAccepted":"Hypoteesi hyväksytty","unjustifiedExplain":"Siirto ei riko sääntöjä, mutta QUADLUD ei tällä hetkellä pysty johtamaan sitä näkyvistä rajoitteista tuntemillaan tekniikoilla. Siksi se on oletus, ei vahvistettu päätelmä.","knownLogicalMove":"Tällä hetkellä todistettavissa oleva siirto on","undoThisMove":"Kumoa tämä siirto","reasoningAudit":"Päättelyn tarkistus"});
+Object.assign(I18N.el,{"moveJustified":"Αιτιολογημένη κίνηση","moveUnjustified":"Νόμιμη αλλά μη αιτιολογημένη κίνηση","moveHypothesis":"Υπόθεση","treatAsHypothesis":"Θεώρησέ την υπόθεση","hypothesisAccepted":"Η υπόθεση έγινε αποδεκτή","unjustifiedExplain":"Η κίνηση δεν παραβιάζει κανόνα, αλλά το QUADLUD δεν μπορεί αυτή τη στιγμή να την εξαγάγει από τους ορατούς περιορισμούς με τις γνωστές τεχνικές. Είναι λοιπόν υπόθεση και όχι πιστοποιημένο συμπέρασμα.","knownLogicalMove":"Μια κίνηση που αποδεικνύεται τώρα είναι","undoThisMove":"Αναίρεσε αυτή την κίνηση","reasoningAudit":"Έλεγχος συλλογισμού"});
+Object.assign(I18N.hu,{"moveJustified":"Indokolt lépés","moveUnjustified":"Szabályos, de nem indokolt lépés","moveHypothesis":"Hipotézis","treatAsHypothesis":"Kezeld hipotézisként","hypothesisAccepted":"Hipotézis elfogadva","unjustifiedExplain":"Ez a lépés nem sért szabályt, de a QUADLUD jelenleg nem tudja levezetni a látható korlátokból az ismert technikákkal. Ezért feltételezés, nem igazolt következtetés.","knownLogicalMove":"Egy jelenleg bizonyítható lépés","undoThisMove":"Vond vissza ezt a lépést","reasoningAudit":"Következtetési ellenőrzés"});
+Object.assign(I18N.ga,{"moveJustified":"Bogadh a bhfuil údar leis","moveUnjustified":"Bogadh dleathach ach gan údar loighciúil","moveHypothesis":"Hipitéis","treatAsHypothesis":"Glac mar hipitéis","hypothesisAccepted":"Glacadh leis an hipitéis","unjustifiedExplain":"Ní sháraíonn an bogadh seo aon riail, ach ní féidir le QUADLUD é a bhaint as na srianta infheicthe faoi láthair leis na teicnící atá ar eolas aige. Mar sin is hipitéis é, ní asbhaint dheimhnithe.","knownLogicalMove":"Bogadh atá inchruthaithe anois ná","undoThisMove":"Cealaigh an bogadh seo","reasoningAudit":"Iniúchadh réasúnaíochta"});
+Object.assign(I18N.lv,{"moveJustified":"Pamatots gājiens","moveUnjustified":"Atļauts, bet nepamatots gājiens","moveHypothesis":"Hipotēze","treatAsHypothesis":"Uzskatīt par hipotēzi","hypothesisAccepted":"Hipotēze pieņemta","unjustifiedExplain":"Šis gājiens nepārkāpj noteikumus, taču QUADLUD pašlaik nespēj to izsecināt no redzamajiem ierobežojumiem ar zināmajām metodēm. Tāpēc tā ir hipotēze, nevis pierādīts secinājums.","knownLogicalMove":"Pašlaik pierādāms gājiens ir","undoThisMove":"Atsaukt šo gājienu","reasoningAudit":"Spriešanas audits"});
+Object.assign(I18N.lt,{"moveJustified":"Pagrįstas ėjimas","moveUnjustified":"Leistinas, bet nepagrįstas ėjimas","moveHypothesis":"Hipotezė","treatAsHypothesis":"Laikyti hipoteze","hypothesisAccepted":"Hipotezė priimta","unjustifiedExplain":"Šis ėjimas nepažeidžia taisyklių, tačiau QUADLUD šiuo metu negali jo išvesti iš matomų apribojimų naudodamas žinomus metodus. Todėl tai hipotezė, o ne patvirtinta išvada.","knownLogicalMove":"Šiuo metu įrodomas ėjimas yra","undoThisMove":"Atšaukti šį ėjimą","reasoningAudit":"Samprotavimo auditas"});
+Object.assign(I18N.mt,{"moveJustified":"Mossa ġġustifikata","moveUnjustified":"Mossa legali iżda mhux iġġustifikata","moveHypothesis":"Ipoteżi","treatAsHypothesis":"Ittrattaha bħala ipoteżi","hypothesisAccepted":"Ipoteżi aċċettata","unjustifiedExplain":"Din il-mossa ma tikser l-ebda regola, iżda QUADLUD bħalissa ma jistax joħroġha mir-restrizzjonijiet viżibbli bit-tekniki magħrufa. Għalhekk hija ipoteżi, mhux deduzzjoni ċċertifikata.","knownLogicalMove":"Mossa li tista’ tiġi ppruvata issa hija","undoThisMove":"Ħoll din il-mossa","reasoningAudit":"Verifika tar-raġunament"});
+Object.assign(I18N.pl,{"moveJustified":"Uzasadniony ruch","moveUnjustified":"Legalny, ale nieuzasadniony ruch","moveHypothesis":"Hipoteza","treatAsHypothesis":"Traktuj jako hipotezę","hypothesisAccepted":"Hipoteza zaakceptowana","unjustifiedExplain":"Ten ruch nie narusza żadnej reguły, ale QUADLUD nie potrafi obecnie wyprowadzić go z widocznych ograniczeń przy użyciu znanych technik. Jest więc hipotezą, a nie potwierdzoną dedukcją.","knownLogicalMove":"Ruch, który obecnie można udowodnić, to","undoThisMove":"Cofnij ten ruch","reasoningAudit":"Audyt rozumowania"});
+Object.assign(I18N.ro,{"moveJustified":"Mutare justificată","moveUnjustified":"Mutare legală, dar nejustificată","moveHypothesis":"Ipoteză","treatAsHypothesis":"Tratează ca ipoteză","hypothesisAccepted":"Ipoteză acceptată","unjustifiedExplain":"Această mutare nu încalcă nicio regulă, dar QUADLUD nu o poate deduce în prezent din constrângerile vizibile cu tehnicile cunoscute. Este deci o ipoteză, nu o deducție certificată.","knownLogicalMove":"O mutare demonstrabilă acum este","undoThisMove":"Anulează această mutare","reasoningAudit":"Auditul raționamentului"});
+Object.assign(I18N.sk,{"moveJustified":"Odôvodnený ťah","moveUnjustified":"Legálny, ale neodôvodnený ťah","moveHypothesis":"Hypotéza","treatAsHypothesis":"Považovať za hypotézu","hypothesisAccepted":"Hypotéza prijatá","unjustifiedExplain":"Tento ťah neporušuje žiadne pravidlo, ale QUADLUD ho momentálne nedokáže odvodiť z viditeľných obmedzení pomocou známych techník. Je to teda hypotéza, nie potvrdená dedukcia.","knownLogicalMove":"Ťah, ktorý možno teraz dokázať, je","undoThisMove":"Vrátiť tento ťah","reasoningAudit":"Audit uvažovania"});
+Object.assign(I18N.sl,{"moveJustified":"Utemeljena poteza","moveUnjustified":"Dovoljena, vendar neutemeljena poteza","moveHypothesis":"Hipoteza","treatAsHypothesis":"Obravnavaj kot hipotezo","hypothesisAccepted":"Hipoteza sprejeta","unjustifiedExplain":"Ta poteza ne krši nobenega pravila, vendar je QUADLUD trenutno ne more izpeljati iz vidnih omejitev z znanimi tehnikami. Zato je hipoteza in ne potrjen sklep.","knownLogicalMove":"Poteza, ki jo je trenutno mogoče dokazati, je","undoThisMove":"Razveljavi to potezo","reasoningAudit":"Pregled sklepanja"});
+Object.assign(I18N.sv,{"moveJustified":"Motiverat drag","moveUnjustified":"Lagligt men inte motiverat drag","moveHypothesis":"Hypotes","treatAsHypothesis":"Behandla som hypotes","hypothesisAccepted":"Hypotes accepterad","unjustifiedExplain":"Draget bryter ingen regel, men QUADLUD kan för närvarande inte härleda det från de synliga begränsningarna med sina kända tekniker. Det är därför en hypotes, inte en verifierad slutsats.","knownLogicalMove":"Ett drag som kan bevisas nu är","undoThisMove":"Ångra detta drag","reasoningAudit":"Resonemangsgranskning"});
+
+/* v2.20.0 — Exploration mode */
+Object.assign(I18N.en,{"exploration":"Exploration","explorationSub":"Test assumptions without losing your previous path.","testHypothesis":"Test a hypothesis","explorationActive":"Exploration active","branchPoint":"Branch point","currentBranch":"Current branch","keepBranch":"Keep this branch","returnBranchPoint":"Return to branch point","closeExploration":"Close exploration","analyzeBranch":"Analyze branch","noContradiction":"No contradiction is demonstrable yet at the current proof depth.","contradictionFound":"A contradiction is demonstrable on this branch.","branchTree":"Branches","branchHypothesisAuto":"This legal but unproved move is recorded as a hypothesis in the exploration branch.","branchKept":"Branch kept","branchReturned":"Returned to branch point","branchStart":"Start"});
+Object.assign(I18N.fr,{"exploration":"Exploration","explorationSub":"Teste des hypothèses sans perdre le chemin précédent.","testHypothesis":"Tester une hypothèse","explorationActive":"Exploration active","branchPoint":"Point de branchement","currentBranch":"Branche courante","keepBranch":"Conserver cette branche","returnBranchPoint":"Revenir au point de branchement","closeExploration":"Fermer l’exploration","analyzeBranch":"Analyser la branche","noContradiction":"Aucune contradiction n’est encore démontrable avec la profondeur de preuve actuelle.","contradictionFound":"Une contradiction est démontrable dans cette branche.","branchTree":"Branches","branchHypothesisAuto":"Ce coup légal mais non démontré est enregistré comme hypothèse dans la branche d’exploration.","branchKept":"Branche conservée","branchReturned":"Retour au point de branchement","branchStart":"Départ"});
+Object.assign(I18N.es,{"exploration":"Exploración","explorationSub":"Prueba hipótesis sin perder el camino anterior.","testHypothesis":"Probar una hipótesis","explorationActive":"Exploración activa","branchPoint":"Punto de ramificación","currentBranch":"Rama actual","keepBranch":"Conservar esta rama","returnBranchPoint":"Volver al punto de ramificación","closeExploration":"Cerrar exploración","analyzeBranch":"Analizar rama","noContradiction":"Aún no puede demostrarse ninguna contradicción con la profundidad de prueba actual.","contradictionFound":"Puede demostrarse una contradicción en esta rama.","branchTree":"Ramas","branchHypothesisAuto":"Esta jugada legal pero no demostrada se registra como hipótesis en la rama de exploración.","branchKept":"Rama conservada","branchReturned":"Vuelta al punto de ramificación","branchStart":"Inicio"});
+Object.assign(I18N.pt,{"exploration":"Exploração","explorationSub":"Testa hipóteses sem perder o caminho anterior.","testHypothesis":"Testar uma hipótese","explorationActive":"Exploração ativa","branchPoint":"Ponto de ramificação","currentBranch":"Ramo atual","keepBranch":"Conservar este ramo","returnBranchPoint":"Voltar ao ponto de ramificação","closeExploration":"Fechar exploração","analyzeBranch":"Analisar ramo","noContradiction":"Ainda não é demonstrável nenhuma contradição com a profundidade de prova atual.","contradictionFound":"É demonstrável uma contradição neste ramo.","branchTree":"Ramos","branchHypothesisAuto":"Esta jogada legal mas não demonstrada é registada como hipótese no ramo de exploração.","branchKept":"Ramo conservado","branchReturned":"Regresso ao ponto de ramificação","branchStart":"Início"});
+Object.assign(I18N.it,{"exploration":"Esplorazione","explorationSub":"Prova ipotesi senza perdere il percorso precedente.","testHypothesis":"Prova un’ipotesi","explorationActive":"Esplorazione attiva","branchPoint":"Punto di diramazione","currentBranch":"Ramo corrente","keepBranch":"Conserva questo ramo","returnBranchPoint":"Torna al punto di diramazione","closeExploration":"Chiudi esplorazione","analyzeBranch":"Analizza ramo","noContradiction":"Nessuna contraddizione è ancora dimostrabile con l’attuale profondità di prova.","contradictionFound":"In questo ramo è dimostrabile una contraddizione.","branchTree":"Rami","branchHypothesisAuto":"Questa mossa legale ma non dimostrata viene registrata come ipotesi nel ramo di esplorazione.","branchKept":"Ramo conservato","branchReturned":"Ritorno al punto di diramazione","branchStart":"Inizio"});
+Object.assign(I18N.de,{"exploration":"Exploration","explorationSub":"Teste Hypothesen, ohne den bisherigen Weg zu verlieren.","testHypothesis":"Hypothese testen","explorationActive":"Exploration aktiv","branchPoint":"Verzweigungspunkt","currentBranch":"Aktueller Zweig","keepBranch":"Diesen Zweig behalten","returnBranchPoint":"Zum Verzweigungspunkt zurück","closeExploration":"Exploration schließen","analyzeBranch":"Zweig analysieren","noContradiction":"Mit der aktuellen Beweistiefe ist noch kein Widerspruch nachweisbar.","contradictionFound":"Auf diesem Zweig ist ein Widerspruch nachweisbar.","branchTree":"Zweige","branchHypothesisAuto":"Dieser legale, aber nicht bewiesene Zug wird als Hypothese im Explorationszweig gespeichert.","branchKept":"Zweig behalten","branchReturned":"Zum Verzweigungspunkt zurückgekehrt","branchStart":"Start"});
+Object.assign(I18N.nl,{"exploration":"Exploratie","explorationSub":"Test hypothesen zonder je vorige pad te verliezen.","testHypothesis":"Test een hypothese","explorationActive":"Exploratie actief","branchPoint":"Vertakkingspunt","currentBranch":"Huidige tak","keepBranch":"Deze tak behouden","returnBranchPoint":"Terug naar vertakkingspunt","closeExploration":"Exploratie sluiten","analyzeBranch":"Tak analyseren","noContradiction":"Met de huidige bewijsdiepte is nog geen tegenspraak aantoonbaar.","contradictionFound":"In deze tak is een tegenspraak aantoonbaar.","branchTree":"Takken","branchHypothesisAuto":"Deze legale maar onbewezen zet wordt als hypothese in de exploratietak opgeslagen.","branchKept":"Tak behouden","branchReturned":"Terug naar vertakkingspunt","branchStart":"Start"});
+Object.assign(I18N.zh,{"exploration":"探索","explorationSub":"测试假设而不丢失原来的路径。","testHypothesis":"测试假设","explorationActive":"探索中","branchPoint":"分支点","currentBranch":"当前分支","keepBranch":"保留此分支","returnBranchPoint":"返回分支点","closeExploration":"关闭探索","analyzeBranch":"分析分支","noContradiction":"在当前证明深度下尚未能证明矛盾。","contradictionFound":"此分支可以证明存在矛盾。","branchTree":"分支","branchHypothesisAuto":"这个合法但未证明的步骤被记录为探索分支中的假设。","branchKept":"已保留分支","branchReturned":"已返回分支点","branchStart":"开始"});
+Object.assign(I18N.hi,{"exploration":"अन्वेषण","explorationSub":"पिछला रास्ता खोए बिना परिकल्पनाएँ जाँचें।","testHypothesis":"परिकल्पना जाँचें","explorationActive":"अन्वेषण सक्रिय","branchPoint":"शाखा बिंदु","currentBranch":"वर्तमान शाखा","keepBranch":"इस शाखा को रखें","returnBranchPoint":"शाखा बिंदु पर लौटें","closeExploration":"अन्वेषण बंद करें","analyzeBranch":"शाखा का विश्लेषण करें","noContradiction":"वर्तमान प्रमाण गहराई पर अभी कोई विरोधाभास सिद्ध नहीं है।","contradictionFound":"इस शाखा पर विरोधाभास सिद्ध किया जा सकता है।","branchTree":"शाखाएँ","branchHypothesisAuto":"यह वैध पर असिद्ध चाल अन्वेषण शाखा में परिकल्पना के रूप में दर्ज होती है।","branchKept":"शाखा रखी गई","branchReturned":"शाखा बिंदु पर लौटे","branchStart":"आरंभ"});
+Object.assign(I18N.ar,{"exploration":"الاستكشاف","explorationSub":"اختبر الفرضيات من دون فقدان المسار السابق.","testHypothesis":"اختبر فرضية","explorationActive":"الاستكشاف نشط","branchPoint":"نقطة التفرع","currentBranch":"الفرع الحالي","keepBranch":"احتفظ بهذا الفرع","returnBranchPoint":"العودة إلى نقطة التفرع","closeExploration":"إغلاق الاستكشاف","analyzeBranch":"تحليل الفرع","noContradiction":"لا يمكن بعد إثبات تناقض بعمق البرهان الحالي.","contradictionFound":"يمكن إثبات تناقض في هذا الفرع.","branchTree":"الفروع","branchHypothesisAuto":"تُسجل هذه النقلة القانونية غير المثبتة كفرضية في فرع الاستكشاف.","branchKept":"تم الاحتفاظ بالفرع","branchReturned":"تمت العودة إلى نقطة التفرع","branchStart":"البداية"});
+Object.assign(I18N.bn,{"exploration":"অন্বেষণ","explorationSub":"আগের পথ না হারিয়ে অনুমান পরীক্ষা করুন।","testHypothesis":"একটি অনুমান পরীক্ষা করুন","explorationActive":"অন্বেষণ সক্রিয়","branchPoint":"শাখা বিন্দু","currentBranch":"বর্তমান শাখা","keepBranch":"এই শাখা রাখুন","returnBranchPoint":"শাখা বিন্দুতে ফিরুন","closeExploration":"অন্বেষণ বন্ধ করুন","analyzeBranch":"শাখা বিশ্লেষণ করুন","noContradiction":"বর্তমান প্রমাণের গভীরতায় এখনও কোনো বিরোধ প্রমাণযোগ্য নয়।","contradictionFound":"এই শাখায় একটি বিরোধ প্রমাণযোগ্য।","branchTree":"শাখা","branchHypothesisAuto":"এই বৈধ কিন্তু অপ্রমাণিত চালটি অন্বেষণ শাখায় অনুমান হিসেবে সংরক্ষিত হয়।","branchKept":"শাখা রাখা হয়েছে","branchReturned":"শাখা বিন্দুতে ফেরা হয়েছে","branchStart":"শুরু"});
+Object.assign(I18N.id,{"exploration":"Eksplorasi","explorationSub":"Uji hipotesis tanpa kehilangan jalur sebelumnya.","testHypothesis":"Uji hipotesis","explorationActive":"Eksplorasi aktif","branchPoint":"Titik cabang","currentBranch":"Cabang saat ini","keepBranch":"Pertahankan cabang ini","returnBranchPoint":"Kembali ke titik cabang","closeExploration":"Tutup eksplorasi","analyzeBranch":"Analisis cabang","noContradiction":"Belum ada kontradiksi yang dapat dibuktikan pada kedalaman bukti saat ini.","contradictionFound":"Kontradiksi dapat dibuktikan pada cabang ini.","branchTree":"Cabang","branchHypothesisAuto":"Langkah legal tetapi belum terbukti ini dicatat sebagai hipotesis pada cabang eksplorasi.","branchKept":"Cabang dipertahankan","branchReturned":"Kembali ke titik cabang","branchStart":"Mulai"});
+Object.assign(I18N.ur,{"exploration":"کھوج","explorationSub":"پچھلا راستہ کھوئے بغیر مفروضے آزمائیں۔","testHypothesis":"مفروضہ آزمائیں","explorationActive":"کھوج فعال","branchPoint":"شاخ کا نقطہ","currentBranch":"موجودہ شاخ","keepBranch":"یہ شاخ رکھیں","returnBranchPoint":"شاخ کے نقطے پر واپس جائیں","closeExploration":"کھوج بند کریں","analyzeBranch":"شاخ کا تجزیہ کریں","noContradiction":"موجودہ ثبوت کی گہرائی پر ابھی کوئی تضاد ثابت نہیں۔","contradictionFound":"اس شاخ پر تضاد ثابت کیا جا سکتا ہے۔","branchTree":"شاخیں","branchHypothesisAuto":"یہ قانونی مگر غیر ثابت چال کھوج کی شاخ میں مفروضے کے طور پر محفوظ ہوتی ہے۔","branchKept":"شاخ محفوظ","branchReturned":"شاخ کے نقطے پر واپسی","branchStart":"آغاز"});
+Object.assign(I18N.bg,{"exploration":"Изследване","explorationSub":"Проверявай хипотези, без да губиш предишния път.","testHypothesis":"Тествай хипотеза","explorationActive":"Изследването е активно","branchPoint":"Точка на разклонение","currentBranch":"Текущ клон","keepBranch":"Запази този клон","returnBranchPoint":"Върни се към точката на разклонение","closeExploration":"Затвори изследването","analyzeBranch":"Анализирай клона","noContradiction":"При текущата дълбочина на доказване още няма доказуемо противоречие.","contradictionFound":"В този клон може да се докаже противоречие.","branchTree":"Клонове","branchHypothesisAuto":"Този позволен, но недоказан ход се записва като хипотеза в клона за изследване.","branchKept":"Клонът е запазен","branchReturned":"Връщане към точката на разклонение","branchStart":"Начало"});
+Object.assign(I18N.hr,{"exploration":"Istraživanje","explorationSub":"Ispituj hipoteze bez gubitka prethodnog puta.","testHypothesis":"Testiraj hipotezu","explorationActive":"Istraživanje aktivno","branchPoint":"Točka grananja","currentBranch":"Trenutna grana","keepBranch":"Zadrži ovu granu","returnBranchPoint":"Vrati se na točku grananja","closeExploration":"Zatvori istraživanje","analyzeBranch":"Analiziraj granu","noContradiction":"Na trenutačnoj dubini dokaza još se ne može dokazati proturječje.","contradictionFound":"Na ovoj grani može se dokazati proturječje.","branchTree":"Grane","branchHypothesisAuto":"Ovaj dopušten, ali nedokazan potez bilježi se kao hipoteza u istraživačkoj grani.","branchKept":"Grana zadržana","branchReturned":"Povratak na točku grananja","branchStart":"Početak"});
+Object.assign(I18N.cs,{"exploration":"Průzkum","explorationSub":"Testuj hypotézy bez ztráty předchozí cesty.","testHypothesis":"Otestovat hypotézu","explorationActive":"Průzkum aktivní","branchPoint":"Bod větvení","currentBranch":"Aktuální větev","keepBranch":"Ponechat tuto větev","returnBranchPoint":"Vrátit se do bodu větvení","closeExploration":"Zavřít průzkum","analyzeBranch":"Analyzovat větev","noContradiction":"Při současné hloubce důkazu zatím nelze prokázat rozpor.","contradictionFound":"Na této větvi lze prokázat rozpor.","branchTree":"Větve","branchHypothesisAuto":"Tento legální, ale neprokázaný tah je zaznamenán jako hypotéza v průzkumné větvi.","branchKept":"Větev ponechána","branchReturned":"Návrat do bodu větvení","branchStart":"Start"});
+Object.assign(I18N.da,{"exploration":"Udforskning","explorationSub":"Test hypoteser uden at miste din tidligere vej.","testHypothesis":"Test en hypotese","explorationActive":"Udforskning aktiv","branchPoint":"Forgreningspunkt","currentBranch":"Aktuel gren","keepBranch":"Behold denne gren","returnBranchPoint":"Tilbage til forgreningspunkt","closeExploration":"Luk udforskning","analyzeBranch":"Analyser gren","noContradiction":"Der kan endnu ikke påvises en modstrid med den aktuelle bevisdybde.","contradictionFound":"Der kan påvises en modstrid på denne gren.","branchTree":"Grene","branchHypothesisAuto":"Dette lovlige, men ikke beviste træk gemmes som en hypotese i udforskningsgrenen.","branchKept":"Gren beholdt","branchReturned":"Tilbage til forgreningspunkt","branchStart":"Start"});
+Object.assign(I18N.et,{"exploration":"Uurimine","explorationSub":"Katseta hüpoteese ilma varasemat teed kaotamata.","testHypothesis":"Katseta hüpoteesi","explorationActive":"Uurimine aktiivne","branchPoint":"Hargnemispunkt","currentBranch":"Praegune haru","keepBranch":"Säilita see haru","returnBranchPoint":"Tagasi hargnemispunkti","closeExploration":"Sulge uurimine","analyzeBranch":"Analüüsi haru","noContradiction":"Praeguse tõestussügavusega pole veel vastuolu tõestatav.","contradictionFound":"Selles harus on vastuolu tõestatav.","branchTree":"Harud","branchHypothesisAuto":"See lubatud, kuid tõestamata käik salvestatakse uurimisharus hüpoteesina.","branchKept":"Haru säilitatud","branchReturned":"Tagasi hargnemispunktis","branchStart":"Algus"});
+Object.assign(I18N.fi,{"exploration":"Tutkiminen","explorationSub":"Testaa hypoteeseja menettämättä aiempaa polkua.","testHypothesis":"Testaa hypoteesia","explorationActive":"Tutkiminen aktiivinen","branchPoint":"Haarautumispiste","currentBranch":"Nykyinen haara","keepBranch":"Säilytä tämä haara","returnBranchPoint":"Palaa haarautumispisteeseen","closeExploration":"Sulje tutkiminen","analyzeBranch":"Analysoi haara","noContradiction":"Nykyisellä todistussyvyydellä ristiriitaa ei vielä voida osoittaa.","contradictionFound":"Tällä haaralla voidaan osoittaa ristiriita.","branchTree":"Haarat","branchHypothesisAuto":"Tämä sallittu mutta todistamaton siirto tallennetaan hypoteesina tutkimushaaraan.","branchKept":"Haara säilytetty","branchReturned":"Palattu haarautumispisteeseen","branchStart":"Alku"});
+Object.assign(I18N.el,{"exploration":"Εξερεύνηση","explorationSub":"Δοκίμασε υποθέσεις χωρίς να χάσεις την προηγούμενη διαδρομή.","testHypothesis":"Δοκίμασε υπόθεση","explorationActive":"Η εξερεύνηση είναι ενεργή","branchPoint":"Σημείο διακλάδωσης","currentBranch":"Τρέχων κλάδος","keepBranch":"Διατήρησε αυτόν τον κλάδο","returnBranchPoint":"Επιστροφή στο σημείο διακλάδωσης","closeExploration":"Κλείσιμο εξερεύνησης","analyzeBranch":"Ανάλυση κλάδου","noContradiction":"Με το τρέχον βάθος απόδειξης δεν αποδεικνύεται ακόμη αντίφαση.","contradictionFound":"Σε αυτόν τον κλάδο αποδεικνύεται αντίφαση.","branchTree":"Κλάδοι","branchHypothesisAuto":"Αυτή η νόμιμη αλλά μη αποδεδειγμένη κίνηση καταγράφεται ως υπόθεση στον κλάδο εξερεύνησης.","branchKept":"Ο κλάδος διατηρήθηκε","branchReturned":"Επιστροφή στο σημείο διακλάδωσης","branchStart":"Έναρξη"});
+Object.assign(I18N.hu,{"exploration":"Felfedezés","explorationSub":"Tesztelj hipotéziseket a korábbi út elvesztése nélkül.","testHypothesis":"Hipotézis tesztelése","explorationActive":"Felfedezés aktív","branchPoint":"Elágazási pont","currentBranch":"Aktuális ág","keepBranch":"Tartsd meg ezt az ágat","returnBranchPoint":"Vissza az elágazási ponthoz","closeExploration":"Felfedezés bezárása","analyzeBranch":"Ág elemzése","noContradiction":"A jelenlegi bizonyítási mélységnél még nem igazolható ellentmondás.","contradictionFound":"Ezen az ágon ellentmondás igazolható.","branchTree":"Ágak","branchHypothesisAuto":"Ez a szabályos, de nem bizonyított lépés hipotézisként kerül az explorációs ágba.","branchKept":"Ág megtartva","branchReturned":"Visszatérés az elágazási ponthoz","branchStart":"Kezdés"});
+Object.assign(I18N.ga,{"exploration":"Taiscéalaíocht","explorationSub":"Tástáil hipitéisí gan an cosán roimhe seo a chailleadh.","testHypothesis":"Tástáil hipitéis","explorationActive":"Taiscéalaíocht gníomhach","branchPoint":"Pointe brainse","currentBranch":"Brainse reatha","keepBranch":"Coinnigh an brainse seo","returnBranchPoint":"Fill ar phointe an bhrainse","closeExploration":"Dún an taiscéalaíocht","analyzeBranch":"Déan anailís ar an mbrainse","noContradiction":"Níl contrárthacht inchruthaithe fós ag an doimhneacht cruthúnais reatha.","contradictionFound":"Tá contrárthacht inchruthaithe ar an mbrainse seo.","branchTree":"Brainsí","branchHypothesisAuto":"Taifeadtar an bogadh dleathach ach neamhchruthaithe seo mar hipitéis sa bhrainse taiscéalaíochta.","branchKept":"Brainse coinnithe","branchReturned":"Fillte ar phointe an bhrainse","branchStart":"Tús"});
+Object.assign(I18N.lv,{"exploration":"Izpēte","explorationSub":"Pārbaudi hipotēzes, nezaudējot iepriekšējo ceļu.","testHypothesis":"Pārbaudīt hipotēzi","explorationActive":"Izpēte aktīva","branchPoint":"Atzarošanās punkts","currentBranch":"Pašreizējais zars","keepBranch":"Saglabāt šo zaru","returnBranchPoint":"Atgriezties atzarošanās punktā","closeExploration":"Aizvērt izpēti","analyzeBranch":"Analizēt zaru","noContradiction":"Pie pašreizējā pierādījuma dziļuma pretruna vēl nav pierādāma.","contradictionFound":"Šajā zarā ir pierādāma pretruna.","branchTree":"Zari","branchHypothesisAuto":"Šis atļautais, bet nepierādītais gājiens tiek ierakstīts kā hipotēze izpētes zarā.","branchKept":"Zars saglabāts","branchReturned":"Atgriezts atzarošanās punktā","branchStart":"Sākums"});
+Object.assign(I18N.lt,{"exploration":"Tyrinėjimas","explorationSub":"Tikrink hipotezes neprarasdamas ankstesnio kelio.","testHypothesis":"Tikrinti hipotezę","explorationActive":"Tyrinėjimas aktyvus","branchPoint":"Šakos taškas","currentBranch":"Dabartinė šaka","keepBranch":"Išsaugoti šią šaką","returnBranchPoint":"Grįžti į šakos tašką","closeExploration":"Uždaryti tyrinėjimą","analyzeBranch":"Analizuoti šaką","noContradiction":"Esamu įrodymo gyliu prieštaravimas dar neįrodomas.","contradictionFound":"Šioje šakoje galima įrodyti prieštaravimą.","branchTree":"Šakos","branchHypothesisAuto":"Šis leistinas, bet neįrodytas ėjimas įrašomas kaip hipotezė tyrinėjimo šakoje.","branchKept":"Šaka išsaugota","branchReturned":"Grįžta į šakos tašką","branchStart":"Pradžia"});
+Object.assign(I18N.mt,{"exploration":"Esplorazzjoni","explorationSub":"Ittestja ipoteżijiet mingħajr ma titlef il-passaġġ ta’ qabel.","testHypothesis":"Ittestja ipoteżi","explorationActive":"Esplorazzjoni attiva","branchPoint":"Punt tal-fergħa","currentBranch":"Fergħa attwali","keepBranch":"Żomm din il-fergħa","returnBranchPoint":"Erġa’ lura għall-punt tal-fergħa","closeExploration":"Agħlaq l-esplorazzjoni","analyzeBranch":"Analizza l-fergħa","noContradiction":"Għadu ma jistax jintwera kuntradizzjoni fil-fond attwali tal-prova.","contradictionFound":"Tista’ tintwera kuntradizzjoni f’din il-fergħa.","branchTree":"Fergħat","branchHypothesisAuto":"Din il-mossa legali iżda mhux ippruvata tiġi rreġistrata bħala ipoteżi fil-fergħa tal-esplorazzjoni.","branchKept":"Fergħa miżmuma","branchReturned":"Ritorn għall-punt tal-fergħa","branchStart":"Bidu"});
+Object.assign(I18N.pl,{"exploration":"Eksploracja","explorationSub":"Testuj hipotezy bez utraty poprzedniej ścieżki.","testHypothesis":"Testuj hipotezę","explorationActive":"Eksploracja aktywna","branchPoint":"Punkt rozgałęzienia","currentBranch":"Bieżąca gałąź","keepBranch":"Zachowaj tę gałąź","returnBranchPoint":"Wróć do punktu rozgałęzienia","closeExploration":"Zamknij eksplorację","analyzeBranch":"Analizuj gałąź","noContradiction":"Przy obecnej głębokości dowodu nie można jeszcze wykazać sprzeczności.","contradictionFound":"Na tej gałęzi można wykazać sprzeczność.","branchTree":"Gałęzie","branchHypothesisAuto":"Ten legalny, ale nieudowodniony ruch jest zapisywany jako hipoteza w gałęzi eksploracji.","branchKept":"Gałąź zachowana","branchReturned":"Powrót do punktu rozgałęzienia","branchStart":"Start"});
+Object.assign(I18N.ro,{"exploration":"Explorare","explorationSub":"Testează ipoteze fără să pierzi traseul anterior.","testHypothesis":"Testează o ipoteză","explorationActive":"Explorare activă","branchPoint":"Punct de ramificare","currentBranch":"Ramura curentă","keepBranch":"Păstrează această ramură","returnBranchPoint":"Revino la punctul de ramificare","closeExploration":"Închide explorarea","analyzeBranch":"Analizează ramura","noContradiction":"La adâncimea actuală a demonstrației nu se poate demonstra încă o contradicție.","contradictionFound":"Pe această ramură se poate demonstra o contradicție.","branchTree":"Ramuri","branchHypothesisAuto":"Această mutare legală, dar nedemonstrată este înregistrată ca ipoteză în ramura de explorare.","branchKept":"Ramură păstrată","branchReturned":"Revenire la punctul de ramificare","branchStart":"Start"});
+Object.assign(I18N.sk,{"exploration":"Prieskum","explorationSub":"Testuj hypotézy bez straty predchádzajúcej cesty.","testHypothesis":"Otestovať hypotézu","explorationActive":"Prieskum aktívny","branchPoint":"Bod vetvenia","currentBranch":"Aktuálna vetva","keepBranch":"Ponechať túto vetvu","returnBranchPoint":"Vrátiť sa do bodu vetvenia","closeExploration":"Zavrieť prieskum","analyzeBranch":"Analyzovať vetvu","noContradiction":"Pri aktuálnej hĺbke dôkazu zatiaľ nemožno preukázať rozpor.","contradictionFound":"Na tejto vetve možno preukázať rozpor.","branchTree":"Vetvy","branchHypothesisAuto":"Tento legálny, ale nedokázaný ťah sa zaznamená ako hypotéza v prieskumnej vetve.","branchKept":"Vetva ponechaná","branchReturned":"Návrat do bodu vetvenia","branchStart":"Štart"});
+Object.assign(I18N.sl,{"exploration":"Raziskovanje","explorationSub":"Preizkušaj hipoteze, ne da bi izgubil prejšnjo pot.","testHypothesis":"Preizkusi hipotezo","explorationActive":"Raziskovanje aktivno","branchPoint":"Točka razvejitve","currentBranch":"Trenutna veja","keepBranch":"Ohrani to vejo","returnBranchPoint":"Vrni se na točko razvejitve","closeExploration":"Zapri raziskovanje","analyzeBranch":"Analiziraj vejo","noContradiction":"Pri trenutni globini dokaza še ni mogoče dokazati protislovja.","contradictionFound":"Na tej veji je mogoče dokazati protislovje.","branchTree":"Veje","branchHypothesisAuto":"Ta dovoljena, vendar nedokazana poteza se zabeleži kot hipoteza v raziskovalni veji.","branchKept":"Veja ohranjena","branchReturned":"Vrnitev na točko razvejitve","branchStart":"Začetek"});
+Object.assign(I18N.sv,{"exploration":"Utforskning","explorationSub":"Testa hypoteser utan att förlora den tidigare vägen.","testHypothesis":"Testa en hypotes","explorationActive":"Utforskning aktiv","branchPoint":"Förgreningspunkt","currentBranch":"Aktuell gren","keepBranch":"Behåll denna gren","returnBranchPoint":"Tillbaka till förgreningspunkten","closeExploration":"Stäng utforskning","analyzeBranch":"Analysera gren","noContradiction":"Ingen motsägelse kan ännu bevisas med nuvarande bevisdjup.","contradictionFound":"En motsägelse kan bevisas på denna gren.","branchTree":"Grenar","branchHypothesisAuto":"Detta lagliga men obevisade drag registreras som en hypotes i utforskningsgrenen.","branchKept":"Gren behållen","branchReturned":"Tillbaka vid förgreningspunkten","branchStart":"Start"});
 let DIFF={};
 function lang(){let l=prefs().lang;return SUPPORTED_LANGS.includes(l)?l:'fr'}
 function dateLocale(){return {"en":"en-US","zh":"zh-CN","hi":"hi-IN","es":"es-ES","ar":"ar","fr":"fr-FR","bn":"bn-BD","pt":"pt-PT","id":"id-ID","ur":"ur-PK","bg":"bg-BG","hr":"hr-HR","cs":"cs-CZ","da":"da-DK","nl":"nl-NL","et":"et-EE","fi":"fi-FI","de":"de-DE","el":"el-GR","hu":"hu-HU","ga":"ga-IE","it":"it-IT","lv":"lv-LV","lt":"lt-LT","mt":"mt-MT","pl":"pl-PL","ro":"ro-RO","sk":"sk-SK","sl":"sl-SI","sv":"sv-SE"}[lang()]||'en-US'}
@@ -156,7 +444,7 @@ function gameRules(g){return GAME_RULES[g]?.[lang()]||GAME_RULES[g]?.en||''}
 
 const PREF_KEY='logic4-prefs-v1';
 function detectedLang(){try{let xs=[...(navigator.languages||[]),navigator.language].filter(Boolean);for(let x of xs){let c=String(x).toLowerCase().split('-')[0];if(c==='zh')return 'zh';if(SUPPORTED_LANGS.includes(c))return c}}catch(_){}return 'fr'}
-function prefs(){try{let p=JSON.parse(localStorage.getItem(PREF_KEY)||'{}');return {theme:['auto','light','dark'].includes(p.theme)?p.theme:'auto',sound:p.sound!==false,queenAutoCross:p.queenAutoCross===true,lang:SUPPORTED_LANGS.includes(p.lang)?p.lang:detectedLang()}}catch(_){return {theme:'auto',sound:true,queenAutoCross:false,lang:detectedLang()}}}
+function prefs(){try{let p=JSON.parse(localStorage.getItem(PREF_KEY)||'{}');return {theme:['auto','light','dark'].includes(p.theme)?p.theme:'auto',sound:p.sound!==false,queenAutoCross:p.queenAutoCross===true,lang:SUPPORTED_LANGS.includes(p.lang)?p.lang:detectedLang(),coachMode:['minimal','normal','pedagogical'].includes(p.coachMode)?p.coachMode:'normal'}}catch(_){return {theme:'auto',sound:true,queenAutoCross:false,lang:detectedLang(),coachMode:'normal'}}}
 function languageOptionsHtml(selected){return LANGUAGE_OPTIONS.map(([code,name])=>`<option value="${code}" ${selected===code?'selected':''}>${name}</option>`).join('')}
 function savePrefs(p){try{localStorage.setItem(PREF_KEY,JSON.stringify(p))}catch(_){}applyPrefs()}
 function resolvedTheme(){let p=prefs();return p.theme==='auto'?(window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'):p.theme}
@@ -170,8 +458,9 @@ function settingsView(){
   <div class="setting-row"><span><b>${tr('language')}</b><small>${tr('languageSub')}</small></span><select id="langSelect" class="difficulty">${languageOptionsHtml(p.lang)}</select></div>
   <div class="setting-row"><span><b>${tr('theme')}</b><small>${tr('themeSub')}</small></span><select id="themeSelect" class="difficulty"><option value="auto" ${p.theme==='auto'?'selected':''}>${tr('auto')}</option><option value="light" ${p.theme==='light'?'selected':''}>${tr('light')}</option><option value="dark" ${p.theme==='dark'?'selected':''}>${tr('dark')}</option></select></div>
   <div class="setting-row"><span><b>${tr('sounds')}</b><small>${tr('soundsSub')}</small></span><button class="btn" id="soundToggle">${p.sound?tr('on'):tr('off')}</button></div>
+  <div class="setting-row"><span><b>${tr('coachMode')}</b><small>${tr('coachModeSub')}</small></span><select id="coachModeSelect" class="difficulty"><option value="minimal" ${p.coachMode==='minimal'?'selected':''}>${tr('coachMinimal')}</option><option value="normal" ${p.coachMode==='normal'?'selected':''}>${tr('coachNormal')} · ${tr('recommended')}</option><option value="pedagogical" ${p.coachMode==='pedagogical'?'selected':''}>${tr('coachPedagogical')}</option></select></div>
   <div class="setting-row"><span><b>${tr('data')}</b><small>${tr('dataSub')}</small></span><button class="btn" id="storageInfo">${tr('info')}</button></div></section>`;
-  $('#settingsBack').onclick=home;$('#langSelect').onchange=e=>{let q=prefs();q.lang=e.target.value;savePrefs(q);updateI18n();settingsView()};$('#themeSelect').onchange=e=>{let q=prefs();q.theme=e.target.value;savePrefs(q)};$('#soundToggle').onclick=()=>{let on=toggleSound();$('#soundToggle').textContent=on?tr('on'):tr('off')};$('#storageInfo').onclick=()=>modal(tr('localDataTitle'),tr('localData'));app.querySelectorAll('button').forEach(pressFeedback)
+  $('#settingsBack').onclick=home;$('#langSelect').onchange=e=>{let q=prefs();q.lang=e.target.value;savePrefs(q);updateI18n();settingsView()};$('#themeSelect').onchange=e=>{let q=prefs();q.theme=e.target.value;savePrefs(q)};$('#soundToggle').onclick=()=>{let on=toggleSound();$('#soundToggle').textContent=on?tr('on'):tr('off')};$('#coachModeSelect').onchange=e=>{let q=prefs();q.coachMode=e.target.value;savePrefs(q)};$('#storageInfo').onclick=()=>modal(tr('localDataTitle'),tr('localData'));app.querySelectorAll('button').forEach(pressFeedback)
 }
 function aboutView(){
  if(current&&!current.completed)saveCurrent();stopTimer();timerEl.textContent='00:00';current=null;
@@ -202,13 +491,17 @@ async function shareResult(c,seconds){
   showToast(tr('shareUnavailable'))
 }
 function victoryOverlay(c,seconds){
-  let old=$('#victory');if(old)old.remove();
-  document.body.insertAdjacentHTML('beforeend',`<div class="victory" id="victory" role="dialog" aria-modal="true"><div class="victory-card"><div class="victory-burst" aria-hidden="true">✦</div><small>${tr('victoryKicker')}</small><h2>${gameLabel(c.game)}</h2><div class="victory-time">${fmt(seconds)}</div><p>${DIFF[c.diff]}${c.daily?` · ${tr('dailyLabel')}`:''}${c.rating?` · ${tr('score')} ${c.rating.score}`:''}</p><div class="victory-actions"><button class="btn primary" id="shareResult">${tr('share')}</button><button class="btn" id="closeVictory">${tr('continue')}</button></div></div></div>`);
-  $('#shareResult').onclick=()=>shareResult(c,seconds);$('#closeVictory').onclick=()=>$('#victory')?.remove();$('#victory').onclick=e=>{if(e.target.id==='victory')e.currentTarget.remove()};playTone('win');haptic(28)
+  let old=$('#victory');if(old)old.remove(),dailyRec=c.daily?dailyRecord(c.dailyDay,c.game):null,next=c.daily?dailyNextGame(c.dailyDay):null;
+  let dailyScore=c.daily?`<div class="victory-daily-score"><span>${tr('dailyLogicScore')}</span><strong>${dailyRec?.logicScore??'—'}/100</strong><small>${dailyRec?.logicScore!=null?dailyHelpLabel(dailyRec.helpStage):tr('dailyUnscoredLegacy')}</small></div>`:'';
+  let dailyAction=c.daily?`<button class="btn primary" id="dailyVictoryNext">${next?tr('dailyNextGame'):tr('dailyReport')}</button>`:'';
+  document.body.insertAdjacentHTML('beforeend',`<div class="victory" id="victory" role="dialog" aria-modal="true"><div class="victory-card"><div class="victory-burst" aria-hidden="true">✦</div><small>${tr('victoryKicker')}</small><h2>${gameLabel(c.game)}</h2><div class="victory-time">${fmt(seconds)}</div>${dailyScore}<p>${DIFF[c.diff]}${c.daily?` · ${tr('dailyLabel')}`:''}${c.rating?` · ${tr('score')} ${c.rating.score}`:''}</p><div class="victory-actions">${dailyAction}<button class="btn" id="shareResult">${tr('share')}</button><button class="btn" id="closeVictory">${tr('continue')}</button></div></div></div>`);
+  $('#shareResult').onclick=()=>shareResult(c,seconds);$('#closeVictory').onclick=()=>$('#victory')?.remove();
+  let dn=$('#dailyVictoryNext');if(dn)dn.onclick=()=>{let d=c.dailyDay;$('#victory')?.remove();next?launchDailyCircuit(d):dailyView()};
+  $('#victory').onclick=e=>{if(e.target.id==='victory')e.currentTarget.remove()};playTone('win');haptic(28)
 }
 
 const STATS_KEY='logic4-stats-v1', HISTORY_LIMIT=200;
-function blankStats(){return {schema:1,started:0,solved:0,revealed:0,totalSolvedSeconds:0,byGame:{},history:[]}}
+function blankStats(){return {schema:4,started:0,solved:0,revealed:0,totalSolvedSeconds:0,byGame:{},history:[],mastery:{schema:1,byTechnique:{},updatedAt:null},training:{schema:1,byTechnique:{}},learning:{schema:1,byTechnique:{}}}}
 function safeStats(){
   let s=blankStats();
   try{
@@ -218,6 +511,11 @@ function safeStats(){
       s.revealed=Math.max(0,Number(raw.revealed)||0);s.totalSolvedSeconds=Math.max(0,Number(raw.totalSolvedSeconds)||0);
       s.byGame=raw.byGame&&typeof raw.byGame==='object'?raw.byGame:{};
       s.history=Array.isArray(raw.history)?raw.history.filter(x=>x&&['queens','tango','sudoku','patches'].includes(x.game)&&['easy','medium','hard','expert'].includes(x.diff)).slice(0,HISTORY_LIMIT):[];
+      if(raw.mastery&&typeof raw.mastery==='object'){
+        s.mastery={schema:1,byTechnique:raw.mastery.byTechnique&&typeof raw.mastery.byTechnique==='object'?raw.mastery.byTechnique:{},updatedAt:raw.mastery.updatedAt||null}
+      }
+      if(raw.training&&typeof raw.training==='object')s.training={schema:1,byTechnique:raw.training.byTechnique&&typeof raw.training.byTechnique==='object'?raw.training.byTechnique:{}}
+      if(raw.learning&&typeof raw.learning==='object')s.learning={schema:1,byTechnique:raw.learning.byTechnique&&typeof raw.learning.byTechnique==='object'?raw.learning.byTechnique:{}}
     }
   }catch(_){}
   return s
@@ -283,11 +581,274 @@ function patchIllegalCells(){
   return bad
 }
 function applyIllegalClasses(board,bad,n){if(!board)return;[...board.children].forEach((d,i)=>d.classList.toggle('illegal',bad.has(keyCell(Math.floor(i/n),i%n))))}
+
+// ===== v2.14.0 — explain visible rule violations and return before the error =====
+function changedTargets(action){
+  return (action?.changes||[]).filter(x=>x&&Number.isInteger(x.row)&&Number.isInteger(x.column))
+}
+function errorUsage(kind,technique=null){
+  if(!current)return;
+  let u=current.errorCoachUsage||(current.errorCoachUsage={detected:0,explained:0,returned:0,rejected:0});
+  u[kind]=(u[kind]||0)+1;
+  if(kind==='detected'&&technique&&TECHNIQUE_LIBRARY[technique])masteryRecord(technique,'errors')
+}
+function queenErrorFromAction(action){
+  for(let ch of changedTargets(action).filter(x=>x.to===2)){
+    let {row:r,column:c}=ch;
+    for(let rr=0;rr<current.n;rr++)for(let cc=0;cc<current.n;cc++)if((rr!==r||cc!==c)&&current.state[rr][cc]===2){
+      if(rr===r)return {rule:'Q_ROW',technique:'Q_EXCLUSION_ROW',cells:[[r,c],[rr,cc]],target:[r,c],other:[rr,cc]};
+      if(cc===c)return {rule:'Q_COLUMN',technique:'Q_EXCLUSION_COLUMN',cells:[[r,c],[rr,cc]],target:[r,c],other:[rr,cc]};
+      if(current.reg[rr][cc]===current.reg[r][c])return {rule:'Q_REGION',technique:'Q_EXCLUSION_REGION',cells:[[r,c],[rr,cc]],target:[r,c],other:[rr,cc],region:current.reg[r][c]};
+      if(Math.abs(rr-r)<=1&&Math.abs(cc-c)<=1)return {rule:'Q_ADJACENCY',technique:'Q_EXCLUSION_ADJACENCY',cells:[[r,c],[rr,cc]],target:[r,c],other:[rr,cc]}
+    }
+  }
+  return null
+}
+function tangoErrorFromAction(action){
+  let ignore=current.tangoPendingCell?keyCell(...current.tangoPendingCell):null,bad=tangoIllegalCells(ignore);
+  for(let ch of changedTargets(action)){
+    let r=ch.row,c=ch.column,v=current.state[r]?.[c];if(v==null||v===-1||!bad.has(keyCell(r,c)))continue;
+    let rowSame=[];for(let cc=0;cc<6;cc++)if(current.state[r][cc]===v)rowSame.push([r,cc]);
+    if(rowSame.length>3)return {rule:'T_BALANCE_ROW',technique:'T_BALANCE_ROW',cells:rowSame,target:[r,c],value:v};
+    let colSame=[];for(let rr=0;rr<6;rr++)if(current.state[rr][c]===v)colSame.push([rr,c]);
+    if(colSame.length>3)return {rule:'T_BALANCE_COLUMN',technique:'T_BALANCE_COLUMN',cells:colSame,target:[r,c],value:v};
+    for(let cc=Math.max(0,c-2);cc<=Math.min(c,3);cc++){
+      let cells=[[r,cc],[r,cc+1],[r,cc+2]],vals=cells.map(([rr,ccc])=>current.state[rr][ccc]);
+      if(vals[0]!==-1&&vals[0]===vals[1]&&vals[1]===vals[2])return {rule:'T_NO_THREE',technique:'T_NO_THREE',cells,target:[r,c],value:v}
+    }
+    for(let rr=Math.max(0,r-2);rr<=Math.min(r,3);rr++){
+      let cells=[[rr,c],[rr+1,c],[rr+2,c]],vals=cells.map(([rrr,cc])=>current.state[rrr][cc]);
+      if(vals[0]!==-1&&vals[0]===vals[1]&&vals[1]===vals[2])return {rule:'T_NO_THREE',technique:'T_NO_THREE',cells,target:[r,c],value:v}
+    }
+    for(let [er,ec,d,rel] of current.edges){
+      let r2=d==='r'?er:er+1,c2=d==='r'?ec+1:ec;
+      if(!((er===r&&ec===c)||(r2===r&&c2===c)))continue;
+      let a=current.state[er][ec],b=current.state[r2][c2];
+      if(a!==-1&&b!==-1&&((rel==='='&&a!==b)||(rel==='×'&&a===b))){
+        return {rule:rel==='='?'T_RELATION_EQUAL':'T_RELATION_OPPOSITE',technique:rel==='='?'T_RELATION_EQUAL':'T_RELATION_OPPOSITE',cells:[[er,ec],[r2,c2]],target:[r,c],relation:rel}
+      }
+    }
+  }
+  return null
+}
+function sudokuErrorFromAction(action){
+  let bad=sudokuIllegalCells();
+  for(let ch of changedTargets(action)){
+    let r=ch.row,c=ch.column,v=current.state[r]?.[c];if(!v||!bad.has(keyCell(r,c)))continue;
+    for(let cc=0;cc<6;cc++)if(cc!==c&&current.state[r][cc]===v)return {rule:'S_ROW_DUPLICATE',cells:[[r,c],[r,cc]],target:[r,c],other:[r,cc],value:v};
+    for(let rr=0;rr<6;rr++)if(rr!==r&&current.state[rr][c]===v)return {rule:'S_COLUMN_DUPLICATE',cells:[[r,c],[rr,c]],target:[r,c],other:[rr,c],value:v};
+    let br=Math.floor(r/2)*2,bc=Math.floor(c/3)*3;
+    for(let rr=br;rr<br+2;rr++)for(let cc=bc;cc<bc+3;cc++)if((rr!==r||cc!==c)&&current.state[rr][cc]===v)return {rule:'S_BOX_DUPLICATE',cells:[[r,c],[rr,cc]],target:[r,c],other:[rr,cc],value:v}
+  }
+  return null
+}
+function patchErrorFromAction(action){
+  let bad=patchIllegalCells(),changed=changedTargets(action),ids=new Set();
+  if(action?.region!=null)ids.add(Number(action.region));
+  for(let ch of changed)if(ch.to!=null)ids.add(Number(ch.to));
+  for(let id of ids){
+    if(!current.ids.includes(id))continue;
+    let cells=[];for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(current.paint[r][c]===id)cells.push([r,c]);
+    if(!cells.length)continue;
+    let changedBad=changed.some(ch=>bad.has(keyCell(ch.row,ch.column)))||cells.some(([r,c])=>bad.has(keyCell(r,c)));
+    if(!changedBad)continue;
+    let clueCells=[];
+    for(let other of current.ids){let p=current.clues[other].pos;if(cells.some(([r,c])=>r===p[0]&&c===p[1]))clueCells.push({id:other,pos:p})}
+    if(clueCells.some(x=>x.id!==id))return {rule:'P_TWO_CLUES',cells:[...cells,current.clues[id].pos],target:cells[0],region:id};
+    let cl=current.clues[id],rs=cells.map(x=>x[0]),cs=cells.map(x=>x[1]),h=Math.max(...rs)-Math.min(...rs)+1,w=Math.max(...cs)-Math.min(...cs)+1;
+    if((cl.mode==='size'||cl.mode==='both')&&(cells.length>cl.size||h*w>cl.size))return {rule:'P_SIZE',cells:[...cells,current.clues[id].pos],target:cells[0],region:id};
+    if((cl.mode==='shape'||cl.mode==='both')&&((cl.shape==='vertical'&&w>1)||(cl.shape==='horizontal'&&h>1)))return {rule:'P_SHAPE',cells:[...cells,current.clues[id].pos],target:cells[0],region:id}
+  }
+  return null
+}
+
+// ===== v2.18.1 — Logic Coach always explains visible errors before suggesting a move =====
+function errorSignature(e){
+  let cells=(e?.cells||[]).map(([r,c])=>`${r},${c}`).sort().join('|');
+  return `${e?.rule||''}:${cells}`
+}
+function normalizeVisibleError(e){
+  return e?{...e,schema:1,source:'visible-state',game:current?.game||e.game,at:Date.now(),canReturn:false}:null
+}
+function queenVisibleErrors(){
+  let out=[],q=[];for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(current.state[r][c]===2)q.push([r,c]);
+  for(let i=0;i<q.length;i++)for(let j=i+1;j<q.length;j++){
+    let [r,c]=q[i],[r2,c2]=q[j],e=null;
+    if(r===r2)e={rule:'Q_ROW',technique:'Q_EXCLUSION_ROW',cells:[[r,c],[r2,c2]],target:[r2,c2],other:[r,c]};
+    else if(c===c2)e={rule:'Q_COLUMN',technique:'Q_EXCLUSION_COLUMN',cells:[[r,c],[r2,c2]],target:[r2,c2],other:[r,c]};
+    else if(current.reg[r][c]===current.reg[r2][c2])e={rule:'Q_REGION',technique:'Q_EXCLUSION_REGION',cells:[[r,c],[r2,c2]],target:[r2,c2],other:[r,c],region:current.reg[r][c]};
+    else if(Math.abs(r-r2)<=1&&Math.abs(c-c2)<=1)e={rule:'Q_ADJACENCY',technique:'Q_EXCLUSION_ADJACENCY',cells:[[r,c],[r2,c2]],target:[r2,c2],other:[r,c]};
+    if(e)out.push(normalizeVisibleError(e))
+  }
+  return out
+}
+function tangoVisibleErrors(){
+  let out=[],s=current.state,n=6,ignore=current.tangoPendingCell?keyCell(...current.tangoPendingCell):null,hasIgnore=cells=>ignore&&cells.some(x=>keyCell(...x)===ignore);
+  for(let r=0;r<n;r++){
+    for(let v=0;v<=1;v++){let cells=[];for(let c=0;c<n;c++)if(s[r][c]===v)cells.push([r,c]);if(cells.length>3&&!hasIgnore(cells))out.push(normalizeVisibleError({rule:'T_BALANCE_ROW',technique:'T_BALANCE_ROW',cells,target:cells[cells.length-1],value:v}))}
+    for(let c=0;c<n-2;c++){let cells=[[r,c],[r,c+1],[r,c+2]];if(!hasIgnore(cells)&&s[r][c]!==-1&&s[r][c]===s[r][c+1]&&s[r][c]===s[r][c+2])out.push(normalizeVisibleError({rule:'T_NO_THREE',technique:'T_NO_THREE',cells,target:cells[2],value:s[r][c]}))}
+  }
+  for(let c=0;c<n;c++){
+    for(let v=0;v<=1;v++){let cells=[];for(let r=0;r<n;r++)if(s[r][c]===v)cells.push([r,c]);if(cells.length>3&&!hasIgnore(cells))out.push(normalizeVisibleError({rule:'T_BALANCE_COLUMN',technique:'T_BALANCE_COLUMN',cells,target:cells[cells.length-1],value:v}))}
+    for(let r=0;r<n-2;r++){let cells=[[r,c],[r+1,c],[r+2,c]];if(!hasIgnore(cells)&&s[r][c]!==-1&&s[r][c]===s[r+1][c]&&s[r][c]===s[r+2][c])out.push(normalizeVisibleError({rule:'T_NO_THREE',technique:'T_NO_THREE',cells,target:cells[2],value:s[r][c]}))}
+  }
+  for(let [r,c,d,rel] of current.edges){
+    let r2=d==='r'?r:r+1,c2=d==='r'?c+1:c,cells=[[r,c],[r2,c2]],a=s[r][c],b=s[r2][c2];
+    if(!hasIgnore(cells)&&a!==-1&&b!==-1&&((rel==='='&&a!==b)||(rel==='×'&&a===b)))out.push(normalizeVisibleError({rule:rel==='='?'T_RELATION_EQUAL':'T_RELATION_OPPOSITE',technique:rel==='='?'T_RELATION_EQUAL':'T_RELATION_OPPOSITE',cells,target:[r2,c2],other:[r,c],relation:rel}))
+  }
+  return out
+}
+function sudokuVisibleErrors(){
+  let out=[],s=current.state;
+  function duplicateErrors(cells,rule){
+    let by={};for(let [r,c] of cells){let v=s[r][c];if(!v)continue;(by[v]??=[]).push([r,c])}
+    for(let [v,a] of Object.entries(by))if(a.length>1)for(let i=1;i<a.length;i++)out.push(normalizeVisibleError({rule,cells:[a[0],a[i]],target:a[i],other:a[0],value:Number(v)}))
+  }
+  for(let r=0;r<6;r++)duplicateErrors(Array.from({length:6},(_,c)=>[r,c]),'S_ROW_DUPLICATE');
+  for(let c=0;c<6;c++)duplicateErrors(Array.from({length:6},(_,r)=>[r,c]),'S_COLUMN_DUPLICATE');
+  for(let br=0;br<6;br+=2)for(let bc=0;bc<6;bc+=3){let cells=[];for(let r=br;r<br+2;r++)for(let c=bc;c<bc+3;c++)cells.push([r,c]);duplicateErrors(cells,'S_BOX_DUPLICATE')}
+  return out
+}
+function patchVisibleErrors(){
+  let out=[],n=current.n;
+  for(let id of current.ids){
+    let cells=[];for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.paint[r][c]===id)cells.push([r,c]);if(!cells.length)continue;
+    let cl=current.clues[id],own=cl.pos,foreign=[];
+    for(let other of current.ids){let p=current.clues[other].pos;if(other!==id&&cells.some(([r,c])=>r===p[0]&&c===p[1]))foreign.push(p)}
+    if(foreign.length){out.push(normalizeVisibleError({rule:'P_TWO_CLUES',cells:[...cells,own,...foreign],target:foreign[0],region:id}));continue}
+    let rs=cells.map(x=>x[0]),cs=cells.map(x=>x[1]),h=Math.max(...rs)-Math.min(...rs)+1,w=Math.max(...cs)-Math.min(...cs)+1;
+    if((cl.mode==='size'||cl.mode==='both')&&(cells.length>cl.size||h*w>cl.size)){out.push(normalizeVisibleError({rule:'P_SIZE',cells:[...cells,own],target:cells[cells.length-1],region:id}));continue}
+    if((cl.mode==='shape'||cl.mode==='both')&&((cl.shape==='vertical'&&w>1)||(cl.shape==='horizontal'&&h>1)))out.push(normalizeVisibleError({rule:'P_SHAPE',cells:[...cells,own],target:cells[cells.length-1],region:id}))
+  }
+  return out
+}
+function currentVisibleErrors(){
+  if(!current||current.completed)return [];
+  let list=current.game==='queens'?queenVisibleErrors():current.game==='tango'?tangoVisibleErrors():current.game==='sudoku'?sudokuVisibleErrors():current.game==='patches'?patchVisibleErrors():[];
+  let seen=new Set(),out=[];for(let e of list){let k=errorSignature(e);if(!seen.has(k)){seen.add(k);out.push(e)}}
+  if(!out.length&&current.lastError?.source==='visible-state'&&current.lastError.canReturn===false)out.push({...current.lastError,transient:true});
+  return out
+}
+function focusVisibleErrors(errors){
+  clearErrorFocus();let board=document.querySelector('.board'),n=current?.n||6;if(!board)return;
+  let seen=new Set();for(let e of errors)for(let [r,c] of e.cells||[]){let k=keyCell(r,c);if(seen.has(k))continue;seen.add(k);let d=board.children[r*n+c];if(d)d.classList.add('error-focus')}
+}
+function showVisibleErrorsBeforeHint(){
+  let errors=currentVisibleErrors();if(!errors.length)return false;
+  current.hintFlow=null;clearHintFocus();focusVisibleErrors(errors);
+  let html=`<b>⚠ ${tr('errorDetected')}</b>`;
+  for(let e of errors)html+=`<div class="coach-error-item"><b>${tr('errorRule')} :</b> ${errorRuleTitle(e)}<br><span>${errorDetailedMessage(e)}</span></div>`;
+  if(current?.lastError?.canReturn)html+=`<button class="btn error-return-btn" onclick="returnBeforeLastError()">↶ ${tr('returnBeforeError')}</button>`;
+  showHintNotice(html);errorUsage('explained');
+  if(errors.every(e=>e.transient))current.lastError=null;
+  saveCurrent();return true
+}
+
+function analyzeCurrentError(action){
+  if(!current||current.completed||action?.type==='COACH_APPLY')return null;
+  let e=current.game==='queens'?queenErrorFromAction(action):current.game==='tango'?tangoErrorFromAction(action):current.game==='sudoku'?sudokuErrorFromAction(action):current.game==='patches'?patchErrorFromAction(action):null;
+  if(!e)return null;
+  return {...e,schema:1,source:'visible-state',game:current.game,at:Date.now(),canReturn:true}
+}
+function errorRuleTitle(e){
+  if(!e)return '';
+  if(e.technique&&TECHNIQUE_LIBRARY[e.technique])return techniqueTitle(e.technique);
+  if(e.rule==='S_ROW_DUPLICATE')return `${tr('errorDuplicate')} · ${tr('rowLabel')}`;
+  if(e.rule==='S_COLUMN_DUPLICATE')return `${tr('errorDuplicate')} · ${tr('columnLabel')}`;
+  if(e.rule==='S_BOX_DUPLICATE')return `${tr('errorDuplicate')} · 2×3`;
+  if(e.rule==='P_TWO_CLUES')return tr('patchTwo');
+  if(e.rule==='P_SIZE')return tr('patchSize');
+  if(e.rule==='P_SHAPE')return tr('patchShape');
+  if(e.rule==='P_OVERLAP')return tr('errorOverlap');
+  if(e.rule==='P_CLUE')return tr('patchEach');
+  return tr('errorRule')
+}
+function errorDetailedMessage(e){
+  if(!e)return '';
+  let L=lang(),target=e.target?cellName(...e.target):'',other=e.other?cellName(...e.other):'';
+  if(L==='fr'){
+    if(e.rule==='Q_ROW')return `${target} et ${other} contiennent deux couronnes sur la même ligne.`;
+    if(e.rule==='Q_COLUMN')return `${target} et ${other} contiennent deux couronnes dans la même colonne.`;
+    if(e.rule==='Q_REGION')return `${target} et ${other} placent deux couronnes dans ${queenZoneBadge(e.region)}.`;
+    if(e.rule==='Q_ADJACENCY')return `Les couronnes en ${target} et ${other} se touchent : deux couronnes ne peuvent pas être adjacentes, même en diagonale.`;
+    if(e.rule==='T_BALANCE_ROW')return `Cette ligne contient maintenant plus de trois symboles identiques, alors qu’elle doit contenir exactement 3 soleils et 3 lunes.`;
+    if(e.rule==='T_BALANCE_COLUMN')return `Cette colonne contient maintenant plus de trois symboles identiques, alors qu’elle doit contenir exactement 3 soleils et 3 lunes.`;
+    if(e.rule==='T_NO_THREE')return `Ce coup crée trois symboles identiques consécutifs, ce qui est interdit.`;
+    if(e.rule==='T_RELATION_EQUAL')return `Les deux cases reliées par « = » doivent contenir le même symbole.`;
+    if(e.rule==='T_RELATION_OPPOSITE')return `Les deux cases reliées par « × » doivent contenir des symboles différents.`;
+    if(e.rule==='S_ROW_DUPLICATE')return `Le chiffre ${e.value} apparaît déjà dans la même ligne (${other}).`;
+    if(e.rule==='S_COLUMN_DUPLICATE')return `Le chiffre ${e.value} apparaît déjà dans la même colonne (${other}).`;
+    if(e.rule==='S_BOX_DUPLICATE')return `Le chiffre ${e.value} apparaît déjà dans le même bloc 2×3 (${other}).`;
+    if(e.rule==='P_TWO_CLUES')return `Le rectangle de la zone ${e.region+1} contient l’indice d’une autre zone.`;
+    if(e.rule==='P_SIZE')return `Le rectangle de la zone ${e.region+1} est déjà trop grand pour respecter son indice de taille.`;
+    if(e.rule==='P_SHAPE')return `La forme actuelle de la zone ${e.region+1} ne peut plus respecter son indice de forme.`;
+    if(e.rule==='P_CLUE')return `Un rectangle doit contenir exactement un indice de zone.`;
+    if(e.rule==='P_OVERLAP')return `Ce rectangle chevauche une zone déjà attribuée.`
+  }
+  if(L==='en'){
+    if(e.rule==='Q_ROW')return `${target} and ${other} contain two queens in the same row.`;
+    if(e.rule==='Q_COLUMN')return `${target} and ${other} contain two queens in the same column.`;
+    if(e.rule==='Q_REGION')return `${target} and ${other} place two queens in the same region.`;
+    if(e.rule==='Q_ADJACENCY')return `The queens at ${target} and ${other} touch; queens may not be adjacent, even diagonally.`;
+    if(e.rule==='T_BALANCE_ROW')return `This row now contains more than three identical symbols; it must contain exactly 3 suns and 3 moons.`;
+    if(e.rule==='T_BALANCE_COLUMN')return `This column now contains more than three identical symbols; it must contain exactly 3 suns and 3 moons.`;
+    if(e.rule==='T_NO_THREE')return `This move creates three identical consecutive symbols, which is forbidden.`;
+    if(e.rule==='T_RELATION_EQUAL')return `The two cells linked by “=” must contain the same symbol.`;
+    if(e.rule==='T_RELATION_OPPOSITE')return `The two cells linked by “×” must contain different symbols.`;
+    if(e.rule==='S_ROW_DUPLICATE')return `Digit ${e.value} already appears in the same row (${other}).`;
+    if(e.rule==='S_COLUMN_DUPLICATE')return `Digit ${e.value} already appears in the same column (${other}).`;
+    if(e.rule==='S_BOX_DUPLICATE')return `Digit ${e.value} already appears in the same 2×3 box (${other}).`;
+    if(e.rule==='P_TWO_CLUES')return `Region ${e.region+1}'s rectangle contains another region's clue.`;
+    if(e.rule==='P_SIZE')return `Region ${e.region+1}'s rectangle is already too large to satisfy its size clue.`;
+    if(e.rule==='P_SHAPE')return `Region ${e.region+1}'s current shape can no longer satisfy its shape clue.`;
+    if(e.rule==='P_CLUE')return `A rectangle must contain exactly one region clue.`;
+    if(e.rule==='P_OVERLAP')return `This rectangle overlaps an already assigned region.`
+  }
+  return tr('errorConflict')
+}
+function clearErrorFocus(){document.querySelectorAll('.error-focus').forEach(x=>x.classList.remove('error-focus'))}
+function focusErrorCells(e){
+  clearErrorFocus();let board=document.querySelector('.board'),n=current?.n||6;if(!board||!e?.cells)return;
+  for(let [r,c] of e.cells){let d=board.children[r*n+c];if(d)d.classList.add('error-focus')}
+}
+function refreshErrorCoach(){
+  let box=$('#errorCoach');if(!box)return;
+  let e=current?.lastError;
+  if(!e){box.hidden=true;box.innerHTML='';return}
+  box.hidden=false;
+  box.innerHTML=`<span class="error-coach-label">⚠ ${tr('errorDetected')}</span><button class="btn error-explain-btn" id="explainErrorBtn">${tr('explainError')}</button>`;
+  let b=$('#explainErrorBtn');if(b)b.onclick=explainLastError
+}
+function explainLastError(){
+  let e=current?.lastError;if(!e)return false;
+  errorUsage('explained');focusErrorCells(e);
+  let back=e.canReturn?`<button class="btn error-return-btn" onclick="returnBeforeLastError()">↶ ${tr('returnBeforeError')}</button>`:'';
+  showHintNotice(`<b>${tr('errorRule')} :</b> ${errorRuleTitle(e)}<br><span class="error-explanation">${errorDetailedMessage(e)}</span>${back}`);
+  saveCurrent();return true
+}
+function syncErrorFromHistory(){
+  if(!current)return;
+  let n=historyNode();current.lastError=n?.error?{...n.error}:null;clearErrorFocus();refreshErrorCoach()
+}
+function returnBeforeLastError(){
+  let e=current?.lastError,h=current?.moveHistory;if(!e?.canReturn||!h||!e.historyNode||!e.parentNode)return false;
+  let node=h.nodes[e.historyNode],parent=h.nodes[e.parentNode];if(!node||!parent)return false;
+  parent.preferred=node.id;h.cursor=parent.id;h.stats.undos=(h.stats.undos||0)+1;markBacktrack();errorUsage('returned');
+  restorePuzzleSnapshot(parent.snapshot);syncErrorFromHistory();updateHistoryButtons();saveCurrent();showToast(tr('errorReturned'));haptic(7);return true
+}
+function captureRejectedPatchError(info){
+  if(!current||current.game!=='patches'||!info)return null;
+  let rule=info.clues?.length>1?'P_TWO_CLUES':info.clues?.length===0?'P_CLUE':patchRectOverlapsOther(info.rect,info.id)?'P_OVERLAP':'P_CLUE';
+  let e={schema:1,source:'visible-state',game:'patches',rule,at:Date.now(),canReturn:false,cells:info.rect?.cells||[],target:info.rect?.cells?.[0]||null,region:info.id};
+  current.lastError=e;errorUsage('rejected');clearErrorFocus();refreshErrorCoach();return e
+}
+
 function statsFinish(c,seconds,outcome){
   if(!c||c.statsClosed)return;c.statsClosed=true;
-  let s=safeStats(),b=statBucket(s,c.game,c.diff),rec={id:c.attemptId||`${Date.now()}`,ts:Date.now(),day:localDay(),game:c.game,diff:c.diff,seconds:Math.max(0,Math.round(seconds)),outcome,score:c.rating?.score??null,backtrackUsed:!!c.backtrackUsed,hintUsed:!!c.hintUsed};
+  let s=safeStats(),b=statBucket(s,c.game,c.diff),rec={id:c.attemptId||`${Date.now()}`,ts:Date.now(),day:localDay(),game:c.game,diff:c.diff,seconds:Math.max(0,Math.round(seconds)),outcome,score:c.rating?.score??null,backtrackUsed:!!c.backtrackUsed,hintUsed:!!c.hintUsed,coachUsage:c.coachUsage?{...c.coachUsage}:null,errorCoachUsage:c.errorCoachUsage?{...c.errorCoachUsage}:null,reasoningAudit:c.reasoningAudit?{...c.reasoningAudit}:null,exploration:c.exploration?{...c.exploration}:null,masterySession:cloneMasterySession(c.masterySession),masteryMerged:true};
   if(outcome==='solved'){s.solved++;s.totalSolvedSeconds+=rec.seconds;b.solved++;b.totalSeconds+=rec.seconds;b.best=b.best==null?rec.seconds:Math.min(b.best,rec.seconds)}
   if(outcome==='revealed'){s.revealed++;b.revealed++}
+  masteryMergeIntoStats(s,c.masterySession);
   s.history.unshift(rec);s.history=s.history.slice(0,HISTORY_LIMIT);writeStats(s)
 }
 function closePreviousAttempt(){
@@ -309,25 +870,82 @@ function statsSummary(){
 
 
 const DAILY_KEY='logic4-daily-v1';
+const DAILY_GAMES=['queens','tango','sudoku','patches'];
+const DAILY_LOGIC_POINTS={0:100,1:90,2:75,3:55,4:25};
 function hash32(s){let h=2166136261>>>0;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296}}
 function withSeed(seed,fn){let old=Math.random;Math.random=mulberry32(hash32(seed));try{return fn()}finally{Math.random=old}}
 function dailyState(){try{let x=JSON.parse(localStorage.getItem(DAILY_KEY)||'{}');return x&&typeof x==='object'?x:{}}catch(_){return {}}}
 function saveDailyState(x){try{localStorage.setItem(DAILY_KEY,JSON.stringify(x))}catch(_){}}
 function dailyKey(day,game){return `${day}:${game}`}
-function markDaily(c,outcome,seconds){if(!c?.daily)return;let s=dailyState(),k=dailyKey(c.dailyDay,c.game),old=s[k]||{};s[k]={day:c.dailyDay,game:c.game,outcome,seconds:Math.round(seconds),completedAt:Date.now(),best:outcome==='solved'?(old.best==null?Math.round(seconds):Math.min(old.best,Math.round(seconds))):old.best??null};saveDailyState(s)}
-function dailyProgress(day=localDay()){let s=dailyState(),games=['queens','tango','sudoku','patches'];return games.map(g=>s[dailyKey(day,g)]).filter(x=>x?.outcome==='solved').length}
-function dailyCalendar(days=28){let s=dailyState(),out=[],d=new Date();d.setHours(12,0,0,0);for(let i=0;i<days;i++){let day=localDay(d.getTime()),n=['queens','tango','sudoku','patches'].filter(g=>s[dailyKey(day,g)]?.outcome==='solved').length;out.push({day,n});d.setDate(d.getDate()-1)}return out}
+function dailyRecord(day,game,state=dailyState()){return state[dailyKey(day,game)]||null}
+function dailyHelpStage(c){
+  let s=Math.max(0,Math.min(4,Number(c?.coachUsage?.maxStage)||0));
+  if(!s&&c?.hintUsed)s=4;return s
+}
+function dailyHelpLabel(stage){
+  return [tr('dailyNoHelp'),tr('dailyOrientation'),tr('dailyRuleHelp'),tr('dailyExplanationHelp'),tr('dailyRevealHelp')][Math.max(0,Math.min(4,Number(stage)||0))]
+}
+function dailyLogicScore(c){return DAILY_LOGIC_POINTS[dailyHelpStage(c)]}
+function dailyErrorCount(c){let e=c?.errorCoachUsage||{};return Math.max(0,Number(e.detected)||0)+Math.max(0,Number(e.rejected)||0)}
+function dailyBacktrackCount(c){return Math.max(0,Number(c?.moveHistory?.stats?.undos)||0)}
+function markDaily(c,outcome,seconds){
+  if(!c?.daily)return;
+  let s=dailyState(),k=dailyKey(c.dailyDay,c.game),old=s[k]||{},solvedBefore=old.outcome==='solved',sec=Math.max(0,Math.round(seconds));
+  if(solvedBefore){
+    // The official logical score is immutable after the first successful solve.
+    old.best=old.best==null?sec:Math.min(old.best,sec);old.lastSeconds=sec;old.lastOutcome=outcome;old.lastCompletedAt=Date.now();s[k]=old;saveDailyState(s);return
+  }
+  let rec={day:c.dailyDay,game:c.game,outcome,seconds:sec,completedAt:Date.now(),best:outcome==='solved'?sec:old.best??null};
+  if(outcome==='solved'){
+    rec.logicScore=dailyLogicScore(c);rec.helpStage=dailyHelpStage(c);rec.helpLabelKey=['dailyNoHelp','dailyOrientation','dailyRuleHelp','dailyExplanationHelp','dailyRevealHelp'][rec.helpStage];
+    rec.errors=dailyErrorCount(c);rec.backtracks=dailyBacktrackCount(c);rec.official=true
+  }
+  s[k]=rec;saveDailyState(s)
+}
+function dailyProgress(day=localDay()){let s=dailyState();return DAILY_GAMES.map(g=>s[dailyKey(day,g)]).filter(x=>x?.outcome==='solved').length}
+function dailyHomeLine(day=localDay()){let s=dailyCircuitSummary(day);return `${s.completed}/4 · ${s.scoreKnown?`${s.totalScore}/400`:tr('dailyLogicScore')}`}
+function dailyCircuitSummary(day=localDay(),state=dailyState()){
+  let rows=DAILY_GAMES.map(game=>({game,record:dailyRecord(day,game,state)})),solved=rows.filter(x=>x.record?.outcome==='solved'),scored=solved.filter(x=>Number.isFinite(Number(x.record.logicScore)));
+  return {day,rows,completed:solved.length,totalScore:scored.reduce((a,x)=>a+Number(x.record.logicScore),0),scoredGames:scored.length,complete:solved.length===4,scoreKnown:solved.length===scored.length}
+}
+function dailyNextGame(day=localDay(),state=dailyState()){return DAILY_GAMES.find(g=>dailyRecord(day,g,state)?.outcome!=='solved')||null}
+function dailyCalendar(days=28){
+  let s=dailyState(),out=[],d=new Date();d.setHours(12,0,0,0);
+  for(let i=0;i<days;i++){let day=localDay(d.getTime()),sum=dailyCircuitSummary(day,s);out.push({day,n:sum.completed,score:sum.scoreKnown?sum.totalScore:null});d.setDate(d.getDate()-1)}
+  return out
+}
+function dailyCardHtml(g,r){
+  let done=r?.outcome==='solved',score=done&&Number.isFinite(Number(r.logicScore))?`${r.logicScore}/100`:done?'—/100':'',help=done&&r.logicScore!=null?dailyHelpLabel(r.helpStage):done?tr('dailyUnscoredLegacy'):'';
+  return `<button class="daily-game ${done?'done':''}" data-daily="${g}"><span>${{queens:'♛',tango:'☀︎',sudoku:'✎',patches:'▦'}[g]}</span><b>${gameLabel(g)}</b><small>${done?`✓ ${score} · ${help} · ${fmt(r.best??r.seconds)}`:tr('play')}</small></button>`
+}
+function dailyReportHtml(day,state=dailyState()){
+  let sum=dailyCircuitSummary(day,state),rows=sum.rows.map(({game,record:r})=>{
+    let done=r?.outcome==='solved',score=done&&r.logicScore!=null?`${r.logicScore}/100`:'—',help=done&&r.logicScore!=null?dailyHelpLabel(r.helpStage):done?tr('dailyUnscoredLegacy'):'—';
+    return `<div class="daily-report-row ${done?'done':''}"><span>${{queens:'♛',tango:'☀︎',sudoku:'✎',patches:'▦'}[game]}</span><b>${gameLabel(game)}</b><strong>${score}</strong><small>${help}</small><small>${tr('dailyErrorsCount')} ${r?.errors??0} · ${tr('dailyBacktracksCount')} ${r?.backtracks??0}</small></div>`
+  }).join('');
+  let score=sum.scoreKnown?`${sum.totalScore}/400`:`${sum.totalScore}/400*`;
+  return `<section class="daily-report"><div class="daily-report-score"><span>${tr('dailyLogicScore')}</span><strong>${score}</strong><small>${sum.complete?tr('dailyCompleteReport'):`${sum.completed}/4 ${tr('finished')}`}</small></div>${rows}<p>${tr('dailyScoreNote')}</p><p><small>${tr('dailyScoreLocked')}</small></p></section>`
+}
 function dailyView(){
   if(current&&!current.completed)saveCurrent();stopTimer();timerEl.textContent='00:00';current=null;updateI18n();
-  let day=localDay(),s=dailyState(),games=['queens','tango','sudoku','patches'],cards=games.map(g=>{let r=s[dailyKey(day,g)],done=r?.outcome==='solved';return `<button class="daily-game ${done?'done':''}" data-daily="${g}"><span>${{queens:'♛',tango:'☀︎',sudoku:'✎',patches:'▦'}[g]}</span><b>${gameLabel(g)}</b><small>${done?`✓ ${fmt(r.best??r.seconds)}`:tr('play')}</small></button>`}).join('');
-  let cal=dailyCalendar().reverse().map(x=>`<div class="day-dot level-${x.n}" title="${x.day} · ${x.n}/4"><span>${new Date(x.day+'T12:00:00').getDate()}</span></div>`).join('');
-  app.innerHTML=`<section class="panel daily-panel"><div class="stats-head"><div><h1>${tr('daily')}</h1><p>${new Date().toLocaleDateString(dateLocale(),{weekday:'long',day:'numeric',month:'long'})} · ${dailyProgress(day)}/4 ${tr('finished')}</p></div><button class="btn" id="dailyBack">${tr('back')}</button></div><div class="daily-games">${cards}</div><h2>${tr('dailyLast')}</h2><div class="daily-calendar">${cal}</div><p class="daily-note">${tr('dailyNote')}</p></section>`;
-  $('#dailyBack').onclick=home;app.querySelectorAll('[data-daily]').forEach(b=>b.onclick=()=>launchDaily(b.dataset.daily,day));app.querySelectorAll('button').forEach(pressFeedback)
+  let day=localDay(),s=dailyState(),sum=dailyCircuitSummary(day,s),cards=DAILY_GAMES.map(g=>dailyCardHtml(g,dailyRecord(day,g,s))).join('');
+  let cal=dailyCalendar().reverse().map(x=>`<div class="day-dot level-${x.n}" title="${x.day} · ${x.n}/4${x.score==null?'':` · ${x.score}/400`}"><span>${new Date(x.day+'T12:00:00').getDate()}</span></div>`).join('');
+  let circuitLabel=sum.complete?tr('dailyReport'):(sum.completed?tr('dailyResumeCircuit'):tr('dailyStartCircuit'));
+  app.innerHTML=`<section class="panel daily-panel"><div class="stats-head"><div><h1>${tr('dailyCircuit')}</h1><p>${new Date(day+'T12:00:00').toLocaleDateString(dateLocale(),{weekday:'long',day:'numeric',month:'long'})} · ${tr('dailyCircuitSub')}</p></div><button class="btn" id="dailyBack">${tr('back')}</button></div>
+    <button class="btn primary daily-circuit-cta" id="dailyCircuitBtn">${sum.complete?`✓ ${circuitLabel}`:`◆ ${circuitLabel} · ${sum.completed}/4`}</button>
+    ${dailyReportHtml(day,s)}
+    <div class="daily-games">${cards}</div><h2>${tr('dailyLast')}</h2><div class="daily-calendar">${cal}</div><p class="daily-note">${tr('dailyNote')}</p></section>`;
+  $('#dailyBack').onclick=home;$('#dailyCircuitBtn').onclick=()=>sum.complete?dailyView():launchDailyCircuit(day);
+  app.querySelectorAll('[data-daily]').forEach(b=>b.onclick=()=>launchDaily(b.dataset.daily,day));app.querySelectorAll('button').forEach(pressFeedback)
 }
+function launchDailyCircuit(day=localDay()){let next=dailyNextGame(day);if(!next)return dailyView();launchDaily(next,day)}
 function launchDaily(game,day=localDay()){
   closePreviousAttempt();clearSaved();stopTimer();paused=false;setBusy(true);current={game,diff:'medium',daily:true,dailyDay:day};
-  requestAnimationFrame(()=>{try{withSeed(`logic4-v1.6:${day}:${game}`,()=>{if(game==='queens')queens('medium');if(game==='tango')tango('medium');if(game==='sudoku')sudoku('medium');if(game==='patches')patches('medium')});current.daily=true;current.dailyDay=day;historyInit(true);updateHistoryButtons();statsStart(current);startTimer(true,0,false);saveCurrent();haptic(8)}finally{setBusy(false);startBackgroundPrecompute(game,'medium')}})
+  requestAnimationFrame(()=>{try{
+    withSeed(`logic4-v1.6:${day}:${game}`,()=>{if(game==='queens')queens('medium');if(game==='tango')tango('medium');if(game==='sudoku')sudoku('medium');if(game==='patches')patches('medium')});
+    current.daily=true;current.dailyDay=day;current.dailyCircuit=true;historyInit(true);updateHistoryButtons();statsStart(current);startTimer(true,0,false);saveCurrent();haptic(8)
+  }finally{setBusy(false);startBackgroundPrecompute(game,'medium')}})
 }
 const coarsePointer=()=>window.matchMedia&&window.matchMedia('(pointer:coarse)').matches;
 function haptic(ms=12){try{if(navigator.vibrate)navigator.vibrate(ms)}catch(_){}}
@@ -372,6 +990,587 @@ function transformGrid(grid,k){let g=grid.map(r=>[...r]);for(let i=0;i<k%4;i++)g
 function modal(title,html){document.body.insertAdjacentHTML('beforeend',`<div class="modal" id="modal"><div class="sheet"><h2>${title}</h2>${html}<button class="btn primary" onclick="document.querySelector('#modal').remove()">Fermer</button></div></div>`)}
 
 // ===== v2.11.0 — structured Logic Coach reasoning + branching move history =====
+
+// ===== v2.13.0 — pedagogical technique library =====
+const TECHNIQUE_TERMS={"en":{"exclusion":"Exclusion","adjacency":"Adjacency","uniquePosition":"Unique position","balance":"Balance","noThree":"No three identical","relation":"Relation","singleCandidate":"Single candidate","hiddenSingle":"Hidden single","mandatoryCell":"Mandatory cell","singleRectangle":"Single rectangle","contradiction":"Contradiction","technique":"Technique"},"zh":{"exclusion":"排除","adjacency":"相邻限制","uniquePosition":"唯一位置","balance":"平衡","noThree":"禁止三个相同","relation":"关系","singleCandidate":"唯一候选","hiddenSingle":"隐藏唯一","mandatoryCell":"必选格","singleRectangle":"唯一矩形","contradiction":"矛盾","technique":"技巧"},"hi":{"exclusion":"बहिष्करण","adjacency":"सन्निकटता","uniquePosition":"एकमात्र स्थान","balance":"संतुलन","noThree":"तीन समान नहीं","relation":"संबंध","singleCandidate":"एकल प्रत्याशी","hiddenSingle":"छिपा एकल","mandatoryCell":"अनिवार्य खाना","singleRectangle":"एकमात्र आयत","contradiction":"विरोधाभास","technique":"तकनीक"},"es":{"exclusion":"Exclusión","adjacency":"Adyacencia","uniquePosition":"Posición única","balance":"Equilibrio","noThree":"Sin tres iguales","relation":"Relación","singleCandidate":"Candidato único","hiddenSingle":"Único oculto","mandatoryCell":"Casilla obligatoria","singleRectangle":"Rectángulo único","contradiction":"Contradicción","technique":"Técnica"},"ar":{"exclusion":"استبعاد","adjacency":"تجاور","uniquePosition":"موضع وحيد","balance":"توازن","noThree":"منع ثلاثة متطابقة","relation":"علاقة","singleCandidate":"مرشح وحيد","hiddenSingle":"وحيد مخفي","mandatoryCell":"خلية إلزامية","singleRectangle":"مستطيل وحيد","contradiction":"تناقض","technique":"تقنية"},"fr":{"exclusion":"Exclusion","adjacency":"Adjacence","uniquePosition":"Position unique","balance":"Équilibre","noThree":"Pas trois identiques","relation":"Relation","singleCandidate":"Candidat unique","hiddenSingle":"Unique caché","mandatoryCell":"Case obligatoire","singleRectangle":"Rectangle unique","contradiction":"Contradiction","technique":"Technique"},"bn":{"exclusion":"বর্জন","adjacency":"সংলগ্নতা","uniquePosition":"একমাত্র অবস্থান","balance":"ভারসাম্য","noThree":"তিনটি এক নয়","relation":"সম্পর্ক","singleCandidate":"একমাত্র প্রার্থী","hiddenSingle":"গোপন একক","mandatoryCell":"বাধ্যতামূলক ঘর","singleRectangle":"একমাত্র আয়তক্ষেত্র","contradiction":"বিরোধ","technique":"কৌশল"},"pt":{"exclusion":"Exclusão","adjacency":"Adjacência","uniquePosition":"Posição única","balance":"Equilíbrio","noThree":"Sem três iguais","relation":"Relação","singleCandidate":"Candidato único","hiddenSingle":"Único oculto","mandatoryCell":"Casa obrigatória","singleRectangle":"Retângulo único","contradiction":"Contradição","technique":"Técnica"},"id":{"exclusion":"Eliminasi","adjacency":"Kedekatan","uniquePosition":"Posisi tunggal","balance":"Keseimbangan","noThree":"Tanpa tiga sama","relation":"Relasi","singleCandidate":"Kandidat tunggal","hiddenSingle":"Tunggal tersembunyi","mandatoryCell":"Sel wajib","singleRectangle":"Persegi panjang tunggal","contradiction":"Kontradiksi","technique":"Teknik"},"ur":{"exclusion":"اخراج","adjacency":"قربت","uniquePosition":"واحد مقام","balance":"توازن","noThree":"تین یکساں نہیں","relation":"تعلق","singleCandidate":"واحد امیدوار","hiddenSingle":"پوشیدہ واحد","mandatoryCell":"لازمی خانہ","singleRectangle":"واحد مستطیل","contradiction":"تضاد","technique":"تکنیک"},"bg":{"exclusion":"Изключване","adjacency":"Съседство","uniquePosition":"Единствена позиция","balance":"Баланс","noThree":"Без три еднакви","relation":"Връзка","singleCandidate":"Единствен кандидат","hiddenSingle":"Скрит единичен","mandatoryCell":"Задължителна клетка","singleRectangle":"Единствен правоъгълник","contradiction":"Противоречие","technique":"Техника"},"hr":{"exclusion":"Isključivanje","adjacency":"Susjedstvo","uniquePosition":"Jedini položaj","balance":"Ravnoteža","noThree":"Bez tri ista","relation":"Odnos","singleCandidate":"Jedini kandidat","hiddenSingle":"Skriveni jedini","mandatoryCell":"Obavezno polje","singleRectangle":"Jedini pravokutnik","contradiction":"Kontradikcija","technique":"Tehnika"},"cs":{"exclusion":"Vyloučení","adjacency":"Sousednost","uniquePosition":"Jediná pozice","balance":"Rovnováha","noThree":"Bez tří stejných","relation":"Vztah","singleCandidate":"Jediný kandidát","hiddenSingle":"Skrytý jediný","mandatoryCell":"Povinné pole","singleRectangle":"Jediný obdélník","contradiction":"Rozpor","technique":"Technika"},"da":{"exclusion":"Udelukkelse","adjacency":"Naboskab","uniquePosition":"Unik position","balance":"Balance","noThree":"Ingen tre ens","relation":"Relation","singleCandidate":"Enkelt kandidat","hiddenSingle":"Skjult enkelt","mandatoryCell":"Obligatorisk felt","singleRectangle":"Enkelt rektangel","contradiction":"Modsigelse","technique":"Teknik"},"nl":{"exclusion":"Uitsluiting","adjacency":"Aangrenzing","uniquePosition":"Unieke positie","balance":"Balans","noThree":"Geen drie gelijke","relation":"Relatie","singleCandidate":"Enige kandidaat","hiddenSingle":"Verborgen enkele","mandatoryCell":"Verplicht vak","singleRectangle":"Unieke rechthoek","contradiction":"Tegenspraak","technique":"Techniek"},"et":{"exclusion":"Välistamine","adjacency":"Naabrus","uniquePosition":"Ainus asukoht","balance":"Tasakaal","noThree":"Mitte kolm ühesugust","relation":"Seos","singleCandidate":"Ainus kandidaat","hiddenSingle":"Peidetud ainus","mandatoryCell":"Kohustuslik ruut","singleRectangle":"Ainus ristkülik","contradiction":"Vastuolu","technique":"Tehnika"},"fi":{"exclusion":"Poissulku","adjacency":"Vierekkäisyys","uniquePosition":"Ainoa paikka","balance":"Tasapaino","noThree":"Ei kolmea samaa","relation":"Suhde","singleCandidate":"Ainoa ehdokas","hiddenSingle":"Piilotettu ainoa","mandatoryCell":"Pakollinen ruutu","singleRectangle":"Ainoa suorakulmio","contradiction":"Ristiriita","technique":"Tekniikka"},"de":{"exclusion":"Ausschluss","adjacency":"Nachbarschaft","uniquePosition":"Einzige Position","balance":"Gleichgewicht","noThree":"Keine drei gleichen","relation":"Beziehung","singleCandidate":"Einziger Kandidat","hiddenSingle":"Versteckter Einzelwert","mandatoryCell":"Pflichtfeld","singleRectangle":"Einziges Rechteck","contradiction":"Widerspruch","technique":"Technik"},"el":{"exclusion":"Αποκλεισμός","adjacency":"Γειτνίαση","uniquePosition":"Μοναδική θέση","balance":"Ισορροπία","noThree":"Όχι τρία ίδια","relation":"Σχέση","singleCandidate":"Μοναδικός υποψήφιος","hiddenSingle":"Κρυφό μοναδικό","mandatoryCell":"Υποχρεωτικό κελί","singleRectangle":"Μοναδικό ορθογώνιο","contradiction":"Αντίφαση","technique":"Τεχνική"},"hu":{"exclusion":"Kizárás","adjacency":"Szomszédosság","uniquePosition":"Egyetlen hely","balance":"Egyensúly","noThree":"Nincs három azonos","relation":"Kapcsolat","singleCandidate":"Egyetlen jelölt","hiddenSingle":"Rejtett egyedi","mandatoryCell":"Kötelező mező","singleRectangle":"Egyetlen téglalap","contradiction":"Ellentmondás","technique":"Technika"},"ga":{"exclusion":"Eisiamh","adjacency":"Cóngaracht","uniquePosition":"Suíomh aonair","balance":"Cothromaíocht","noThree":"Gan trí cinn mar an gcéanna","relation":"Gaol","singleCandidate":"Iarrthóir aonair","hiddenSingle":"Aonair folaithe","mandatoryCell":"Cill éigeantach","singleRectangle":"Dronuilleog aonair","contradiction":"Contrárthacht","technique":"Teicníc"},"it":{"exclusion":"Esclusione","adjacency":"Adiacenza","uniquePosition":"Posizione unica","balance":"Equilibrio","noThree":"Niente tre uguali","relation":"Relazione","singleCandidate":"Candidato unico","hiddenSingle":"Singolo nascosto","mandatoryCell":"Casella obbligatoria","singleRectangle":"Rettangolo unico","contradiction":"Contraddizione","technique":"Tecnica"},"lv":{"exclusion":"Izslēgšana","adjacency":"Blakus stāvoklis","uniquePosition":"Vienīgā pozīcija","balance":"Līdzsvars","noThree":"Ne trīs vienādi","relation":"Attiecība","singleCandidate":"Vienīgais kandidāts","hiddenSingle":"Slēptais vienīgais","mandatoryCell":"Obligāta šūna","singleRectangle":"Vienīgais taisnstūris","contradiction":"Pretruna","technique":"Paņēmiens"},"lt":{"exclusion":"Atmetimas","adjacency":"Gretimumas","uniquePosition":"Vienintelė vieta","balance":"Pusiausvyra","noThree":"Ne trys vienodi","relation":"Ryšys","singleCandidate":"Vienintelis kandidatas","hiddenSingle":"Paslėptas vienintelis","mandatoryCell":"Privalomas langelis","singleRectangle":"Vienintelis stačiakampis","contradiction":"Prieštara","technique":"Metodas"},"mt":{"exclusion":"Esklużjoni","adjacency":"Viċinanza","uniquePosition":"Pożizzjoni unika","balance":"Bilanċ","noThree":"Ebda tlieta l-istess","relation":"Relazzjoni","singleCandidate":"Kandidat uniku","hiddenSingle":"Uniku moħbi","mandatoryCell":"Ċella obbligatorja","singleRectangle":"Rettangolu uniku","contradiction":"Kontradizzjoni","technique":"Teknika"},"pl":{"exclusion":"Wykluczenie","adjacency":"Sąsiedztwo","uniquePosition":"Jedyna pozycja","balance":"Równowaga","noThree":"Bez trzech identycznych","relation":"Relacja","singleCandidate":"Jedyny kandydat","hiddenSingle":"Ukryty singiel","mandatoryCell":"Pole obowiązkowe","singleRectangle":"Jedyny prostokąt","contradiction":"Sprzeczność","technique":"Technika"},"ro":{"exclusion":"Excludere","adjacency":"Adiacență","uniquePosition":"Poziție unică","balance":"Echilibru","noThree":"Fără trei identice","relation":"Relație","singleCandidate":"Candidat unic","hiddenSingle":"Unic ascuns","mandatoryCell":"Celulă obligatorie","singleRectangle":"Dreptunghi unic","contradiction":"Contradicție","technique":"Tehnică"},"sk":{"exclusion":"Vylúčenie","adjacency":"Susednosť","uniquePosition":"Jediná pozícia","balance":"Rovnováha","noThree":"Bez troch rovnakých","relation":"Vzťah","singleCandidate":"Jediný kandidát","hiddenSingle":"Skrytý jediný","mandatoryCell":"Povinné políčko","singleRectangle":"Jediný obdĺžnik","contradiction":"Rozpor","technique":"Technika"},"sl":{"exclusion":"Izključitev","adjacency":"Sosednost","uniquePosition":"Edini položaj","balance":"Ravnovesje","noThree":"Brez treh enakih","relation":"Odnos","singleCandidate":"Edini kandidat","hiddenSingle":"Skriti edini","mandatoryCell":"Obvezno polje","singleRectangle":"Edini pravokotnik","contradiction":"Protislovje","technique":"Tehnika"},"sv":{"exclusion":"Uteslutning","adjacency":"Närhet","uniquePosition":"Unik position","balance":"Balans","noThree":"Inga tre lika","relation":"Relation","singleCandidate":"Enda kandidat","hiddenSingle":"Dold singel","mandatoryCell":"Obligatorisk ruta","singleRectangle":"Unik rektangel","contradiction":"Motsägelse","technique":"Teknik"}};
+const TECHNIQUE_LIBRARY={
+  Q_EXCLUSION_ROW:{game:'queens',rank:0,kind:'exclusion',scope:'row'},
+  Q_EXCLUSION_COLUMN:{game:'queens',rank:0,kind:'exclusion',scope:'column'},
+  Q_EXCLUSION_REGION:{game:'queens',rank:0,kind:'exclusion',scope:'region'},
+  Q_EXCLUSION_ADJACENCY:{game:'queens',rank:0,kind:'adjacency'},
+  Q_UNIQUE_ROW:{game:'queens',rank:0,kind:'uniquePosition',scope:'row'},
+  Q_UNIQUE_COLUMN:{game:'queens',rank:0,kind:'uniquePosition',scope:'column'},
+  Q_UNIQUE_REGION:{game:'queens',rank:0,kind:'uniquePosition',scope:'region'},
+  Q_CONTRADICTION_R1:{game:'queens',rank:1,kind:'contradiction'},
+  Q_CONTRADICTION_R2:{game:'queens',rank:2,kind:'contradiction'},
+  Q_CONTRADICTION_R3:{game:'queens',rank:3,kind:'contradiction'},
+
+  T_BALANCE_ROW:{game:'tango',rank:0,kind:'balance',scope:'row'},
+  T_BALANCE_COLUMN:{game:'tango',rank:0,kind:'balance',scope:'column'},
+  T_NO_THREE:{game:'tango',rank:0,kind:'noThree'},
+  T_RELATION_EQUAL:{game:'tango',rank:0,kind:'relation',symbol:'='},
+  T_RELATION_OPPOSITE:{game:'tango',rank:0,kind:'relation',symbol:'×'},
+  T_CONTRADICTION_R1:{game:'tango',rank:1,kind:'contradiction'},
+  T_CONTRADICTION_R2:{game:'tango',rank:2,kind:'contradiction'},
+
+  S_NAKED_SINGLE:{game:'sudoku',rank:0,kind:'singleCandidate'},
+  S_HIDDEN_ROW:{game:'sudoku',rank:0,kind:'hiddenSingle',scope:'row'},
+  S_HIDDEN_COLUMN:{game:'sudoku',rank:0,kind:'hiddenSingle',scope:'column'},
+  S_HIDDEN_BOX:{game:'sudoku',rank:0,kind:'hiddenSingle',scope:'box'},
+  S_CONTRADICTION_R1:{game:'sudoku',rank:1,kind:'contradiction'},
+  S_CONTRADICTION_R2:{game:'sudoku',rank:2,kind:'contradiction'},
+
+  P_MANDATORY_CELL:{game:'patches',rank:0,kind:'mandatoryCell'},
+  P_SINGLE_RECTANGLE:{game:'patches',rank:0,kind:'singleRectangle'},
+  P_CONTRADICTION_R1:{game:'patches',rank:1,kind:'contradiction'},
+  P_CONTRADICTION_R2:{game:'patches',rank:2,kind:'contradiction'}
+};
+function techniqueTerm(k){let t=TECHNIQUE_TERMS[lang()]||TECHNIQUE_TERMS.en;return t[k]||TECHNIQUE_TERMS.en[k]||k}
+function techniqueScope(scope){
+  if(scope==='row')return tr('rowLabel');
+  if(scope==='column')return tr('columnLabel');
+  if(scope==='region')return tr('zone');
+  if(scope==='box')return '2×3';
+  return ''
+}
+function techniqueTitle(id){
+  let x=TECHNIQUE_LIBRARY[id];if(!x)return id||techniqueTerm('technique');
+  let title=techniqueTerm(x.kind);
+  if(x.scope)title+=` · ${techniqueScope(x.scope)}`;
+  if(x.symbol)title+=` ${x.symbol}`;
+  if(x.kind==='balance')title+=' 3/3';
+  if(x.kind==='contradiction')title+=` · R${x.rank}`;
+  return title
+}
+function techniqueSummary(id){
+  let x=TECHNIQUE_LIBRARY[id];if(!x)return tr('directReason');
+  if(x.rank===1)return tr('rank1Reason');
+  if(x.rank===2)return tr('rank2Reason');
+  if(x.rank===3)return tr('rank3Reason');
+  return tr('directReason')
+}
+function techniqueIdsForGame(game){return Object.keys(TECHNIQUE_LIBRARY).filter(id=>TECHNIQUE_LIBRARY[id].game===game).sort((a,b)=>TECHNIQUE_LIBRARY[a].rank-TECHNIQUE_LIBRARY[b].rank||a.localeCompare(b))}
+function techniqueLibraryHtml(game){
+  let ids=techniqueIdsForGame(game);
+  return `<div class="technique-library">${ids.map(id=>{let x=TECHNIQUE_LIBRARY[id];return `<article class="technique-card"><div class="technique-card-head"><b>${techniqueTitle(id)}</b><code>${id}</code></div><small>R${x.rank}</small><p>${techniqueSummary(id)}</p></article>`}).join('')}</div>`
+}
+
+
+// ===== v2.15.0 — logical mastery profile =====
+const MASTERY_KINDS=['encountered','solo','where','rule','why','reveal','errors'];
+function emptyMasteryCounts(){return {encountered:0,solo:0,where:0,rule:0,why:0,reveal:0,errors:0}}
+function normalizeMasteryCounts(x={}){
+  let o=emptyMasteryCounts();for(let k of MASTERY_KINDS)o[k]=Math.max(0,Number(x?.[k])||0);return o
+}
+function masterySessionBucket(id){
+  if(!current||!TECHNIQUE_LIBRARY[id])return null;
+  let s=current.masterySession||(current.masterySession={schema:1,techniques:{}});
+  if(!s.techniques)s.techniques={};
+  if(!s.techniques[id])s.techniques[id]=emptyMasteryCounts();
+  return s.techniques[id]
+}
+function masteryRecord(id,kind){
+  let b=masterySessionBucket(id);if(!b||!MASTERY_KINDS.includes(kind))return false;
+  if(kind==='solo'||kind==='where'||kind==='errors')b.encountered++;
+  b[kind]++;return true
+}
+function cloneMasterySession(s){return s?JSON.parse(JSON.stringify(s)):null}
+function masteryMergeCounts(dst,src){
+  dst=normalizeMasteryCounts(dst);src=normalizeMasteryCounts(src);
+  for(let k of MASTERY_KINDS)dst[k]+=src[k];return dst
+}
+function masteryMergeIntoStats(stats,session){
+  if(!stats.mastery||typeof stats.mastery!=='object')stats.mastery={schema:1,byTechnique:{},updatedAt:null};
+  if(!stats.mastery.byTechnique)stats.mastery.byTechnique={};
+  for(let [id,c] of Object.entries(session?.techniques||{})){
+    if(!TECHNIQUE_LIBRARY[id])continue;
+    stats.mastery.byTechnique[id]=masteryMergeCounts(stats.mastery.byTechnique[id],c)
+  }
+  if(session?.techniques&&Object.keys(session.techniques).length)stats.mastery.updatedAt=Date.now()
+}
+function masteryLegacyFromHistory(history=[]){
+  let out={};
+  for(let rec of history){
+    if(rec?.masteryMerged)continue;
+    for(let [id,t] of Object.entries(rec?.coachUsage?.techniques||{})){
+      if(!TECHNIQUE_LIBRARY[id])continue;
+      let b=out[id]||(out[id]=emptyMasteryCounts()),where=Math.max(0,Number(t.where)||0);
+      b.encountered+=where;b.where+=where;b.rule+=Math.max(0,Number(t.rule)||0);b.why+=Math.max(0,Number(t.why)||0);b.reveal+=Math.max(0,Number(t.reveal)||0)
+    }
+  }
+  return out
+}
+function effectiveMasteryByTechnique(stats=safeStats()){
+  let out={};
+  for(let id of Object.keys(TECHNIQUE_LIBRARY))out[id]=normalizeMasteryCounts(stats?.mastery?.byTechnique?.[id]);
+  let legacy=masteryLegacyFromHistory(stats?.history||[]);
+  for(let [id,c] of Object.entries(legacy))out[id]=masteryMergeCounts(out[id],c);
+  return out
+}
+function masteryMetrics(c){
+  c=normalizeMasteryCounts(c);
+  let whereOnly=Math.max(0,c.where-c.rule),ruleOnly=Math.max(0,c.rule-c.why),whyOnly=Math.max(0,c.why-c.reveal),revealed=c.reveal;
+  let assisted=whereOnly+ruleOnly+whyOnly+revealed;
+  let samples=c.solo+assisted+c.errors;
+  let weighted=c.solo+whereOnly*.82+ruleOnly*.65+whyOnly*.45+revealed*.20;
+  let score=samples?Math.max(0,Math.min(100,Math.round(weighted/samples*100))):null;
+  let confidence=Math.min(100,Math.round(samples/12*100));
+  return {...c,whereOnly,ruleOnly,whyOnly,revealed,assisted,samples,score,confidence}
+}
+function masteryLevel(m){
+  if(!m||m.samples<3)return {key:'masteryInsufficient',level:0};
+  if(m.score>=90)return {key:'masteryExcellent',level:4};
+  if(m.score>=75)return {key:'masteryStrong',level:3};
+  if(m.score>=55)return {key:'masteryAcquired',level:2};
+  return {key:'masteryDeveloping',level:1}
+}
+
+function currentTechniqueMastery(id){
+  if(!TECHNIQUE_LIBRARY[id])return masteryMetrics(emptyMasteryCounts());
+  let all=effectiveMasteryByTechnique(safeStats()),base=normalizeMasteryCounts(all[id]),session=current?.masterySession?.techniques?.[id];
+  return masteryMetrics(session?masteryMergeCounts(base,session):base)
+}
+function adaptiveCoachPlan(technique,mode=null){mode=current?.coachModeOverride||mode||prefs().coachMode;
+  let m=currentTechniqueMastery(technique),lv=masteryLevel(m),entryStage=1,reason='light';
+  if(mode==='minimal'){entryStage=1;reason='light'}
+  else if(mode==='normal'){
+    if(m.samples<3){entryStage=2;reason='learning'}
+    else if(m.score>=75){entryStage=1;reason='light'}
+    else{entryStage=2;reason='reinforced'}
+  }else{
+    if(m.samples<3){entryStage=3;reason='learning'}
+    else if(m.score>=90){entryStage=1;reason='light'}
+    else if(m.score>=55){entryStage=2;reason='reinforced'}
+    else{entryStage=3;reason='learning'}
+  }
+  return {mode,entryStage,reason,technique,score:m.score,samples:m.samples,confidence:m.confidence,levelKey:lv.key}
+}
+function adaptiveCoachNote(plan){
+  if(!plan||plan.mode==='minimal')return '';
+  let label=plan.reason==='light'?tr('adaptiveLight'):plan.reason==='reinforced'?tr('adaptiveReinforced'):tr('adaptiveLearning');
+  let detail=plan.samples<3?tr('masteryInsufficient'):`${tr(plan.levelKey)}${plan.score==null?'':` · ${plan.score}%`}`;
+  return `<span class="coach-adaptive-note"><b>${tr('adaptiveHelp')} :</b> ${label} · ${detail}</span>`
+}
+function coachStageBlock(stage,kind,target,message){
+  if(stage===1)return `<b>${tr('where')} :</b> ${message.look||coachLookText(kind,target,message)}`;
+  if(stage===2)return `<b>${tr('rulesTitle')} :</b> ${message.rule||coachRuleText(message)}`;
+  if(stage===3)return `<b>${tr('hintWhy')} :</b> ${message.why}`;
+  return `<b>${tr('hintMove')} :</b> ${message.move}<br><span class="hint-applied">${message.reveal}</span>`
+}
+
+function masteryStars(m){
+  if(!m||m.samples<3||m.score==null)return '☆☆☆☆☆';
+  let n=Math.max(1,Math.min(5,Math.round(m.score/20)));return '★★★★★'.slice(0,n)+'☆☆☆☆☆'.slice(n)
+}
+function masteryGameMetrics(game,all){
+  let total=emptyMasteryCounts();for(let id of techniqueIdsForGame(game))total=masteryMergeCounts(total,all[id]);
+  return masteryMetrics(total)
+}
+function masteryDirectHintFromSnapshot(beforeKey){
+  if(!current||!beforeKey)return null;
+  let s;try{s=JSON.parse(beforeKey)}catch(_){return null}
+  if(!s||s.game!==current.game)return null;
+  let snap=current,clone={...current};
+  if(s.state)clone.state=cloneGrid(s.state);if(s.paint)clone.paint=cloneGrid(s.paint);
+  if('tangoPendingCell' in s)clone.tangoPendingCell=s.tangoPendingCell?[...s.tangoPendingCell]:null;
+  current=clone;
+  try{
+    let h=clone.game==='queens'?findQueenLogicalHint():clone.game==='tango'?findTangoLogicalHint():clone.game==='sudoku'?findSudokuLogicalHint():clone.game==='patches'?findPatchLogicalHint():null;
+    return h&&h.technique&&TECHNIQUE_LIBRARY[h.technique]?h:null
+  }catch(_){return null}finally{current=snap}
+}
+function masteryActionMatchesHint(h,action){
+  if(!h||!action)return false;
+  if(action.type==='COACH_APPLY'||action.type==='QUEEN_DRAG'||action.type==='AUTO_CROSS_ENABLE'||action.type==='PATCH_REMOVE')return false;
+  let target=action.primaryTarget||action.target||null,expected=h.id!=null?h.id:h.v;
+  if(target&&Array.isArray(target)){
+    let [r,c]=target,ch=(action.changes||[]).find(x=>x.row===r&&x.column===c);
+    return r===h.r&&c===h.c&&!!ch&&ch.to===expected
+  }
+  if(target&&Number.isInteger(target.row)){
+    let ch=(action.changes||[]).find(x=>x.row===target.row&&x.column===target.column);
+    return target.row===h.r&&target.column===h.c&&!!ch&&ch.to===expected
+  }
+  return (action.changes||[]).some(ch=>ch.row===h.r&&ch.column===h.c&&ch.to===expected)
+}
+function masteryRecognizePlayerMove(beforeKey,action,error=null,audit=null){
+  if(!current||current.training||error||!action||action.type==='COACH_APPLY')return false;
+  if(audit?.status==='justified'&&audit.technique){
+    let p=current.masteryPendingAid,t=Array.isArray(audit.target?.[0])?audit.target[0]:audit.target;
+    if(p&&p.technique===audit.technique&&t&&p.target?.[0]===t[0]&&p.target?.[1]===t[1]){current.masteryPendingAid=null;return false}
+    current.masteryPendingAid=null;return masteryRecord(audit.technique,'solo')
+  }
+  let h=masteryDirectHintFromSnapshot(beforeKey);if(!h||!masteryActionMatchesHint(h,action))return false;
+  let p=current.masteryPendingAid;
+  if(p&&p.technique===h.technique&&p.target?.[0]===h.r&&p.target?.[1]===h.c){current.masteryPendingAid=null;return false}
+  current.masteryPendingAid=null;return masteryRecord(h.technique,'solo')
+}
+function masteryTechniqueCard(id,counts){
+  let m=masteryMetrics(counts),lv=masteryLevel(m),pct=m.score==null?'—':`${m.score}%`;
+  let aids=`<span title="${tr('where')}">🧭 ${m.whereOnly}</span><span title="${tr('rulesTitle')}">📘 ${m.ruleOnly}</span><span title="${tr('hintWhy')}">💡 ${m.whyOnly}</span><span title="${tr('solution')}">👁 ${m.revealed}</span>`;
+  return `<article class="mastery-technique level-${lv.level}">
+    <div class="mastery-technique-head"><div><b>${techniqueTitle(id)}</b><code>${id}</code></div><strong>${pct}</strong></div>
+    <div class="mastery-stars" aria-label="${tr(lv.key)}">${masteryStars(m)} <small>${tr(lv.key)}</small></div>
+    <div class="mastery-bar"><i style="width:${m.score??0}%"></i></div>
+    <div class="mastery-detail"><span>${tr('masteryObserved')} <b>${m.encountered}</b></span><span>${tr('masterySolo')} <b>${m.solo}</b></span><span>${tr('masteryErrors')} <b>${m.errors}</b></span><span>${tr('masteryConfidence')} <b>${m.confidence}%</b></span></div>
+    <div class="mastery-aids">${aids}</div><div class="mastery-card-actions"><button class="btn" data-learn-tech="${id}">${tr('learn')}</button><button class="btn mastery-train-btn" data-train-tech="${id}">${tr('train')}</button></div>
+  </article>`
+}
+function masteryView(){
+  if(current&&!current.completed)saveCurrent();stopTimer();timerEl.textContent='00:00';current=null;updateI18n();
+  let s=safeStats(),all=effectiveMasteryByTechnique(s),games=['queens','tango','sudoku','patches'];
+  let gm=games.map(g=>[g,masteryGameMetrics(g,all)]),globalCounts=emptyMasteryCounts();
+  for(let [,m] of gm)globalCounts=masteryMergeCounts(globalCounts,m);
+  let global=masteryMetrics(globalCounts),globalLv=masteryLevel(global),overall=global.score==null?'—':`${global.score}%`;
+  let gameNav=gm.map(([g,m])=>{let lv=masteryLevel(m),score=m.score==null?'—':`${m.score}%`;return `<a class="mastery-game-summary level-${lv.level}" href="#mastery-${g}"><span>${{queens:'♛',tango:'☀︎',sudoku:'✎',patches:'▦'}[g]}</span><b>${gameLabel(g)}</b><strong>${score}</strong><small>${tr(lv.key)} · ${m.samples} ${tr('masteryObserved').toLowerCase()}</small></a>`}).join('');
+  let sections=games.map(g=>`<section class="mastery-game" id="mastery-${g}"><h2>${gameLabel(g)}</h2><div class="mastery-techniques">${techniqueIdsForGame(g).map(id=>masteryTechniqueCard(id,all[id])).join('')}</div></section>`).join('');
+  app.innerHTML=`<section class="panel mastery-panel"><div class="stats-head"><div><h1>${tr('mastery')}</h1><p>${tr('masterySub')}</p></div><button class="btn" id="masteryBack">${tr('back')}</button></div>
+  <div class="mastery-overall"><div><span>${tr('masteryOverall')}</span><strong>${overall}</strong><small>${tr(globalLv.key)}</small></div><div class="mastery-bar"><i style="width:${global.score??0}%"></i></div><p>${tr('masteryObserved')} : <b>${global.encountered}</b> · ${tr('masterySolo')} : <b>${global.solo}</b> · ${tr('masteryConfidence')} : <b>${global.confidence}%</b></p></div>
+  <div class="mastery-games">${gameNav}</div>${sections}</section>`;
+  $('#masteryBack').onclick=home;app.querySelectorAll('[data-learn-tech]').forEach(b=>b.onclick=()=>lessonView(b.dataset.learnTech));app.querySelectorAll('[data-train-tech]').forEach(b=>b.onclick=()=>launchTraining(b.dataset.trainTech));app.querySelectorAll('button').forEach(pressFeedback)
+}
+
+
+
+// ===== v2.18.0 — interactive Learn path =====
+function learningBucket(stats,id){
+  if(!stats.learning||typeof stats.learning!=='object')stats.learning={schema:1,byTechnique:{}};
+  if(!stats.learning.byTechnique)stats.learning.byTechnique={};
+  let b=stats.learning.byTechnique[id]||(stats.learning.byTechnique[id]={explanation:0,guided:0,assisted:0,independent:0,completed:0,attempts:0,bestIndependent:null});
+  for(let k of ['explanation','guided','assisted','independent','completed','attempts'])b[k]=Math.max(0,Number(b[k])||0);
+  b.bestIndependent=b.bestIndependent==null?null:Math.max(0,Number(b.bestIndependent)||0);return b
+}
+function learningProgressValue(b){
+  b=b||{};if(b.completed>0||b.independent>0)return 4;if(b.assisted>0)return 3;if(b.guided>0)return 2;if(b.explanation>0)return 1;return 0
+}
+function learningStatsMark(id,field,seconds=null){
+  let s=safeStats(),b=learningBucket(s,id);if(field==='attempts')b.attempts++;else if(field in b)b[field]++;
+  if(field==='independent'&&seconds!=null)b.bestIndependent=b.bestIndependent==null?seconds:Math.min(b.bestIndependent,seconds);
+  if(field==='independent')b.completed=Math.max(1,b.completed);writeStats(s);return b
+}
+function learningCompletedCount(stats=safeStats()){
+  return Object.keys(TECHNIQUE_LIBRARY).filter(id=>learningBucket(stats,id).completed>0).length
+}
+function lessonMethodText(id){
+  let x=TECHNIQUE_LIBRARY[id];return x?.kind==='contradiction'?tr('lessonContradictionMethod'):tr('lessonDirectMethod')
+}
+function lessonExplanationHtml(id){
+  let x=TECHNIQUE_LIBRARY[id];if(!x)return '';
+  let scope=x.scope?` · ${techniqueScope(x.scope)}`:'',rank=`R${x.rank}`;
+  return `<div class="lesson-explanation">
+    <div class="lesson-technique-head"><span>${gameLabel(x.game)}</span><code>${id}</code><b>${rank}${scope}</b></div>
+    <h2>${techniqueTitle(id)}</h2>
+    <p><b>${tr('lessonObserve')} :</b> ${techniqueTitle(id)}</p>
+    <p><b>${tr('lessonGoal')} :</b> ${techniqueSummary(id)}</p>
+    <p>${lessonMethodText(id)}</p>
+  </div>`
+}
+function lessonStepsHtml(id,b){
+  let p=learningProgressValue(b),items=[
+    [1,tr('lessonExplanation')],[2,tr('lessonGuided')],[3,tr('lessonAssisted')],[4,tr('lessonIndependent')]
+  ];
+  return `<div class="lesson-steps">${items.map(([n,t])=>`<div class="lesson-step ${p>=n?'done':''} ${p+1===n?'current':''}"><span>${p>=n?'✓':n}</span><b>${t}</b></div>`).join('')}</div>`
+}
+function learningCard(id,stats){
+  let b=learningBucket(stats,id),p=learningProgressValue(b),x=TECHNIQUE_LIBRARY[id];
+  return `<article class="learning-card ${b.completed?'completed':''}">
+    <div class="learning-card-head"><div><b>${techniqueTitle(id)}</b><code>${id}</code></div><strong>${p}/4</strong></div>
+    <small>${gameLabel(x.game)} · R${x.rank}</small>
+    <div class="learning-mini-bar"><i style="width:${p*25}%"></i></div>
+    <button class="btn ${b.completed?'':'primary'}" data-lesson="${id}">${b.completed?tr('lessonComplete'):tr('lesson')}</button>
+  </article>`
+}
+function learningView(){
+  if(current&&!current.completed)saveCurrent();stopTimer();timerEl.textContent='00:00';current=null;updateI18n();
+  let s=safeStats(),games=['queens','tango','sudoku','patches'],done=learningCompletedCount(s);
+  let sections=games.map(g=>`<section class="learning-game"><h2>${gameLabel(g)}</h2><div class="learning-grid">${techniqueIdsForGame(g).map(id=>learningCard(id,s)).join('')}</div></section>`).join('');
+  app.innerHTML=`<section class="panel learning-panel"><div class="stats-head"><div><h1>${tr('learn')}</h1><p>${tr('learnSub')}</p></div><button class="btn" id="learningBack">${tr('back')}</button></div>
+    <div class="learning-overall"><b>${done}/27</b><span>${tr('lessonCompletedCount')}</span><div class="learning-mini-bar"><i style="width:${done/27*100}%"></i></div></div>${sections}</section>`;
+  $('#learningBack').onclick=home;app.querySelectorAll('[data-lesson]').forEach(b=>b.onclick=()=>lessonView(b.dataset.lesson));app.querySelectorAll('button').forEach(pressFeedback)
+}
+function lessonView(id){
+  if(!TECHNIQUE_LIBRARY[id])return learningView();if(current&&!current.completed)saveCurrent();stopTimer();timerEl.textContent='00:00';current=null;updateI18n();
+  let s=safeStats(),b=learningBucket(s,id),p=learningProgressValue(b);
+  app.innerHTML=`<section class="panel lesson-panel"><div class="stats-head"><div><h1>${tr('lesson')} — ${techniqueTitle(id)}</h1><p>${gameLabel(TECHNIQUE_LIBRARY[id].game)}</p></div><button class="btn" id="lessonBack">${tr('back')}</button></div>
+    ${lessonStepsHtml(id,b)}${lessonExplanationHtml(id)}
+    <div class="lesson-actions">
+      <button class="btn primary" id="lessonGuidedBtn">${tr('lessonStartGuided')}</button>
+      <button class="btn" id="lessonAssistedBtn" ${b.guided>0?'':'disabled'}>${tr('lessonStartAssisted')}</button>
+      <button class="btn" id="lessonIndependentBtn" ${b.assisted>0?'':'disabled'}>${tr('lessonStartIndependent')}</button>
+    </div>
+    ${b.completed?`<div class="lesson-complete-banner">✓ ${tr('lessonComplete')}</div>`:''}
+  </section>`;
+  $('#lessonBack').onclick=learningView;
+  $('#lessonGuidedBtn').onclick=()=>{if(!b.explanation)learningStatsMark(id,'explanation');launchLessonPhase(id,2)};
+  $('#lessonAssistedBtn').onclick=()=>launchLessonPhase(id,3);
+  $('#lessonIndependentBtn').onclick=()=>launchLessonPhase(id,4);
+  app.querySelectorAll('button').forEach(pressFeedback)
+}
+function learningPhaseTitle(phase){
+  return phase===2?tr('lessonGuided'):phase===3?tr('lessonAssisted'):tr('lessonIndependent')
+}
+function learningStatsStart(id,phase){let s=safeStats(),b=learningBucket(s,id);b.attempts++;writeStats(s)}
+function learningStatsFinish(c,seconds,withCoach){
+  if(!c?.learning||c.learningStatsClosed)return false;let s=safeStats(),b=learningBucket(s,c.learningTechnique);
+  if(c.learningPhase===2)b.guided++;
+  else if(c.learningPhase===3)b.assisted++;
+  else if(c.learningPhase===4&&!withCoach){b.independent++;b.completed=Math.max(1,b.completed);b.bestIndependent=b.bestIndependent==null?seconds:Math.min(b.bestIndependent,seconds)}
+  if(c.masterySession&&!c.learningMasteryMerged){masteryMergeIntoStats(s,c.masterySession);c.learningMasteryMerged=true}
+  c.learningStatsClosed=true;writeStats(s);return c.learningPhase!==4||!withCoach
+}
+function launchLessonPhase(id,phase){
+  if(!TECHNIQUE_LIBRARY[id]||![2,3,4].includes(phase))return lessonView(id);
+  let s=safeStats(),b=learningBucket(s,id);if(phase===3&&!b.guided)return lessonView(id);if(phase===4&&!b.assisted)return lessonView(id);
+  if(current&&!current.completed)clearSaved();stopTimer();paused=false;setBusy(true);
+  requestAnimationFrame(()=>{try{
+    if(!buildTrainingExercise(id)){showToast(tr('trainingUnavailable'));lessonView(id);return}
+    current.learning=true;current.learningTechnique=id;current.learningPhase=phase;current.learningStatsClosed=false;current.learningMasteryMerged=false;
+    current.coachModeOverride=phase===4?'minimal':'pedagogical';learningStatsStart(id,phase);
+    trainingRender();historyInit(true);updateHistoryButtons();startTimer(true,0,false);saveCurrent();haptic(8)
+  }finally{setBusy(false)}})
+}
+function learningHintWhy(h){return h.rank===3?rank3Why(h):h.rank===2?rank2Why(h):h.rank===1?rank1Why(h):h.why}
+function learningMoveText(h){
+  let g=current.game;
+  if(g==='queens')return lang()==='fr'?`${h.v===2?'Place une reine':'Place un X'} en ligne ${h.r+1}, colonne ${h.c+1}.`:`${h.v===2?'Place a queen':'Place an X'} at row ${h.r+1}, column ${h.c+1}.`;
+  if(g==='tango'){let name=h.v===1?(lang()==='fr'?'un soleil ☀':'a sun ☀'):(lang()==='fr'?'une lune ☾':'a moon ☾');return lang()==='fr'?`Place ${name} en ligne ${h.r+1}, colonne ${h.c+1}.`:`Place ${name} at row ${h.r+1}, column ${h.c+1}.`}
+  if(g==='sudoku')return lang()==='fr'?`Place le chiffre ${h.v} en ligne ${h.r+1}, colonne ${h.c+1}.`:`Place digit ${h.v} at row ${h.r+1}, column ${h.c+1}.`;
+  return lang()==='fr'?`Attribue la case ligne ${h.r+1}, colonne ${h.c+1} à la zone ${h.id+1}.`:`Assign row ${h.r+1}, column ${h.c+1} to region ${h.id+1}.`
+}
+function learningApplyExpectedMove(actionType='LEARNING_GUIDED'){
+  if(!current?.learning||!current.trainingTargetHint)return false;let h=current.trainingTargetHint,before=historySnapshotKey(),g=current.game;
+  if(g==='patches'){current.paint[h.r][h.c]=h.id;drawP()}else{current.state[h.r][h.c]=h.v;if(g==='queens')drawQ();else if(g==='tango')drawT();else{current.sel=[h.r,h.c];drawS()}}
+  historyRecord({type:actionType,reasoning:structuredReasoning(g,h),primaryTarget:[h.r,h.c]},before);saveCurrent();return true
+}
+function learningRevealGuidedMove(){return learningApplyExpectedMove('LEARNING_GUIDED')}
+function decorateLearningShell(){
+  if(!current?.learning)return;let box=$('#learningGuide');if(!box)return;let h=current.trainingTargetHint,phase=current.learningPhase;
+  box.hidden=false;
+  if(phase===2){
+    box.innerHTML=`<div class="learning-guide-head"><span>2/4</span><b>${tr('lessonGuided')} — ${techniqueTitle(current.learningTechnique)}</b></div>
+      <p><b>${tr('lessonObserve')} :</b> ${coachLookText(current.game,[h.r,h.c],{reasoning:structuredReasoning(current.game,h)})}</p>
+      <p><b>${tr('rulesTitle')} :</b> ${techniqueTitle(current.learningTechnique)}</p>
+      <p><b>${tr('hintWhy')} :</b> ${learningHintWhy(h)}</p>
+      <button class="btn primary" id="learningRevealBtn">${tr('lessonShowMove')}</button>`;
+    let rb=$('#learningRevealBtn');if(rb)rb.onclick=learningRevealGuidedMove;clearHintFocus();focusHintContext(current.game,[h.r,h.c],{reasoning:structuredReasoning(current.game,h)})
+  }else if(phase===3){
+    box.innerHTML=`<div class="learning-guide-head"><span>3/4</span><b>${tr('lessonAssisted')} — ${techniqueTitle(current.learningTechnique)}</b></div>
+      <p>${tr('lessonGoal')} : ${techniqueSummary(current.learningTechnique)}</p><p>${lessonMethodText(current.learningTechnique)}</p>`;
+  }else{
+    box.innerHTML=`<div class="learning-guide-head"><span>4/4</span><b>${tr('lessonIndependent')} — ${techniqueTitle(current.learningTechnique)}</b></div>
+      <p>${tr('lessonGoal')} : ${techniqueSummary(current.learningTechnique)}</p><p>${lessonMethodText(current.learningTechnique)}</p>`;
+  }
+}
+function finishLearningExercise(){
+  if(!current?.learning||current.trainingCompleted)return false;current.trainingCompleted=true;
+  let used=current.coachUsage?.techniques?.[current.learningTechnique],withCoach=!!(used&&(used.where||used.rule||used.why||used.reveal)),seconds=timerSeconds(),phase=current.learningPhase;
+  if(phase===4&&!withCoach)masteryRecord(current.learningTechnique,'solo');
+  stopTimer(false);elapsedBase=seconds;startedAt=0;paused=true;let valid=learningStatsFinish(current,seconds,withCoach);clearSaved();updatePauseButton();updateHistoryButtons();
+  if(phase===4&&!valid){
+    status(tr('lessonIndependentRetry'),false);
+    showHintNotice(`<b>${tr('lessonIndependentRetry')}</b><div class="training-complete-actions"><button class="btn primary" onclick="launchLessonPhase('${current.learningTechnique}',4)">${tr('lessonStartIndependent')}</button><button class="btn" onclick="lessonView('${current.learningTechnique}')">${tr('lesson')}</button></div>`);
+  }else{
+    let complete=phase===4?tr('lessonComplete'):learningPhaseTitle(phase);
+    status(`${complete} — ${fmt(seconds)}`,true);
+    let next=phase===2?`<button class="btn primary" onclick="launchLessonPhase('${current.learningTechnique}',3)">${tr('lessonStartAssisted')}</button>`:
+             phase===3?`<button class="btn primary" onclick="launchLessonPhase('${current.learningTechnique}',4)">${tr('lessonStartIndependent')}</button>`:
+             `<button class="btn primary" onclick="learningView()">${tr('learn')}</button>`;
+    showHintNotice(`<b>${complete}</b><br>${techniqueTitle(current.learningTechnique)}<div class="training-complete-actions">${next}<button class="btn" onclick="lessonView('${current.learningTechnique}')">${tr('lesson')}</button></div>`);haptic(18)
+  }
+  return true
+}
+
+// ===== v2.17.0 — targeted technique training =====
+function trainingBucket(stats,id){
+  if(!stats.training||typeof stats.training!=='object')stats.training={schema:1,byTechnique:{}};
+  if(!stats.training.byTechnique)stats.training.byTechnique={};
+  let b=stats.training.byTechnique[id]||(stats.training.byTechnique[id]={attempts:0,completed:0,withCoach:0,best:null});
+  b.attempts=Math.max(0,Number(b.attempts)||0);b.completed=Math.max(0,Number(b.completed)||0);b.withCoach=Math.max(0,Number(b.withCoach)||0);b.best=b.best==null?null:Math.max(0,Number(b.best)||0);return b
+}
+function trainingStatsStart(id){if(current?.learning)return;let s=safeStats(),b=trainingBucket(s,id);b.attempts++;writeStats(s)}
+function trainingStatsFinish(c,seconds){
+  if(!c?.training||c.learning||c.trainingStatsClosed)return;
+  let s=safeStats(),b=trainingBucket(s,c.trainingTechnique),used=c.coachUsage?.techniques?.[c.trainingTechnique],withCoach=!!(used&&(used.where||used.rule||used.why||used.reveal));
+  b.completed++;if(withCoach)b.withCoach++;b.best=b.best==null?seconds:Math.min(b.best,seconds);
+  if(c.masterySession&&!c.trainingMasteryMerged){masteryMergeIntoStats(s,c.masterySession);c.trainingMasteryMerged=true}
+  c.trainingStatsClosed=true;writeStats(s)
+}
+function trainingRecommendedId(all=effectiveMasteryByTechnique(safeStats())){
+  let ids=Object.keys(TECHNIQUE_LIBRARY),best=null,bestKey=Infinity;
+  for(let id of ids){let m=masteryMetrics(all[id]),rank=TECHNIQUE_LIBRARY[id].rank,key=(m.samples<3?35:(m.score??50))-Math.min(5,m.errors)*4+rank*2;if(key<bestKey){bestKey=key;best=id}}
+  return best||ids[0]
+}
+function trainingCard(id,all,stats,recommended){
+  let x=TECHNIQUE_LIBRARY[id],m=masteryMetrics(all[id]),b=trainingBucket(stats,id),score=m.score==null?'—':`${m.score}%`,rec=id===recommended?`<span class="training-rec">★ ${tr('trainingRecommended')}</span>`:'';
+  return `<article class="training-card ${id===recommended?'recommended':''}"><div class="training-card-head"><div><b>${techniqueTitle(id)}</b><code>${id}</code></div><strong>${score}</strong></div><small>R${x.rank} · ${tr(masteryLevel(m).key)}</small>${rec}<div class="training-card-stats"><span>${tr('trainingCompleted')} <b>${b.completed}</b></span><span>${tr('trainingAttempts')} <b>${b.attempts}</b></span></div><div class="training-card-actions"><button class="btn" data-learn-from-training="${id}">${tr('learn')}</button><button class="btn primary training-start" data-tech="${id}">${tr('trainTechnique')}</button></div></article>`
+}
+function trainingView(){
+  if(current&&!current.completed)saveCurrent();stopTimer();timerEl.textContent='00:00';current=null;updateI18n();
+  let s=safeStats(),all=effectiveMasteryByTechnique(s),recommended=trainingRecommendedId(all),games=['queens','tango','sudoku','patches'];
+  let sections=games.map(g=>`<section class="training-game"><h2>${gameLabel(g)}</h2><div class="training-grid">${techniqueIdsForGame(g).map(id=>trainingCard(id,all,s,recommended)).join('')}</div></section>`).join('');
+  app.innerHTML=`<section class="panel training-panel"><div class="stats-head"><div><h1>${tr('training')}</h1><p>${tr('trainingSub')}</p></div><button class="btn" id="trainingBack">${tr('back')}</button></div>${sections}</section>`;
+  $('#trainingBack').onclick=home;app.querySelectorAll('[data-learn-from-training]').forEach(b=>b.onclick=()=>lessonView(b.dataset.learnFromTraining));app.querySelectorAll('[data-tech]').forEach(b=>b.onclick=()=>launchTraining(b.dataset.tech));app.querySelectorAll('button').forEach(pressFeedback)
+}
+function trainingDifficulty(id){let x=TECHNIQUE_LIBRARY[id];if(!x)return 'easy';if(x.game==='queens'&&x.rank>=3)return 'hard';return x.rank>=2?'hard':x.rank===1?'medium':'easy'}
+function trainingSetQueenBase(g,diff){current={game:'queens',diff,n:g.n,reg:g.reg,sol:g.sol,rating:g.rating,state:Array.from({length:g.n},()=>Array(g.n).fill(0)),generated:true,unique:true,completed:false,training:true}}
+function trainingSetTangoBase(g,diff,blank=true){let state=Array.from({length:6},()=>Array(6).fill(-1));if(!blank)for(let i of g.givens)state[Math.floor(i/6)][i%6]=g.sol[Math.floor(i/6)][i%6];current={game:'tango',diff,n:6,sol:g.sol,givens:new Set(blank?[]:g.givens),edges:blank?[]:g.edges,rating:g.rating,state,generated:true,unique:true,completed:false,training:true,tangoPendingCell:null}}
+function trainingSetSudokuBase(g,diff){current={game:'sudoku',diff,n:6,sol:g.sol,empty:new Set(Array.from({length:36},(_,i)=>i)),rating:g.rating,state:Array.from({length:6},()=>Array(6).fill(0)),sel:null,generated:true,unique:true,completed:false,training:true}}
+function trainingSetPatchBase(g,diff){const pal=['#f3c6a8','#b9d9c1','#c6d4ed','#e2c3df','#f0dc9d','#c7e0e3','#d5ceb8','#d4e3b4','#edbfc1','#c8c4e8','#e5d0a4','#b7d7d1'];current={game:'patches',diff,n:g.n,reg:g.reg,ids:g.ids,cellsBy:g.cellsBy,clues:g.clues,rating:g.rating,pal,active:g.ids[0],paint:Array.from({length:g.n},()=>Array(g.n).fill(null)),generated:true,unique:true,completed:false,training:true}}
+function trainingSudokuDirectHint(id){
+  if(!current||current.game!=='sudoku')return null;
+  if(id==='S_NAKED_SINGLE'){
+    for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(current.empty.has(r*6+c)&&current.state[r][c]===0){let cand=sudokuCandidatesAt(r,c);if(cand.length===1)return {r,c,v:cand[0],rank:0,technique:id,why:lang()==='fr'?`après élimination par la ligne, la colonne et le bloc 2×3, seul ${cand[0]} reste possible.`:`after elimination by the row, column and 2×3 box, only ${cand[0]} remains possible.`}}
+    return null
+  }
+  let units=[];
+  if(id==='S_HIDDEN_ROW')for(let r=0;r<6;r++)units.push({cells:Array.from({length:6},(_,c)=>[r,c]),nameFr:`la ligne ${r+1}`,nameEn:`row ${r+1}`});
+  else if(id==='S_HIDDEN_COLUMN')for(let c=0;c<6;c++)units.push({cells:Array.from({length:6},(_,r)=>[r,c]),nameFr:`la colonne ${c+1}`,nameEn:`column ${c+1}`});
+  else if(id==='S_HIDDEN_BOX')for(let br=0;br<6;br+=2)for(let bc=0;bc<6;bc+=3){let cells=[];for(let r=br;r<br+2;r++)for(let c=bc;c<bc+3;c++)cells.push([r,c]);units.push({cells,nameFr:`le bloc ${Math.floor(br/2)+1}-${Math.floor(bc/3)+1}`,nameEn:`the 2×3 box at rows ${br+1}-${br+2}, columns ${bc+1}-${bc+3}`})}
+  for(let u of units)for(let v=1;v<=6;v++){let places=u.cells.filter(([r,c])=>current.state[r][c]===0&&sudokuCandidatesAt(r,c).includes(v));if(places.length===1){let [r,c]=places[0],cand=sudokuCandidatesAt(r,c);if(cand.length>1)return {r,c,v,rank:0,technique:id,why:lang()==='fr'?`${v} n’a qu’une seule position possible dans ${u.nameFr}.`:`${v} has only one possible position in ${u.nameEn}.`}}}
+  return null
+}
+function trainingHintForId(id,deadline=Date.now()+1800){
+  let x=TECHNIQUE_LIBRARY[id];if(!x||!current||current.game!==x.game)return null;let h=null,r=x.rank;
+  if(x.game==='queens')h=r===0?findQueenLogicalHint():r===1?findQueenRank1Hint(deadline):r===2?findQueenRank2Hint(deadline):findQueenRank3Hint(deadline);
+  else if(x.game==='tango')h=r===0?findTangoLogicalHint():r===1?findTangoRank1Hint():findTangoRank2Hint();
+  else if(x.game==='sudoku')h=r===0?trainingSudokuDirectHint(id):r===1?findSudokuRank1Hint():findSudokuRank2Hint();
+  else if(x.game==='patches')h=r===0?findPatchLogicalHint():r===1?findPatchRank1Hint():findPatchRank2Hint();
+  if(!h||h.timeout||coachTechniqueId(x.game,h)!==id)return null;h.technique=id;return h
+}
+function trainingBuildQueensDirect(id,deadline){
+  for(let attempt=0;attempt<5&&Date.now()<deadline;attempt++){
+    let g=queenCandidate('medium');
+    // Exclusions and unique-position exercises are constructed only from valid queen solution/regions; validation below uses visible state only.
+    if(id==='Q_EXCLUSION_ROW'){
+      for(let r=0;r<g.n;r++){trainingSetQueenBase(g,'medium');let q=g.sol[r],c=(q+2)%g.n;if(c===q)c=(c+1)%g.n;current.state[r][q]=2;let h=trainingHintForId(id,deadline);if(h)return h}
+    }else if(id==='Q_EXCLUSION_COLUMN'){
+      for(let r=0;r<g.n;r++){trainingSetQueenBase(g,'medium');let c=g.sol[r],rr=(r+2)%g.n;current.state[r][c]=2;let h=trainingHintForId(id,deadline);if(h)return h}
+    }else if(id==='Q_EXCLUSION_REGION'){
+      for(let r=0;r<g.n;r++){let q=[r,g.sol[r]],z=g.reg[q[0]][q[1]];for(let rr=0;rr<g.n;rr++)for(let cc=0;cc<g.n;cc++)if(g.reg[rr][cc]===z&&rr!==q[0]&&cc!==q[1]){trainingSetQueenBase(g,'medium');current.state[q[0]][q[1]]=2;let h=trainingHintForId(id,deadline);if(h)return h}}
+    }else if(id==='Q_EXCLUSION_ADJACENCY'){
+      for(let r=0;r<g.n;r++){let q=[r,g.sol[r]];for(let dr of [-1,1])for(let dc of [-1,1]){let rr=r+dr,cc=q[1]+dc;if(rr>=0&&rr<g.n&&cc>=0&&cc<g.n&&g.reg[rr][cc]!==g.reg[r][q[1]]){trainingSetQueenBase(g,'medium');current.state[r][q[1]]=2;let h=trainingHintForId(id,deadline);if(h)return h}}}
+    }else if(id==='Q_UNIQUE_ROW'){
+      for(let r=0;r<g.n;r++){trainingSetQueenBase(g,'medium');for(let c=0;c<g.n;c++)if(c!==g.sol[r])current.state[r][c]=1;let h=trainingHintForId(id,deadline);if(h)return h}
+    }else if(id==='Q_UNIQUE_COLUMN'){
+      for(let c=0;c<g.n;c++){let qr=g.sol.indexOf(c);if(qr<0)continue;trainingSetQueenBase(g,'medium');for(let r=0;r<g.n;r++)if(r!==qr)current.state[r][c]=1;let h=trainingHintForId(id,deadline);if(h)return h}
+    }else if(id==='Q_UNIQUE_REGION'){
+      for(let z of [...new Set(g.reg.flat())]){let q=null;for(let r=0;r<g.n;r++)if(g.reg[r][g.sol[r]]===z)q=[r,g.sol[r]];if(!q)continue;trainingSetQueenBase(g,'medium');for(let r=0;r<g.n;r++)for(let c=0;c<g.n;c++)if(g.reg[r][c]===z&&(r!==q[0]||c!==q[1]))current.state[r][c]=1;let h=trainingHintForId(id,deadline);if(h)return h}
+    }
+  }
+  return null
+}
+function trainingBuildTangoDirect(id,deadline){
+  for(let a=0;a<4&&Date.now()<deadline;a++){
+    let g=tangoCandidate('easy');trainingSetTangoBase(g,'easy',true);
+    if(id==='T_BALANCE_ROW'){
+      for(let r=0;r<6;r++)for(let v=0;v<2;v++){let cells=[];for(let c=0;c<6;c++)if(g.sol[r][c]===v)cells.push(c);if(cells.length===3){current.state=Array.from({length:6},()=>Array(6).fill(-1));current.givens=new Set();for(let c of cells){current.state[r][c]=v;current.givens.add(r*6+c)}let h=trainingHintForId(id,deadline);if(h)return h}}
+    }else if(id==='T_BALANCE_COLUMN'){
+      for(let c=0;c<6;c++)for(let v=0;v<2;v++){let cells=[];for(let r=0;r<6;r++)if(g.sol[r][c]===v)cells.push(r);if(cells.length===3){current.state=Array.from({length:6},()=>Array(6).fill(-1));current.givens=new Set();for(let r of cells){current.state[r][c]=v;current.givens.add(r*6+c)}let h=trainingHintForId(id,deadline);if(h)return h}}
+    }else if(id==='T_NO_THREE'){
+      for(let r=0;r<6;r++)for(let c=0;c<4;c++){let v=[g.sol[r][c],g.sol[r][c+1],g.sol[r][c+2]];for(let k=0;k<3;k++){let others=[0,1,2].filter(x=>x!==k);if(v[others[0]]===v[others[1]]&&v[k]!==v[others[0]]){current.state=Array.from({length:6},()=>Array(6).fill(-1));current.givens=new Set();for(let j of others){current.state[r][c+j]=v[j];current.givens.add(r*6+c+j)}let h=trainingHintForId(id,deadline);if(h)return h}}}
+    }else if(id==='T_RELATION_EQUAL'||id==='T_RELATION_OPPOSITE'){
+      let rel=id==='T_RELATION_EQUAL'?'=':'×';
+      for(let r=0;r<6;r++)for(let c=0;c<5;c++)if((g.sol[r][c]===g.sol[r][c+1])===(rel==='=')){current.state=Array.from({length:6},()=>Array(6).fill(-1));current.givens=new Set([r*6+c]);current.state[r][c]=g.sol[r][c];current.edges=[[r,c,'r',rel]];let h=trainingHintForId(id,deadline);if(h)return h}
+    }
+  }
+  return null
+}
+function trainingBuildSudokuDirect(id,deadline){
+  for(let a=0;a<4&&Date.now()<deadline;a++){
+    let g=sudokuCandidate('medium');
+    if(id==='S_NAKED_SINGLE'){
+      for(let r=0;r<6;r++)for(let target=0;target<6;target++){trainingSetSudokuBase(g,'medium');current.empty=new Set();for(let rr=0;rr<6;rr++)for(let c=0;c<6;c++)if(rr!==r||c===target)current.empty.add(rr*6+c);current.state=Array.from({length:6},()=>Array(6).fill(0));for(let c=0;c<6;c++)if(c!==target)current.state[r][c]=g.sol[r][c];let h=trainingHintForId(id,deadline);if(h)return h}
+    }else{
+      for(let k=0;k<500&&Date.now()<deadline;k++){
+        trainingSetSudokuBase(g,'medium');let holes=12+Math.floor(Math.random()*16),idx=shuffle(Array.from({length:36},(_,i)=>i)).slice(0,holes);current.empty=new Set(idx);current.state=g.sol.map((row,r)=>row.map((v,c)=>current.empty.has(r*6+c)?0:v));let h=trainingHintForId(id,deadline);if(h)return h
+      }
+    }
+  }
+  return null
+}
+function trainingBuildPatchDirect(id,deadline){
+  for(let a=0;a<8&&Date.now()<deadline;a++){
+    let g=patchesCandidate(id==='P_SINGLE_RECTANGLE'?'easy':'medium');trainingSetPatchBase(g,id==='P_SINGLE_RECTANGLE'?'easy':'medium');
+    for(let k=0;k<100&&Date.now()<deadline;k++){
+      current.paint=Array.from({length:g.n},()=>Array(g.n).fill(null));let p=id==='P_MANDATORY_CELL'?Math.random()*.42:Math.random()*.18;for(let r=0;r<g.n;r++)for(let c=0;c<g.n;c++)if(Math.random()<p)current.paint[r][c]=g.reg[r][c];let h=trainingHintForId(id,deadline);if(h)return h
+    }
+  }
+  return null
+}
+function trainingRandomProgress(game,base,p){
+  if(game==='queens'){current.state=Array.from({length:current.n},()=>Array(current.n).fill(0));for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++){if(c===current.sol[r]){if(Math.random()<p*.55)current.state[r][c]=2}else if(Math.random()<p*.42)current.state[r][c]=1}}
+  else if(game==='tango'){current.state=Array.from({length:6},()=>Array(6).fill(-1));current.givens=new Set();for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(Math.random()<p){current.state[r][c]=current.sol[r][c];current.givens.add(r*6+c)}}
+  else if(game==='sudoku'){current.empty=new Set();current.state=current.sol.map(r=>[...r]);for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(Math.random()>p){current.empty.add(r*6+c);current.state[r][c]=0}}
+  else if(game==='patches'){current.paint=Array.from({length:current.n},()=>Array(current.n).fill(null));for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(Math.random()<p)current.paint[r][c]=current.reg[r][c]}
+}
+const TRAINING_ADVANCED_FIXTURES={"Q_CONTRADICTION_R1":{"game":"queens","diff":"medium","n":7,"reg":[[2,2,2,0,0,0,0],[2,2,1,1,0,0,0],[2,2,2,1,1,1,0],[4,4,4,4,3,1,0],[4,4,4,4,4,1,0],[4,4,4,4,4,4,5],[6,4,4,4,4,4,4]],"sol":[5,3,1,4,2,6,0],"rating":{"score":259,"technique":"recherche contrainte","solved":true,"remain":0,"level":2,"nodes":123,"singles":3},"state":[[0,1,0,1,0,0,0],[0,0,0,2,0,0,1],[1,0,0,0,1,0,0],[0,0,0,0,0,0,0],[0,0,0,1,0,0,1],[0,1,0,1,0,0,2],[2,0,1,0,1,0,0]],"generated":true,"unique":true,"completed":false},"Q_CONTRADICTION_R2":{"game":"queens","diff":"hard","n":8,"reg":[[7,7,7,7,7,7,7,7],[6,7,7,5,5,7,7,5],[6,7,7,4,5,5,5,5],[6,6,7,4,4,4,5,3],[6,6,2,2,2,5,5,3],[6,6,6,2,2,2,2,2],[0,2,2,2,2,1,2,1],[0,0,2,2,2,1,1,1]],"sol":[2,0,6,4,7,3,5,1],"rating":{"score":172,"technique":"propagation croisée","solved":true,"remain":0,"level":1,"nodes":75,"singles":0},"state":[[0,0,2,0,0,0,0,0],[2,1,1,1,0,0,0,0],[0,0,1,0,0,0,2,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,1,0,0],[0,0,1,0,0,0,0,1],[0,0,1,1,1,0,0,0],[0,0,0,1,1,0,0,0]],"generated":true,"unique":true,"completed":false},"Q_CONTRADICTION_R3":{"game":"queens","diff":"hard","n":8,"reg":[[0,0,0,0,0,0,1,1],[2,0,0,3,0,1,1,1],[2,3,3,3,0,1,1,1],[2,3,3,3,3,3,1,1],[3,3,4,3,3,7,1,1],[3,4,4,4,7,7,7,5],[4,4,4,7,7,6,6,7],[4,4,7,7,7,7,7,7]],"sol":[1,6,0,4,2,7,5,3],"rating":{"score":228,"technique":"recherche contrainte","solved":true,"remain":0,"level":2,"nodes":104,"singles":1},"state":[[0,0,1,0,1,0,1,0],[0,0,0,0,0,0,0,1],[0,0,0,0,0,0,0,0],[0,1,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0]],"generated":true,"unique":true,"completed":false},"T_CONTRADICTION_R1":{"game":"tango","diff":"medium","n":6,"sol":[[0,1,1,0,0,1],[0,1,1,0,1,0],[1,0,0,1,0,1],[1,0,1,1,0,0],[0,1,0,0,1,1],[1,0,0,1,1,0]],"givens":[3,4,7,8,21,22,31],"edges":[[2,1,"d","="],[1,1,"r","="],[4,0,"r","×"],[4,1,"r","×"],[1,0,"d","×"]],"rating":{"score":68,"technique":"chaîne de contraintes","solved":false,"remain":18,"level":2},"state":[[-1,-1,-1,0,0,-1],[-1,1,1,-1,-1,-1],[-1,-1,-1,-1,-1,-1],[-1,-1,-1,1,0,-1],[-1,-1,-1,-1,-1,-1],[-1,0,-1,-1,-1,-1]],"generated":true,"unique":true,"completed":false,"tangoPendingCell":null},"T_CONTRADICTION_R2":{"game":"tango","diff":"hard","n":6,"sol":[[0,1,0,1,1,0],[0,1,1,0,0,1],[1,0,1,1,0,0],[0,1,0,0,1,1],[1,0,0,1,0,1],[1,0,1,0,1,0]],"givens":[1,4,5,6,7,8,9,10,13,16,17,18,19,22,29,30,31,32,33,35],"edges":[[3,2,"r","="],[2,0,"d","×"],[0,1,"d","="],[1,3,"r","="],[3,3,"r","×"],[4,1,"r","="],[1,1,"r","="]],"rating":{"score":99,"technique":"chaîne de contraintes","solved":false,"remain":33,"level":2},"state":[[-1,1,-1,-1,1,0],[0,1,1,0,0,-1],[-1,0,-1,-1,0,0],[0,1,-1,-1,1,-1],[-1,-1,-1,-1,-1,1],[1,0,1,0,-1,0]],"generated":true,"unique":true,"completed":false,"tangoPendingCell":null},"S_CONTRADICTION_R1":{"game":"sudoku","diff":"medium","n":6,"sol":[[6,2,1,5,4,3],[5,4,3,6,2,1],[2,1,5,4,3,6],[4,3,6,2,1,5],[1,5,4,3,6,2],[3,6,2,1,5,4]],"empty":[2,3,4,5,6,7,11,13,16,18,20,21,28,29,30,31,33],"rating":{"score":22,"technique":"single nu","solved":true,"remain":0,"level":0},"state":[[6,2,0,0,0,0],[0,0,3,6,2,0],[2,0,5,4,0,6],[0,3,0,0,1,5],[1,5,4,3,0,0],[0,0,2,0,5,4]],"sel":null,"generated":true,"unique":true,"completed":false},"S_CONTRADICTION_R2":{"game":"sudoku","diff":"hard","n":6,"sol":[[2,3,4,1,5,6],[5,6,1,4,2,3],[6,4,5,2,3,1],[3,1,2,5,6,4],[4,2,6,3,1,5],[1,5,3,6,4,2]],"empty":[1,3,4,5,6,7,8,9,11,13,15,16,19,20,21,22,24,25,26,27,28,30,34,35],"rating":{"score":26,"technique":"single nu","solved":true,"remain":0,"level":0},"state":[[2,0,4,0,0,0],[0,0,0,0,2,0],[6,0,5,0,0,1],[3,0,0,0,0,4],[0,0,0,0,0,5],[0,5,3,6,0,0]],"sel":null,"generated":true,"unique":true,"completed":false},"P_CONTRADICTION_R1":{"game":"patches","diff":"medium","n":6,"reg":[[0,2,2,2,4,4],[1,3,3,3,4,4],[5,6,7,7,7,7],[8,8,8,8,8,8],[9,9,9,9,9,9],[9,9,9,9,9,9]],"ids":[0,1,2,3,4,5,6,7,8,9],"cellsBy":{"0":[[0,0]],"1":[[1,0]],"2":[[0,1],[0,2],[0,3]],"3":[[1,1],[1,2],[1,3]],"4":[[0,4],[0,5],[1,4],[1,5]],"5":[[2,0]],"6":[[2,1]],"7":[[2,2],[2,3],[2,4],[2,5]],"8":[[3,0],[3,1],[3,2],[3,3],[3,4],[3,5]],"9":[[4,0],[4,1],[4,2],[4,3],[4,4],[4,5],[5,0],[5,1],[5,2],[5,3],[5,4],[5,5]]},"clues":{"0":{"pos":[0,0],"size":1,"shape":"carré","mode":"size"},"1":{"pos":[1,0],"size":1,"shape":"carré","mode":"shape"},"2":{"pos":[0,2],"size":3,"shape":"horizontal","mode":"size"},"3":{"pos":[1,1],"size":3,"shape":"horizontal","mode":"size"},"4":{"pos":[1,5],"size":4,"shape":"carré","mode":"none"},"5":{"pos":[2,0],"size":1,"shape":"carré","mode":"size"},"6":{"pos":[2,1],"size":1,"shape":"carré","mode":"shape"},"7":{"pos":[2,5],"size":4,"shape":"horizontal","mode":"size"},"8":{"pos":[3,0],"size":6,"shape":"horizontal","mode":"shape"},"9":{"pos":[5,0],"size":12,"shape":"horizontal","mode":"size"}},"rating":{"score":23,"technique":"couverture forcée","solved":true,"remain":0,"level":1},"pal":["#f3c6a8","#b9d9c1","#c6d4ed","#e2c3df","#f0dc9d","#c7e0e3","#d5ceb8","#d4e3b4","#edbfc1","#c8c4e8","#e5d0a4","#b7d7d1"],"active":0,"paint":[[0,null,null,null,null,null],[null,null,null,null,null,null],[null,null,null,null,null,null],[null,8,null,null,null,null],[null,null,null,null,null,null],[9,9,9,null,9,9]],"generated":true,"unique":true,"completed":false},"P_CONTRADICTION_R2":{"game":"patches","diff":"hard","n":7,"reg":[[0,0,0,0,1,1,2],[0,0,0,0,1,1,2],[3,3,3,3,3,3,3],[4,4,4,4,4,5,7],[4,4,4,4,4,6,7],[8,8,8,8,8,8,8],[9,9,9,9,9,9,9]],"ids":[0,1,2,3,4,5,6,7,8,9],"cellsBy":{"0":[[0,0],[0,1],[0,2],[0,3],[1,0],[1,1],[1,2],[1,3]],"1":[[0,4],[0,5],[1,4],[1,5]],"2":[[0,6],[1,6]],"3":[[2,0],[2,1],[2,2],[2,3],[2,4],[2,5],[2,6]],"4":[[3,0],[3,1],[3,2],[3,3],[3,4],[4,0],[4,1],[4,2],[4,3],[4,4]],"5":[[3,5]],"6":[[4,5]],"7":[[3,6],[4,6]],"8":[[5,0],[5,1],[5,2],[5,3],[5,4],[5,5],[5,6]],"9":[[6,0],[6,1],[6,2],[6,3],[6,4],[6,5],[6,6]]},"clues":{"0":{"pos":[1,3],"size":8,"shape":"horizontal","mode":"size"},"1":{"pos":[1,5],"size":4,"shape":"carré","mode":"shape"},"2":{"pos":[0,6],"size":2,"shape":"vertical","mode":"size"},"3":{"pos":[2,4],"size":7,"shape":"horizontal","mode":"shape"},"4":{"pos":[4,0],"size":10,"shape":"horizontal","mode":"size"},"5":{"pos":[3,5],"size":1,"shape":"carré","mode":"size"},"6":{"pos":[4,5],"size":1,"shape":"carré","mode":"none"},"7":{"pos":[4,6],"size":2,"shape":"vertical","mode":"size"},"8":{"pos":[5,2],"size":7,"shape":"horizontal","mode":"size"},"9":{"pos":[6,4],"size":7,"shape":"horizontal","mode":"none"}},"rating":{"score":59,"technique":"enchaînement spatial","solved":false,"remain":8,"level":2},"pal":["#f3c6a8","#b9d9c1","#c6d4ed","#e2c3df","#f0dc9d","#c7e0e3","#d5ceb8","#d4e3b4","#edbfc1","#c8c4e8","#e5d0a4","#b7d7d1"],"active":0,"paint":[[null,null,null,0,null,null,null],[null,0,null,null,null,1,null],[null,null,null,null,3,null,null],[null,4,4,null,null,null,null],[null,4,null,null,4,null,7],[null,8,8,8,8,8,8],[null,9,9,9,null,9,9]],"generated":true,"unique":true,"completed":false}};
+function trainingLoadAdvancedFixture(id,deadline){
+  let raw=TRAINING_ADVANCED_FIXTURES[id];if(!raw)return null;let c=JSON.parse(JSON.stringify(raw));if(Array.isArray(c.givens))c.givens=new Set(c.givens);if(Array.isArray(c.empty))c.empty=new Set(c.empty);current=c;current.training=true;let h=trainingHintForId(id,deadline);if(!h){current=null;return null}return h
+}
+function trainingBuildAdvanced(id,deadline){
+  let fixture=trainingLoadAdvancedFixture(id,deadline);if(fixture)return fixture;let x=TECHNIQUE_LIBRARY[id],diff=trainingDifficulty(id);
+  for(let b=0;b<4&&Date.now()<deadline;b++){
+    if(x.game==='queens')trainingSetQueenBase(queenCandidate(diff),diff);
+    else if(x.game==='tango'){let g=tangoCandidate(diff);trainingSetTangoBase(g,diff,true);current.edges=g.edges}
+    else if(x.game==='sudoku')trainingSetSudokuBase(sudokuCandidate(diff),diff);
+    else if(x.game==='patches')trainingSetPatchBase(patchesCandidate(diff),diff);
+    let base=current;
+    for(let k=0;k<90&&Date.now()<deadline;k++){
+      let p=.12+Math.random()*.72;trainingRandomProgress(x.game,base,p);let h=trainingHintForId(id,deadline);if(h)return h
+    }
+  }
+  return null
+}
+function buildTrainingExercise(id){
+  let x=TECHNIQUE_LIBRARY[id];if(!x)return null;let deadline=Date.now()+5500,h=null;
+  if(x.rank===0){if(x.game==='queens')h=trainingBuildQueensDirect(id,deadline);else if(x.game==='tango')h=trainingBuildTangoDirect(id,deadline);else if(x.game==='sudoku')h=trainingBuildSudokuDirect(id,deadline);else h=trainingBuildPatchDirect(id,deadline)}
+  else h=trainingBuildAdvanced(id,deadline);
+  if(!h)return null;
+  current.training=true;current.trainingTechnique=id;current.trainingTargetHint={...h,technique:id};current.trainingCompleted=false;current.trainingOffPath=false;current.trainingStatsClosed=false;current.trainingMasteryMerged=false;current.coachUsage=null;current.masterySession=null;current.errorCoachUsage=null;current.lastError=null;current.hintFlow=null;current.lastReasoning=null;
+  current.trainingStartSnapshot=puzzleSnapshot();return current
+}
+function trainingHintExpectedValue(h){return h?.id!=null?h.id:h?.v}
+function trainingActionMatchesHint(h,action){if(!h||!action)return false;let expected=trainingHintExpectedValue(h);return (action.changes||[]).some(ch=>ch.row===h.r&&ch.column===h.c&&ch.to===expected)}
+function trainingRender(){
+  if(!current?.training)return;
+  if(current.game==='queens')renderQueens(current);else if(current.game==='tango')renderTango(current);else if(current.game==='sudoku')renderSudoku(current);else renderPatches(current);
+  decorateTrainingShell()
+}
+function decorateTrainingShell(){
+  if(!current?.training)return;let d=$('#difficulty');if(d)d.disabled=true;let n=$('#newBtn');
+  if(current.learning){
+    if(n){n.textContent=tr('lesson');n.onclick=()=>lessonView(current.learningTechnique)}
+  }else if(n){n.textContent=tr('newExercise');n.onclick=()=>launchTraining(current.trainingTechnique)}
+  let r=$('#resetBtn');if(r)r.onclick=resetTrainingExercise;let c=$('#checkBtn');if(c)c.onclick=checkTrainingTarget;let sol=$('#solutionBtn');if(sol)sol.style.display='none';
+  let hb=$('#hintBtn');if(hb&&current.learningPhase===2)hb.style.display='none';let eb=$('#exploreBtn');if(eb)eb.style.display='none';
+  if(current.learning)decorateLearningShell()
+}
+function launchTraining(id){
+  if(!TECHNIQUE_LIBRARY[id])return trainingView();if(current&&!current.completed)clearSaved();stopTimer();paused=false;setBusy(true);requestAnimationFrame(()=>{let ok=false;try{ok=!!buildTrainingExercise(id);if(!ok){showToast(tr('trainingUnavailable'));trainingView();return}trainingStatsStart(id);trainingRender();historyInit(true);updateHistoryButtons();startTimer(true,0,false);saveCurrent();haptic(8)}finally{setBusy(false)}})
+}
+function resetTrainingExercise(){
+  if(!current?.training||!current.trainingStartSnapshot)return;paused=false;current.trainingCompleted=false;current.trainingOffPath=false;current.hintFlow=null;current.lastError=null;current.masteryPendingAid=null;restorePuzzleSnapshot(current.trainingStartSnapshot);historyInit(true);updateHistoryButtons();stopTimer(false);elapsedBase=0;startedAt=0;startTimer(true,0,false);decorateTrainingShell();saveCurrent();status('',true)
+}
+function trainingTargetStillCorrect(){let h=current?.trainingTargetHint;if(!h)return false;let expected=trainingHintExpectedValue(h);return current.game==='patches'?current.paint[h.r][h.c]===expected:current.state[h.r][h.c]===expected}
+function checkTrainingTarget(){if(!current?.training)return;if(trainingTargetStillCorrect())return finishTrainingExercise();status(tr('trainingTryAgain'),false)}
+function trainingMoveCompleted(action){
+  if(!current?.training||current.trainingCompleted)return false;let h=current.trainingTargetHint;if(trainingActionMatchesHint(h,action)){if(action.type==='COACH_APPLY')current.trainingPendingComplete=true;else finishTrainingExercise();return true}current.trainingOffPath=true;status(tr('trainingTryAgain'),false);return false
+}
+function trainingSyncPath(){if(current?.training&&!current.trainingCompleted)current.trainingOffPath=current.moveHistory?.cursor!=='h0'}
+function finishTrainingExercise(){
+  if(current?.learning)return finishLearningExercise();
+  if(!current?.training||current.trainingCompleted)return false;current.trainingCompleted=true;let used=current.coachUsage?.techniques?.[current.trainingTechnique],withCoach=!!(used&&(used.where||used.rule||used.why||used.reveal));if(!withCoach)masteryRecord(current.trainingTechnique,'solo');let seconds=timerSeconds();stopTimer(false);elapsedBase=seconds;startedAt=0;paused=true;trainingStatsFinish(current,seconds);clearSaved();updatePauseButton();updateHistoryButtons();status(`${tr('trainingComplete')} — ${fmt(seconds)}`,true);showHintNotice(`<b>${tr('trainingComplete')}</b><br>${techniqueTitle(current.trainingTechnique)}<div class="training-complete-actions"><button class="btn primary" onclick="launchTraining('${current.trainingTechnique}')">${tr('newExercise')}</button><button class="btn" onclick="trainingView()">${tr('training')}</button></div>`);haptic(18);return true
+}
+function trainingCoach(){
+  if(!current?.training||paused&&current.trainingCompleted)return;if(showVisibleErrorsBeforeHint())return;if(current.trainingOffPath)return showToast(tr('trainingTryAgain'));let h=current.trainingTargetHint;if(!h)return showToast(tr('trainingUnavailable'));let g=current.game,move='';
+  if(g==='queens')move=lang()==='fr'?`${h.v===2?'Place une reine':'Place un X'} en ligne ${h.r+1}, colonne ${h.c+1}.`:`${h.v===2?'Place a queen':'Place an X'} at row ${h.r+1}, column ${h.c+1}.`;
+  else if(g==='tango'){let name=h.v===1?(lang()==='fr'?'un soleil ☀':'a sun ☀'):(lang()==='fr'?'une lune ☾':'a moon ☾');move=lang()==='fr'?`Place ${name} en ligne ${h.r+1}, colonne ${h.c+1}.`:`Place ${name} at row ${h.r+1}, column ${h.c+1}.`}
+  else if(g==='sudoku')move=lang()==='fr'?`Place le chiffre ${h.v} en ligne ${h.r+1}, colonne ${h.c+1}.`:`Place digit ${h.v} at row ${h.r+1}, column ${h.c+1}.`;
+  else move=lang()==='fr'?`Attribue la case ligne ${h.r+1}, colonne ${h.c+1} à la zone ${h.id+1}.`:`Assign row ${h.r+1}, column ${h.c+1} to region ${h.id+1}.`;
+  let why=h.rank===3?rank3Why(h):h.rank===2?rank2Why(h):h.rank===1?rank1Why(h):h.why,reasoning=structuredReasoning(g,h),reveal=g==='queens'?tr('queenPlaced'):g==='tango'?tr('cellRevealed'):g==='sudoku'?tr('digitRevealed'):tr('patchRevealed');
+  hintStage(g,[h.r,h.c],{move,where:tr('trainingTarget')+` : ${techniqueTitle(current.trainingTechnique)}`,why,reveal,rank:h.rank||0,value:trainingHintExpectedValue(h),reasoning},()=>{if(g==='patches'){current.paint[h.r][h.c]=h.id;drawP()}else{current.state[h.r][h.c]=h.v;if(g==='queens')drawQ();else if(g==='tango')drawT();else{current.sel=[h.r,h.c];drawS()}}})
+}
+
 function coachActionFor(game,h){
   if(game==='queens')return {type:h.v===1?'MARK_X':'PLACE_QUEEN',value:h.v===1?1:2};
   if(game==='tango')return {type:h.v===1?'PLACE_SUN':'PLACE_MOON',value:h.v};
@@ -380,8 +1579,13 @@ function coachActionFor(game,h){
   return {type:'MOVE',value:h.v??h.id??null}
 }
 function coachTechniqueId(game,h){
-  let prefix={queens:'Q',tango:'T',sudoku:'S',patches:'P'}[game]||'G',rank=Math.max(0,Number(h?.rank)||0),action=coachActionFor(game,h).type;
-  return `${prefix}_R${rank}_${action}`
+  if(h?.technique&&TECHNIQUE_LIBRARY[h.technique]?.game===game)return h.technique;
+  let rank=Math.max(0,Number(h?.rank)||0),prefix={queens:'Q',tango:'T',sudoku:'S',patches:'P'}[game];
+  if(prefix&&rank>0){
+    let id=`${prefix}_CONTRADICTION_R${rank}`;if(TECHNIQUE_LIBRARY[id])return id
+  }
+  // Defensive fallback for older/migrated hint objects: choose a valid direct technique per game.
+  return {queens:'Q_UNIQUE_REGION',tango:'T_NO_THREE',sudoku:'S_NAKED_SINGLE',patches:'P_MANDATORY_CELL'}[game]||null
 }
 function structuredReasoning(game,h){
   if(!h)return null;
@@ -429,6 +1633,345 @@ function historyRedoTarget(){
   return h.nodes[id]||null
 }
 function historyCanRedo(){return !!(current&&!current.completed&&historyRedoTarget())}
+
+// ===== v2.19.1 — classify legal moves as justified deductions or hypotheses =====
+function reasoningAuditBucket(){
+  if(!current)return null;
+  return current.reasoningAudit||(current.reasoningAudit={justified:0,unjustified:0,hypotheses:0,unknown:0})
+}
+function auditPrimaryChange(action){
+  if(!action||!Array.isArray(action.changes))return null;
+  let t=action.primaryTarget||action.target;
+  if(Array.isArray(t))return action.changes.find(x=>x.row===t[0]&&x.column===t[1])||null;
+  if(t&&Number.isInteger(t.row))return action.changes.find(x=>x.row===t.row&&x.column===t.column)||null;
+  return action.changes.length===1?action.changes[0]:null
+}
+function auditNeutralValue(game){return game==='queens'?0:game==='tango'?-1:game==='sudoku'?0:null}
+function auditConstructiveChange(action){
+  let ch=auditPrimaryChange(action),neutral=auditNeutralValue(current?.game);
+  if(!ch||ch.from!==neutral)return null;
+  if(current.game==='queens'&&![1,2].includes(ch.to))return null;
+  if(current.game==='tango'&&![0,1].includes(ch.to))return null;
+  if(current.game==='sudoku'&&!(ch.to>=1&&ch.to<=6))return null;
+  if(current.game==='patches'&&ch.to==null)return null;
+  return ch
+}
+function withAuditSnapshot(beforeKey,fn){
+  if(!current||!beforeKey)return null;let s;try{s=JSON.parse(beforeKey)}catch(_){return null}
+  if(!s||s.game!==current.game)return null;
+  let snap=current,clone={...current};
+  if(s.state)clone.state=cloneGrid(s.state);if(s.paint)clone.paint=cloneGrid(s.paint);
+  if('tangoPendingCell' in s)clone.tangoPendingCell=s.tangoPendingCell?[...s.tangoPendingCell]:null;
+  current=clone;try{return fn(clone)}finally{current=snap}
+}
+function proofResult(status,technique=null,rank=null,target=null,detail=null){
+  return {schema:1,status,source:'visible-state',technique,rank,target,detail,at:Date.now()}
+}
+function queenDirectPlacementAt(r,c){
+  if(current.state[r][c]!==0||!queenCellAllowed(r,c))return null;let n=current.n;
+  if(!current.state[r].some(v=>v===2)){let a=[];for(let cc=0;cc<n;cc++)if(current.state[r][cc]===0&&queenCellAllowed(r,cc))a.push([r,cc]);if(a.length===1&&a[0][1]===c)return 'Q_UNIQUE_ROW'}
+  let has=false,a=[];for(let rr=0;rr<n;rr++){if(current.state[rr][c]===2)has=true;else if(current.state[rr][c]===0&&queenCellAllowed(rr,c))a.push([rr,c])}
+  if(!has&&a.length===1&&a[0][0]===r)return 'Q_UNIQUE_COLUMN';
+  let id=current.reg[r][c];has=false;a=[];for(let rr=0;rr<n;rr++)for(let cc=0;cc<n;cc++)if(current.reg[rr][cc]===id){if(current.state[rr][cc]===2)has=true;else if(current.state[rr][cc]===0&&queenCellAllowed(rr,cc))a.push([rr,cc])}
+  if(!has&&a.length===1&&a[0][0]===r&&a[0][1]===c)return 'Q_UNIQUE_REGION';
+  return null
+}
+function justifyQueenAt(r,c,v,deadline){
+  if(v===1){let q=queenDirectExclusionReason(r,c);if(q)return proofResult('justified',q.technique,0,[r,c],q.text)}
+  if(v===2){let t=queenDirectPlacementAt(r,c);if(t)return proofResult('justified',t,0,[r,c],techniqueTitle(t))}
+  let opp=v===2?1:2;
+  let chosenBad=withTempCurrent(x=>{x.state[r][c]=v},()=>queenStateContradiction()),oppBad=withTempCurrent(x=>{x.state[r][c]=opp},()=>queenStateContradiction());
+  if(!chosenBad&&oppBad)return proofResult('justified','Q_CONTRADICTION_R1',1,[r,c],null);
+  if(Date.now()>=deadline)return proofResult('unknown',null,null,[r,c],'timeout');
+  let opp2=withTempCurrent(x=>{x.state[r][c]=opp},()=>queenBoundedContradiction(1,deadline));if(opp2?.timeout)return proofResult('unknown',null,null,[r,c],'timeout');
+  let chosen2=withTempCurrent(x=>{x.state[r][c]=v},()=>queenBoundedContradiction(1,deadline));if(chosen2?.timeout)return proofResult('unknown',null,null,[r,c],'timeout');
+  if(opp2?.bad&&!chosen2?.bad)return proofResult('justified','Q_CONTRADICTION_R2',2,[r,c],null);
+  if(Date.now()>=deadline)return proofResult('unknown',null,null,[r,c],'timeout');
+  let opp3=withTempCurrent(x=>{x.state[r][c]=opp},()=>queenBoundedContradiction(2,deadline));if(opp3?.timeout)return proofResult('unknown',null,null,[r,c],'timeout');
+  let chosen3=withTempCurrent(x=>{x.state[r][c]=v},()=>queenBoundedContradiction(2,deadline));if(chosen3?.timeout)return proofResult('unknown',null,null,[r,c],'timeout');
+  if(opp3?.bad&&!chosen3?.bad)return proofResult('justified','Q_CONTRADICTION_R3',3,[r,c],null);
+  return proofResult('unjustified',null,null,[r,c],null)
+}
+function tangoDirectTechniqueAt(r,c,v){
+  let s=current.state,n=6;
+  let rowOpp=s[r].filter(x=>x===1-v).length;if(rowOpp===3)return 'T_BALANCE_ROW';
+  let colOpp=0;for(let rr=0;rr<n;rr++)if(s[rr][c]===1-v)colOpp++;if(colOpp===3)return 'T_BALANCE_COLUMN';
+  for(let i=Math.max(0,c-2);i<=Math.min(c,3);i++){let vals=[i,i+1,i+2].filter(cc=>cc!==c).map(cc=>s[r][cc]);if(vals.length===2&&vals[0]===1-v&&vals[1]===1-v)return 'T_NO_THREE'}
+  for(let i=Math.max(0,r-2);i<=Math.min(r,3);i++){let vals=[i,i+1,i+2].filter(rr=>rr!==r).map(rr=>s[rr][c]);if(vals.length===2&&vals[0]===1-v&&vals[1]===1-v)return 'T_NO_THREE'}
+  for(let [er,ec,d,rel] of current.edges){let r2=d==='r'?er:er+1,c2=d==='r'?ec+1:ec;if(!((er===r&&ec===c)||(r2===r&&c2===c)))continue;let or=er===r&&ec===c?r2:er,oc=er===r&&ec===c?c2:ec,other=s[or][oc];if(other===-1)continue;let need=rel==='='?other:1-other;if(v===need)return rel==='='?'T_RELATION_EQUAL':'T_RELATION_OPPOSITE'}
+  return null
+}
+function justifyTangoAt(r,c,v){
+  let t=tangoDirectTechniqueAt(r,c,v);if(t)return proofResult('justified',t,0,[r,c],techniqueTitle(t));
+  let opp=1-v,chosenBad=withTempCurrent(x=>{x.state[r][c]=v},()=>tangoStateContradiction()),oppBad=withTempCurrent(x=>{x.state[r][c]=opp},()=>tangoStateContradiction());
+  if(!chosenBad&&oppBad)return proofResult('justified','T_CONTRADICTION_R1',1,[r,c],null);
+  let opp2=withTempCurrent(x=>{x.state[r][c]=opp},()=>tangoRank2WitnessAfterAssumption()),chosen2=withTempCurrent(x=>{x.state[r][c]=v},()=>tangoRank2WitnessAfterAssumption());
+  if(opp2&&!chosen2)return proofResult('justified','T_CONTRADICTION_R2',2,[r,c],null);
+  return proofResult('unjustified',null,null,[r,c],null)
+}
+function sudokuDirectTechniqueAt(r,c,v){
+  let cand=sudokuCandidatesAt(r,c);if(cand.length===1&&cand[0]===v)return 'S_NAKED_SINGLE';
+  let units=[
+    ['S_HIDDEN_ROW',Array.from({length:6},(_,cc)=>[r,cc])],
+    ['S_HIDDEN_COLUMN',Array.from({length:6},(_,rr)=>[rr,c])]
+  ],br=Math.floor(r/2)*2,bc=Math.floor(c/3)*3,box=[];for(let rr=br;rr<br+2;rr++)for(let cc=bc;cc<bc+3;cc++)box.push([rr,cc]);units.push(['S_HIDDEN_BOX',box]);
+  for(let [id,cells] of units){let places=cells.filter(([rr,cc])=>current.state[rr][cc]===0&&current.empty.has(rr*6+cc)&&sudokuCandidatesAt(rr,cc).includes(v));if(places.length===1&&places[0][0]===r&&places[0][1]===c)return id}
+  return null
+}
+function justifySudokuAt(r,c,v){
+  let t=sudokuDirectTechniqueAt(r,c,v);if(t)return proofResult('justified',t,0,[r,c],techniqueTitle(t));
+  let cand=sudokuCandidatesAt(r,c);if(!cand.includes(v))return proofResult('unjustified',null,null,[r,c],null);
+  let alt=cand.filter(x=>x!==v),chosen1=withTempCurrent(x=>{x.state[r][c]=v},()=>sudokuImmediateContradiction());
+  if(alt.length&& !chosen1 && alt.every(x=>withTempCurrent(y=>{y.state[r][c]=x},()=>sudokuImmediateContradiction())))return proofResult('justified','S_CONTRADICTION_R1',1,[r,c],null);
+  let chosen2=withTempCurrent(x=>{x.state[r][c]=v},()=>sudokuRank2WitnessAfterAssumption());
+  if(alt.length&&!chosen2&&alt.every(x=>withTempCurrent(y=>{y.state[r][c]=x},()=>sudokuImmediateContradiction()||!!sudokuRank2WitnessAfterAssumption())))return proofResult('justified','S_CONTRADICTION_R2',2,[r,c],null);
+  return proofResult('unjustified',null,null,[r,c],null)
+}
+function justifyPatchCellAt(r,c,id){
+  let cands=patchRectCandidates(id);if(cands.length===1&&cands[0].some(x=>x[0]===r&&x[1]===c))return proofResult('justified','P_SINGLE_RECTANGLE',0,[r,c],null);
+  if(cands.length){let common=cands.every(rect=>rect.some(x=>x[0]===r&&x[1]===c));if(common)return proofResult('justified','P_MANDATORY_CELL',0,[r,c],null)}
+  let ids=patchPossibleIdsAt(r,c);if(!ids.includes(id))return proofResult('unjustified',null,null,[r,c],null);
+  let alt=ids.filter(x=>x!==id),chosen1=withTempCurrent(x=>{x.paint[r][c]=id},()=>patchStateContradiction());
+  if(alt.length&&!chosen1&&alt.every(x=>withTempCurrent(y=>{y.paint[r][c]=x},()=>patchStateContradiction())))return proofResult('justified','P_CONTRADICTION_R1',1,[r,c],null);
+  let chosen2=withTempCurrent(x=>{x.paint[r][c]=id},()=>patchRank2WitnessAfterAssumption());
+  if(alt.length&&!chosen2&&alt.every(x=>withTempCurrent(y=>{y.paint[r][c]=x},()=>patchStateContradiction()||!!patchRank2WitnessAfterAssumption())))return proofResult('justified','P_CONTRADICTION_R2',2,[r,c],null);
+  return proofResult('unjustified',null,null,[r,c],null)
+}
+function patchRectangleJustification(action){
+  if(action.type!=='PATCH_RECTANGLE'||action.region==null)return null;
+  let additions=(action.changes||[]).filter(x=>x.from==null&&x.to===action.region),removals=(action.changes||[]).filter(x=>x.from===action.region&&x.to==null);
+  if(!additions.length||removals.length)return null;
+  let id=Number(action.region),cands=patchRectCandidates(id),afterPaint=cloneGrid(current.paint);
+  for(let ch of action.changes||[])afterPaint[ch.row][ch.column]=ch.to;
+  let afterCells=[];for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(afterPaint[r][c]===id)afterCells.push(`${r},${c}`);
+  let exact=rect=>{let a=rect.map(x=>`${x[0]},${x[1]}`).sort(),b=[...afterCells].sort();return a.length===b.length&&a.every((x,i)=>x===b[i])};
+  if(cands.length===1&&exact(cands[0]))return proofResult('justified','P_SINGLE_RECTANGLE',0,additions.map(x=>[x.row,x.column]),null);
+  let proofs=additions.map(ch=>justifyPatchCellAt(ch.row,ch.column,id));if(proofs.length&&proofs.every(x=>x.status==='justified')){let best=proofs.sort((a,b)=>(b.rank||0)-(a.rank||0))[0];return proofResult('justified',best.technique,best.rank,additions.map(x=>[x.row,x.column]),null)}
+  return proofResult('unjustified',null,null,additions.map(x=>[x.row,x.column]),null)
+}
+function firstKnownLogicalMoveFromSnapshot(beforeKey,deadline=Date.now()+250){
+  return withAuditSnapshot(beforeKey,()=>{
+    let h=null,g=current.game;
+    if(g==='queens'){h=findQueenLogicalHint()||findQueenRank1Hint(deadline);if(!h?.timeout)h=h||findQueenRank2Hint(deadline);if(!h?.timeout)h=h||findQueenRank3Hint(deadline)}
+    else if(g==='tango')h=findTangoLogicalHint()||findTangoRank1Hint()||findTangoRank2Hint();
+    else if(g==='sudoku')h=findSudokuLogicalHint()||findSudokuRank1Hint()||findSudokuRank2Hint();
+    else if(g==='patches')h=findPatchLogicalHint()||findPatchRank1Hint()||findPatchRank2Hint();
+    return h&&!h.timeout?structuredReasoning(g,h):null
+  })
+}
+function evaluateMoveJustification(beforeKey,action,error=null){
+  if(!current||current.training||error||!action||['COACH_APPLY','AUTO_CROSS_ENABLE','PATCH_REMOVE','LEARNING_GUIDED'].includes(action.type))return null;
+  if(current.game==='patches'&&action.type==='PATCH_RECTANGLE')return withAuditSnapshot(beforeKey,()=>patchRectangleJustification(action));
+  let ch=auditConstructiveChange(action);if(!ch)return null;let deadline=Date.now()+350;
+  let result=withAuditSnapshot(beforeKey,()=>{
+    if(current.game==='queens')return justifyQueenAt(ch.row,ch.column,ch.to,deadline);
+    if(current.game==='tango')return justifyTangoAt(ch.row,ch.column,ch.to);
+    if(current.game==='sudoku')return justifySudokuAt(ch.row,ch.column,ch.to);
+    if(current.game==='patches')return justifyPatchCellAt(ch.row,ch.column,ch.to);
+    return null
+  });
+  if(result?.status==='unjustified')result.knownMove=firstKnownLogicalMoveFromSnapshot(beforeKey,deadline);
+  return result
+}
+function auditMoveText(reasoning){
+  if(!reasoning?.target)return '';
+  let r=reasoning.target.row,c=reasoning.target.column,v=reasoning.action?.value,g=reasoning.game;
+  if(g==='queens')return `${pieceName('queens',v)} · ${cellName(r,c)}`;
+  if(g==='tango')return `${pieceName('tango',v)} · ${cellName(r,c)}`;
+  if(g==='sudoku')return `${v} · ${cellName(r,c)}`;
+  if(g==='patches')return `${pieceName('patches',v)} · ${cellName(r,c)}`;
+  return cellName(r,c)
+}
+function applyAuditResult(node,result){
+  if(!current||!node)return;
+  node.justification=result?{...result}:null;current.lastMoveAudit=node.justification?{...node.justification,historyNode:node.id,parentNode:node.parent}:null;
+  let b=reasoningAuditBucket();if(result?.status==='justified')b.justified++;else if(result?.status==='unjustified')b.unjustified++;else if(result?.status==='unknown')b.unknown++;
+  refreshReasoningAudit()
+}
+function syncReasoningAuditFromHistory(){
+  let n=historyNode();current.lastMoveAudit=n?.justification?{...n.justification,historyNode:n.id,parentNode:n.parent}:null;refreshReasoningAudit()
+}
+function refreshReasoningAudit(){
+  let box=$('#reasoningAudit');if(!box)return;let a=current?.lastMoveAudit;
+  if(!a||!['unjustified','hypothesis'].includes(a.status)){box.hidden=true;box.innerHTML='';return}
+  let known=a.knownMove?`<small>${tr('knownLogicalMove')} : <b>${auditMoveText(a.knownMove)}</b></small>`:'';
+  if(a.status==='hypothesis'){box.hidden=false;box.innerHTML=`<span>◇ <b>${tr('moveHypothesis')}</b> · ${tr('hypothesisAccepted')}</span>${known}`;return}
+  box.hidden=false;box.innerHTML=`<div><span>◇ <b>${tr('moveUnjustified')}</b></span><small>${tr('unjustifiedExplain')}</small>${known}</div><div class="reasoning-audit-actions"><button class="btn" id="acceptHypothesisBtn">${tr('treatAsHypothesis')}</button><button class="btn" id="undoAuditBtn">↶ ${tr('undoThisMove')}</button></div>`;
+  let h=$('#acceptHypothesisBtn');if(h)h.onclick=acceptLastMoveAsHypothesis;let u=$('#undoAuditBtn');if(u)u.onclick=()=>undoMoves(1)
+}
+function acceptLastMoveAsHypothesis(){
+  let h=current?.moveHistory,a=current?.lastMoveAudit;if(!h||!a?.historyNode)return false;let n=h.nodes[a.historyNode];if(!n?.justification||n.justification.status!=='unjustified')return false;
+  n.justification.status='hypothesis';n.justification.acceptedAt=Date.now();let b=reasoningAuditBucket();b.hypotheses++;current.lastMoveAudit={...n.justification,historyNode:n.id,parentNode:n.parent};refreshReasoningAudit();saveCurrent();showToast(tr('hypothesisAccepted'));return true
+}
+
+
+// ===== v2.20.0 — visual Exploration mode on top of branching history =====
+function explorationState(){
+  if(!current)return null;
+  let e=current.exploration;
+  if(!e||typeof e!=='object')return null;
+  return e
+}
+function historyNodeDepth(id){
+  let h=current?.moveHistory,d=0,n=h?.nodes?.[id],guard=0;
+  while(n?.parent&&guard++<10000){d++;n=h.nodes[n.parent]}return d
+}
+function historyIsDescendant(id,ancestor){
+  let h=current?.moveHistory,n=h?.nodes?.[id],guard=0;
+  while(n&&guard++<10000){if(n.id===ancestor)return true;n=n.parent?h.nodes[n.parent]:null}return false
+}
+function historyPathFrom(ancestor,id){
+  if(!historyIsDescendant(id,ancestor))return [];
+  let h=current.moveHistory,out=[],n=h.nodes[id],guard=0;
+  while(n&&n.id!==ancestor&&guard++<10000){out.push(n.id);n=h.nodes[n.parent]}
+  return out.reverse()
+}
+function historyActionShort(node){
+  if(!node)return tr('branchStart');
+  let a=node.action||{};if(a.type==='START')return tr('branchStart');let j=node.justification,e=node.error,ch=(a.changes||[])[0];
+  if(e)return `⚠ ${errorRuleTitle(e)}`;
+  if(ch){
+    let cell=cellName(ch.row,ch.column),val=ch.to;
+    if(a.game==='queens')return `${pieceName('queens',val)} · ${cell}`;
+    if(a.game==='tango')return `${pieceName('tango',val)} · ${cell}`;
+    if(a.game==='sudoku')return `${val} · ${cell}`;
+    if(a.game==='patches')return `${pieceName('patches',val)} · ${cell}`;
+  }
+  if(a.type==='PATCH_RECTANGLE')return `${tr('gamePatches')} · ${tr('zone')} ${(a.region??0)+1}`;
+  if(a.type==='COACH_APPLY')return `Logic Coach`;
+  if(j?.status==='hypothesis')return tr('moveHypothesis');
+  return a.type||tr('branchStart')
+}
+function explorationNodeStatus(node){
+  if(!node)return '';
+  if(node.error)return 'error';
+  let s=node.justification?.status;
+  if(s==='hypothesis')return 'hypothesis';
+  if(s==='unjustified')return 'unjustified';
+  if(s==='justified')return 'justified';
+  return 'neutral'
+}
+function explorationStatusIcon(node){
+  return {error:'⚠',hypothesis:'◇',unjustified:'?',justified:'✓',neutral:'•'}[explorationNodeStatus(node)]||'•'
+}
+function explorationBranchRoots(){
+  let e=explorationState(),h=current?.moveHistory;if(!e||!h?.nodes?.[e.branchPoint])return [];
+  return (h.nodes[e.branchPoint].children||[]).map(id=>h.nodes[id]).filter(Boolean)
+}
+function explorationCurrentRoot(){
+  let e=explorationState();if(!e)return null;
+  let path=historyPathFrom(e.branchPoint,current.moveHistory.cursor);return path[0]||null
+}
+function explorationBranchRepresentative(root){
+  let h=current?.moveHistory,n=root,guard=0,best=root;
+  while(n&&guard++<10000){
+    if(['error','hypothesis','unjustified'].includes(explorationNodeStatus(n)))best=n;
+    if(!n.preferred||!n.children?.includes(n.preferred))break;n=h.nodes[n.preferred]
+  }
+  return best
+}
+function explorationTreeHtml(){
+  let e=explorationState(),h=current?.moveHistory;if(!e||!h)return '';
+  let bp=h.nodes[e.branchPoint],roots=explorationBranchRoots(),cursor=h.cursor;
+  let rows=roots.map((root,i)=>{
+    let active=historyIsDescendant(cursor,root.id),pref=bp.preferred===root.id,path=active?historyPathFrom(root.id,cursor):[],leaf=active&&path.length?h.nodes[path[path.length-1]]:root;
+    let representative=explorationBranchRepresentative(root),status=explorationNodeStatus(representative),depth=active?historyNodeDepth(cursor)-historyNodeDepth(e.branchPoint):1;
+    return `<button class="exploration-branch ${active?'active':''} status-${status}" data-explore-node="${root.id}">
+      <span class="exploration-branch-icon">${explorationStatusIcon(representative)}</span>
+      <span><b>${historyActionShort(root)}</b><small>${pref?'★ ':''}${tr('currentBranch')}: ${active?'✓ ':''}${depth}</small></span>
+      <em>${i+1}</em>
+    </button>`
+  }).join('');
+  if(!rows)rows=`<div class="exploration-empty">${tr('testHypothesis')}</div>`;
+  return `<div class="exploration-tree"><b>${tr('branchTree')}</b>${rows}</div>`
+}
+function refreshExplorationPanel(){
+  let box=$('#explorationPanel'),btn=$('#exploreBtn');if(!box)return;
+  let e=explorationState();
+  if(btn){btn.textContent=e?.active?`◇ ${tr('explorationActive')}`:`◇ ${tr('exploration')}`;btn.classList.toggle('exploration-active',!!e?.active)}
+  if(!e?.active){box.hidden=true;box.innerHTML='';return}
+  let h=current.moveHistory,bp=h.nodes[e.branchPoint],root=explorationCurrentRoot(),path=historyPathFrom(e.branchPoint,h.cursor);
+  box.hidden=false;box.innerHTML=`<div class="exploration-head"><div><span>◇</span><b>${tr('explorationActive')}</b><small>${tr('branchPoint')}: ${historyActionShort(bp)} · ${path.length}</small></div><button class="btn" id="closeExploreBtn">${tr('closeExploration')}</button></div>
+    ${explorationTreeHtml()}
+    <div class="exploration-actions">
+      <button class="btn primary" id="analyzeExploreBtn">${tr('analyzeBranch')}</button>
+      <button class="btn" id="returnExploreBtn" ${h.cursor===e.branchPoint?'disabled':''}>↶ ${tr('returnBranchPoint')}</button>
+      <button class="btn" id="keepExploreBtn" ${root?'':'disabled'}>✓ ${tr('keepBranch')}</button>
+    </div><div id="explorationAnalysis" class="exploration-analysis" hidden></div>`;
+  $('#closeExploreBtn').onclick=closeExploration;
+  $('#analyzeExploreBtn').onclick=analyzeExplorationBranch;
+  $('#returnExploreBtn').onclick=returnToExplorationBranchPoint;
+  $('#keepExploreBtn').onclick=keepExplorationBranch;
+  app.querySelectorAll('[data-explore-node]').forEach(b=>b.onclick=()=>goToExplorationNode(b.dataset.exploreNode))
+}
+function startExploration(){
+  if(!current||current.completed||paused||current.training)return false;
+  let h=historyInit(),cursor=h.cursor;
+  current.exploration={schema:1,active:true,branchPoint:cursor,startedAt:Date.now(),returns:0,analyses:0,kept:0};
+  closeHintNotice();refreshExplorationPanel();saveCurrent();showToast(tr('testHypothesis'));return true
+}
+function closeExploration(){
+  let e=explorationState();if(!e)return false;e.active=false;e.closedAt=Date.now();refreshExplorationPanel();saveCurrent();return true
+}
+function setHistoryCursor(id){
+  let h=current?.moveHistory,n=h?.nodes?.[id];if(!n||current.completed||paused)return false;
+  h.cursor=id;restorePuzzleSnapshot(n.snapshot);syncErrorFromHistory();syncReasoningAuditFromHistory();trainingSyncPath();updateHistoryButtons();refreshExplorationPanel();saveCurrent();haptic(7);return true
+}
+function goToExplorationNode(rootId){
+  let e=explorationState(),h=current?.moveHistory;if(!e?.active||!h?.nodes?.[rootId]||!h.nodes[e.branchPoint]?.children?.includes(rootId))return false;
+  let id=rootId,n=h.nodes[id],guard=0;while(n?.preferred&&n.children?.includes(n.preferred)&&guard++<10000){id=n.preferred;n=h.nodes[id]}
+  return setHistoryCursor(id)
+}
+function returnToExplorationBranchPoint(){
+  let e=explorationState();if(!e?.active)return false;e.returns=(e.returns||0)+1;let ok=setHistoryCursor(e.branchPoint);if(ok)showToast(tr('branchReturned'));return ok
+}
+function keepExplorationBranch(){
+  let e=explorationState(),h=current?.moveHistory;if(!e?.active||h.cursor===e.branchPoint)return false;
+  let path=historyPathFrom(e.branchPoint,h.cursor),parent=e.branchPoint;
+  for(let id of path){let p=h.nodes[parent];if(p?.children?.includes(id))p.preferred=id;parent=id}
+  e.kept=(e.kept||0)+1;e.keptNode=h.cursor;e.active=false;e.closedAt=Date.now();refreshExplorationPanel();saveCurrent();showToast(tr('branchKept'));return true
+}
+function explorationContradiction(){
+  let errors=currentVisibleErrors();if(errors.length)return {bad:true,kind:'rules',html:errors.map(e=>`<b>${errorRuleTitle(e)}</b><br>${errorDetailedMessage(e)}`).join('<hr>')};
+  if(current.game==='queens'){
+    if(queenStateContradiction())return {bad:true,kind:'logic',html:queenImmediateContradictionDetail()};
+    let d=queenBoundedContradiction(2,Date.now()+700);if(d?.bad)return {bad:true,kind:'logic',html:d.reason||queenRank3BranchSummary(d)}
+  }else if(current.game==='tango'){
+    if(tangoStateContradiction()){let d=tangoRank1ContradictionDetail();return {bad:true,kind:'logic',html:d?.text||tr('contradictionFound')}}
+    let w=tangoRank2WitnessAfterAssumption();if(w)return {bad:true,kind:'logic',html:w.detail}
+  }else if(current.game==='sudoku'){
+    if(sudokuImmediateContradiction())return {bad:true,kind:'logic',html:sudokuContradictionDetail()};
+    let w=sudokuRank2WitnessAfterAssumption();if(w)return {bad:true,kind:'logic',html:w.detail}
+  }else if(current.game==='patches'){
+    if(patchStateContradiction())return {bad:true,kind:'logic',html:patchContradictionDetail()};
+    let w=patchRank2WitnessAfterAssumption();if(w)return {bad:true,kind:'logic',html:w.detail}
+  }
+  return {bad:false,kind:'none',html:tr('noContradiction')}
+}
+function analyzeExplorationBranch(){
+  let e=explorationState();if(!e?.active)return false;e.analyses=(e.analyses||0)+1;
+  let result=explorationContradiction(),box=$('#explorationAnalysis');if(box){box.hidden=false;box.classList.toggle('bad',result.bad);box.innerHTML=`<b>${result.bad?'⚠ '+tr('contradictionFound'):'✓ '+tr('analyzeBranch')}</b><div>${result.html}</div>`}
+  saveCurrent();return result
+}
+function showExplorationContradictionBeforeHint(){
+  let e=explorationState();if(!e?.active||current?.moveHistory?.cursor===e.branchPoint)return false;
+  let result=explorationContradiction();if(!result.bad)return false;
+  e.analyses=(e.analyses||0)+1;
+  showHintNotice(`<b>◇ ${tr('exploration')} · ⚠ ${tr('contradictionFound')}</b><div class="coach-error-item">${result.html}</div><button class="btn error-return-btn" onclick="returnToExplorationBranchPoint()">↶ ${tr('returnBranchPoint')}</button>`);
+  let box=$('#explorationAnalysis');if(box){box.hidden=false;box.classList.add('bad');box.innerHTML=`<b>⚠ ${tr('contradictionFound')}</b><div>${result.html}</div>`}
+  saveCurrent();return true
+}
+function explorationOnRecordedNode(node){
+  let e=explorationState();if(!e?.active||!node||!historyIsDescendant(node.id,e.branchPoint)||node.id===e.branchPoint)return;
+  // In Exploration, a legal but unproved first move is explicitly a hypothesis.
+  let path=historyPathFrom(e.branchPoint,node.id),h=current.moveHistory,priorHypothesis=path.slice(0,-1).some(id=>h.nodes[id]?.justification?.status==='hypothesis');
+  if(!priorHypothesis&&node.justification?.status==='unjustified'){
+    node.justification.status='hypothesis';node.justification.acceptedAt=Date.now();node.justification.exploration=true;
+    let b=reasoningAuditBucket();b.hypotheses++;current.lastMoveAudit={...node.justification,historyNode:node.id,parentNode:node.parent};showToast(tr('branchHypothesisAuto'))
+  }
+  refreshReasoningAudit();refreshExplorationPanel()
+}
+
 function historyChanges(beforeKey,after){
   if(!beforeKey||!after)return [];
   try{
@@ -457,17 +2000,25 @@ function historyRecord(action='MOVE',beforeKey=null){
   let normalized=normalizeHistoryAction(action,beforeKey,snap);
   let existing=(parent.children||[]).map(id=>h.nodes[id]).find(n=>n&&historySnapshotKey(n.snapshot)===key);
   if(existing){
-    parent.preferred=existing.id;h.cursor=existing.id;existing.action=normalized;updateHistoryButtons();return true
+    parent.preferred=existing.id;h.cursor=existing.id;existing.action=normalized;
+    let err=analyzeCurrentError(normalized);existing.error=err?{...err,historyNode:existing.id,parentNode:parent.id}:null;
+    current.lastError=existing.error?{...existing.error}:null;if(existing.error)errorUsage('detected',existing.error.technique||null);
+    let audit=evaluateMoveJustification(beforeKey,normalized,existing.error);applyAuditResult(existing,audit);explorationOnRecordedNode(existing);
+    masteryRecognizePlayerMove(beforeKey,normalized,existing.error,audit);if(current.training&&!existing.error)trainingMoveCompleted(normalized);refreshErrorCoach();updateHistoryButtons();return true
   }
   let id=`h${h.nextId++}`,hadAlternative=(parent.children||[]).length>0;
   let node={id,parent:parent.id,children:[],preferred:null,action:normalized,snapshot:snap};
+  let err=analyzeCurrentError(normalized);node.error=err?{...err,historyNode:id,parentNode:parent.id}:null;
   parent.children=parent.children||[];parent.children.push(id);parent.preferred=id;h.nodes[id]=node;h.cursor=id;
+  current.lastError=node.error?{...node.error}:null;if(node.error)errorUsage('detected',node.error.technique||null);
+  let audit=evaluateMoveJustification(beforeKey,normalized,node.error);applyAuditResult(node,audit);explorationOnRecordedNode(node);
+  masteryRecognizePlayerMove(beforeKey,normalized,node.error,audit);if(current.training&&!node.error)trainingMoveCompleted(normalized);refreshErrorCoach();
   if(hadAlternative)h.stats.branches=(h.stats.branches||0)+1;
   updateHistoryButtons();return true
 }
 function restorePuzzleSnapshot(s){
   if(!current||!s||s.game!==current.game)return false;
-  current.hintFlow=null;current.lastReasoning=null;clearHintFocus();closeHintNotice();$('#victory')?.remove();
+  current.hintFlow=null;current.lastReasoning=null;current.lastError=null;current.lastMoveAudit=null;current.masteryPendingAid=null;clearHintFocus();clearErrorFocus();closeHintNotice();$('#victory')?.remove();
   if(s.game==='queens'){current.state=cloneGrid(s.state);drawQ()}
   else if(s.game==='tango'){current.state=cloneGrid(s.state);current.tangoPendingCell=s.tangoPendingCell?[...s.tangoPendingCell]:null;drawT()}
   else if(s.game==='sudoku'){current.state=cloneGrid(s.state);drawS()}
@@ -483,7 +2034,7 @@ function undoMoves(count=1){
     parent.preferred=n.id;h.cursor=parent.id;moved++
   }
   if(!moved){updateHistoryButtons();return 0}
-  h.stats.undos=(h.stats.undos||0)+moved;markBacktrack();restorePuzzleSnapshot(h.nodes[h.cursor].snapshot);updateHistoryButtons();saveCurrent();haptic(7);return moved
+  h.stats.undos=(h.stats.undos||0)+moved;markBacktrack();restorePuzzleSnapshot(h.nodes[h.cursor].snapshot);syncErrorFromHistory();syncReasoningAuditFromHistory();trainingSyncPath();updateHistoryButtons();refreshExplorationPanel();saveCurrent();haptic(7);return moved
 }
 function redoMoves(count=1){
   if(!current||current.completed||paused)return 0;
@@ -494,7 +2045,7 @@ function redoMoves(count=1){
     h.cursor=id;moved++
   }
   if(!moved){updateHistoryButtons();return 0}
-  h.stats.redos=(h.stats.redos||0)+moved;restorePuzzleSnapshot(h.nodes[h.cursor].snapshot);updateHistoryButtons();saveCurrent();haptic(7);return moved
+  h.stats.redos=(h.stats.redos||0)+moved;restorePuzzleSnapshot(h.nodes[h.cursor].snapshot);syncErrorFromHistory();syncReasoningAuditFromHistory();trainingSyncPath();updateHistoryButtons();refreshExplorationPanel();saveCurrent();haptic(7);return moved
 }
 function updateHistoryButtons(){
   let u=$('#undoBtn'),r=$('#redoBtn');
@@ -512,7 +2063,7 @@ document.addEventListener('keydown',e=>{
 });
 
 function plainCurrent(){if(!current)return null;let o={...current};for(let k of ['givens','empty'])if(o[k] instanceof Set)o[k]=[...o[k]];return o}
-function saveCurrent(){if(!current||current.completed)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({version:VERSION,current:plainCurrent(),elapsed:timerSeconds(),paused,savedAt:Date.now()}))}catch(_){}}
+function saveCurrent(){if(!current||current.completed||current.trainingCompleted)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({version:VERSION,current:plainCurrent(),elapsed:timerSeconds(),paused,savedAt:Date.now()}))}catch(_){}}
 function getSaved(){try{let x=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');return x&&x.current?x:null}catch(_){return null}}
 function clearSaved(){try{localStorage.removeItem(SAVE_KEY)}catch(_){}}
 $('#homeBtn').onclick=home;$('#themeBtn').onclick=cycleTheme;
@@ -532,20 +2083,21 @@ function home(){if(current&&!current.completed)saveCurrent();stopTimer();timerEl
 <button class="game-card" data-g="tango"><span class="game-icon">☀︎</span><span><h2>${gameLabel('tango')}</h2><p>${tr('tangoSub')}</p></span></button>
 <button class="game-card" data-g="sudoku"><span class="game-icon">✎</span><span><h2>${gameLabel('sudoku')}</h2><p>${tr('sudokuSub')}</p></span></button>
 <button class="game-card" data-g="patches"><span class="game-icon">▦</span><span><h2>${gameLabel('patches')}</h2><p>${tr('patchesSub')}</p></span></button>
-</section><button class="daily-card" id="dailyBtn"><span>◆</span><b>${tr('daily')}</b><small>${dailyProgress()}/4 ${tr('dailySub')}</small></button><button class="stats-card" id="statsBtn"><span>▥</span><b>${tr('stats')}</b><small>${tr('statsSub')}</small></button><button class="settings-card" id="settingsBtn"><span>⚙︎</span><b>${tr('prefs')}</b><small>${tr('prefsSub')}</small></button><button class="settings-card" id="aboutBtn"><span>ⓘ</span><b>${tr('about')}</b><small>${tr('aboutSub')}</small></button><div class="footer-note">QUADLUD v${VERSION} · © 2026 Serge Benoliel</div>`;
-if(saved)$('#resumeBtn').onclick=resumeSaved;$('#dailyBtn').onclick=dailyView;$('#statsBtn').onclick=statsView;$('#settingsBtn').onclick=settingsView;$('#aboutBtn').onclick=aboutView;app.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>launch(b.dataset.g,'easy'));app.querySelectorAll('button').forEach(pressFeedback)}
+</section><button class="daily-card" id="dailyBtn"><span>◆</span><b>${tr('daily')}</b><small>${dailyHomeLine()}</small></button><button class="stats-card" id="statsBtn"><span>▥</span><b>${tr('stats')}</b><small>${tr('statsSub')}</small></button><button class="stats-card mastery-home-card" id="masteryBtn"><span>◎</span><b>${tr('mastery')}</b><small>${tr('masterySub')}</small></button><button class="stats-card learning-home-card" id="learnBtn"><span>◉</span><b>${tr('learn')}</b><small>${tr('learnSub')}</small></button><button class="stats-card training-home-card" id="trainingBtn"><span>◇</span><b>${tr('training')}</b><small>${tr('trainingSub')}</small></button><button class="settings-card" id="settingsBtn"><span>⚙︎</span><b>${tr('prefs')}</b><small>${tr('prefsSub')}</small></button><button class="settings-card" id="aboutBtn"><span>ⓘ</span><b>${tr('about')}</b><small>${tr('aboutSub')}</small></button><div class="footer-note">QUADLUD v${VERSION} · © 2026 Serge Benoliel</div>`;
+if(saved)$('#resumeBtn').onclick=resumeSaved;$('#dailyBtn').onclick=dailyView;$('#statsBtn').onclick=statsView;$('#masteryBtn').onclick=masteryView;$('#learnBtn').onclick=learningView;$('#trainingBtn').onclick=trainingView;$('#settingsBtn').onclick=settingsView;$('#aboutBtn').onclick=aboutView;app.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>launch(b.dataset.g,'easy'));app.querySelectorAll('button').forEach(pressFeedback)}
 function gameLabel(g){return {queens:tr('gameQueens'),tango:tr('gameTango'),sudoku:tr('gameSudoku'),patches:tr('gamePatches')}[g]||g}
-function shell(name,subtitle,diff,content,rules){app.innerHTML=`<section class="panel"><div class="game-head"><div><h1>${name}</h1><p>${subtitle}${current&&current.rating?` · <span class="difficulty-meter">${tr('score')} ${current.rating.score} · ${current.rating.technique}<span class="live-aids">${aidBadges(current,true)}</span></span>`:''}</p></div><select class="difficulty" id="difficulty" aria-label="${tr('rulesTitle')}">${Object.entries(DIFF).filter(([k])=>current?.game==='queens'||k!=='expert').map(([k,v])=>`<option value="${k}" ${k===diff?'selected':''}>${v}</option>`).join('')}</select></div><div class="toolbar" aria-label="${tr('actions')}"><button class="btn primary" id="newBtn">${tr('newGame')}</button><button class="btn" id="resetBtn">${tr('reset')}</button><button class="btn history-action" id="undoBtn" title="${tr('undo')}" aria-label="${tr('undo')}">↶ ${tr('undo')}</button><button class="btn history-action" id="redoBtn" title="${tr('redo')}" aria-label="${tr('redo')}">↷ ${tr('redo')}</button><button class="btn" id="pauseBtn">${tr('pause')}</button><button class="btn" id="checkBtn">${tr('check')}</button><button class="btn" id="hintBtn">${tr('logicCoach')}</button><button class="btn secondary-action" id="solutionBtn">${tr('solution')}</button><button class="btn secondary-action" id="rulesBtn">${tr('rules')}</button></div><div id="status" class="status" aria-live="polite"></div>${content}<div class="rules">${rules}</div></section>`;
-$('#difficulty').onchange=e=>launch(current.game,e.target.value);$('#newBtn').onclick=()=>launch(current.game,current.diff);$('#resetBtn').onclick=resetCurrent;$('#undoBtn').onclick=()=>undoMoves(1);$('#redoBtn').onclick=()=>redoMoves(1);$('#pauseBtn').onclick=togglePause;$('#rulesBtn').onclick=()=>modal(`${tr('rules')} — ${name}`,rules);app.querySelectorAll('button').forEach(pressFeedback);updatePauseButton();updateHistoryButtons()}
+function shell(name,subtitle,diff,content,rules){let trainingTag=current?.learning?` · <span class="training-shell-tag">${tr('lesson')} ${current.learningPhase}/4 : <b>${techniqueTitle(current.learningTechnique)}</b></span>`:current?.training?` · <span class="training-shell-tag">${tr('trainingTarget')} : <b>${techniqueTitle(current.trainingTechnique)}</b></span>`:'';app.innerHTML=`<section class="panel"><div class="game-head"><div><h1>${name}</h1><p>${subtitle}${trainingTag}${current&&current.rating?` · <span class="difficulty-meter">${tr('score')} ${current.rating.score} · ${current.rating.technique}<span class="live-aids">${aidBadges(current,true)}</span></span>`:''}</p></div><select class="difficulty" id="difficulty" aria-label="${tr('rulesTitle')}">${Object.entries(DIFF).filter(([k])=>current?.game==='queens'||k!=='expert').map(([k,v])=>`<option value="${k}" ${k===diff?'selected':''}>${v}</option>`).join('')}</select></div><div class="toolbar" aria-label="${tr('actions')}"><button class="btn primary" id="newBtn">${tr('newGame')}</button><button class="btn" id="resetBtn">${tr('reset')}</button><button class="btn history-action" id="undoBtn" title="${tr('undo')}" aria-label="${tr('undo')}">↶ ${tr('undo')}</button><button class="btn history-action" id="redoBtn" title="${tr('redo')}" aria-label="${tr('redo')}">↷ ${tr('redo')}</button><button class="btn" id="pauseBtn">${tr('pause')}</button><button class="btn" id="checkBtn">${tr('check')}</button><button class="btn" id="hintBtn">${tr('logicCoach')}</button><button class="btn" id="exploreBtn">◇ ${tr('exploration')}</button><button class="btn secondary-action" id="solutionBtn">${tr('solution')}</button><button class="btn secondary-action" id="rulesBtn">${tr('rules')}</button><button class="btn secondary-action" id="techniquesBtn">${tr('techniques')}</button></div><div id="status" class="status" aria-live="polite"></div><div id="errorCoach" class="error-coach" hidden aria-live="polite"></div><div id="reasoningAudit" class="reasoning-audit" hidden aria-live="polite"></div><div id="explorationPanel" class="exploration-panel" hidden aria-live="polite"></div><div id="learningGuide" class="learning-guide" hidden aria-live="polite"></div>${content}<div class="rules">${rules}</div></section>`;
+$('#difficulty').onchange=e=>launch(current.game,e.target.value);$('#newBtn').onclick=()=>launch(current.game,current.diff);$('#resetBtn').onclick=resetCurrent;$('#undoBtn').onclick=()=>undoMoves(1);$('#redoBtn').onclick=()=>redoMoves(1);$('#pauseBtn').onclick=togglePause;$('#exploreBtn').onclick=()=>explorationState()?.active?refreshExplorationPanel():startExploration();$('#rulesBtn').onclick=()=>modal(`${tr('rules')} — ${name}`,rules);$('#techniquesBtn').onclick=()=>modal(`${tr('techniques')} — ${name}`,techniqueLibraryHtml(current.game));app.querySelectorAll('button').forEach(pressFeedback);updatePauseButton();updateHistoryButtons();refreshErrorCoach();refreshReasoningAudit();refreshExplorationPanel();if(current?.training)decorateTrainingShell()}
 
 function resetCurrent(){
   if(!current)return;
+  if(current.training)return resetTrainingExercise();
   let hadProgress=current.game==='queens'?current.state.flat().some(v=>v!==0):current.game==='tango'?current.state.some((row,r)=>row.some((v,c)=>!current.givens.has(r*6+c)&&v!==-1)):current.game==='sudoku'?current.state.some((row,r)=>row.some((v,c)=>current.empty.has(r*6+c)&&v!==0)):current.game==='patches'?current.paint.flat().some(v=>v!==null):false;
   if(hadProgress)markBacktrack();
   $('#victory')?.remove();
   closeHintNotice();
   clearHintFocus();
-  current.hintFlow=null;
+  current.hintFlow=null;current.lastError=null;current.lastMoveAudit=null;current.exploration=null;clearErrorFocus();
   if(current.game==='queens'){
     $('#qboard')?.classList.remove('queens-win');
     current.state=Array.from({length:current.n},()=>Array(current.n).fill(0));
@@ -598,7 +2150,7 @@ function ensurePrecomputeWorker(){
   if(precomputeWorker)return precomputeWorker;
   if(typeof Worker==='undefined')return null;
   try{
-    let w=new Worker('./precompute-worker.js?v=2.11.0');
+    let w=new Worker('./precompute-worker.js?v=2.20.0');
     w.onmessage=e=>{
       let m=e.data||{};precomputeBusy=false;
       if(m.ok&&m.day===precomputeDay&&m.candidate){
@@ -669,7 +2221,7 @@ function precomputeStatus(){
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&precomputeStarted)setTimeout(()=>schedulePrecompute(),150)});
 
 function launch(game,diff){if(game!=='queens'&&diff==='expert')diff='hard';closePreviousAttempt();clearSaved();stopTimer();paused=false;setBusy(true);current={game,diff};requestAnimationFrame(()=>{try{if(game==='queens')queens(diff);if(game==='tango')tango(diff);if(game==='sudoku')sudoku(diff);if(game==='patches')patches(diff);historyInit(true);updateHistoryButtons();statsStart(current);startTimer(true,0,false);saveCurrent();haptic(8)}finally{setBusy(false);startBackgroundPrecompute(game,diff)}})}
-function resumeSaved(){let s=getSaved();if(!s)return home();stopTimer();let c=s.current;c.givens=c.givens?new Set(c.givens):c.givens;c.empty=c.empty?new Set(c.empty):c.empty;current=c;historyInit(false);if(c.game==='queens')renderQueens(c);if(c.game==='tango')renderTango(c);if(c.game==='sudoku')renderSudoku(c);if(c.game==='patches')renderPatches(c);startTimer(true,s.elapsed||0,!!s.paused);updatePauseButton();showToast(tr('restored'));startBackgroundPrecompute(c.game,c.diff)}
+function resumeSaved(){let s=getSaved();if(!s)return home();stopTimer();let c=s.current;c.givens=c.givens?new Set(c.givens):c.givens;c.empty=c.empty?new Set(c.empty):c.empty;current=c;historyInit(false);if(c.game==='queens')renderQueens(c);if(c.game==='tango')renderTango(c);if(c.game==='sudoku')renderSudoku(c);if(c.game==='patches')renderPatches(c);startTimer(true,s.elapsed||0,!!s.paused);updatePauseButton();refreshExplorationPanel();showToast(tr('restored'));if(!c.training)startBackgroundPrecompute(c.game,c.diff)}
 
 
 function sudokuCandidatesAt(r,c){
@@ -728,10 +2280,10 @@ function queenCellAllowed(r,c){
 }
 function queenDirectExclusionReason(r,c){
   for(let rr=0;rr<current.n;rr++)for(let cc=0;cc<current.n;cc++)if(current.state[rr][cc]===2){
-    if(rr===r)return lang()==='fr'?`la ligne ${r+1} contient déjà une reine en ${cellName(rr,cc)}.`:`row ${r+1} already contains a queen at ${cellName(rr,cc)}.`;
-    if(cc===c)return lang()==='fr'?`la colonne ${c+1} contient déjà une reine en ${cellName(rr,cc)}.`:`column ${c+1} already contains a queen at ${cellName(rr,cc)}.`;
-    if(current.reg[rr][cc]===current.reg[r][c])return lang()==='fr'?`${queenZoneBadge(current.reg[r][c])} contient déjà une reine en ${cellName(rr,cc)}.`:`${queenZoneBadge(current.reg[r][c])} already contains a queen at ${cellName(rr,cc)}.`;
-    if(Math.abs(rr-r)<=1&&Math.abs(cc-c)<=1)return lang()==='fr'?`${cellName(r,c)} est adjacente à la reine de ${cellName(rr,cc)}.`:`${cellName(r,c)} is adjacent to the queen at ${cellName(rr,cc)}.`;
+    if(rr===r)return {technique:'Q_EXCLUSION_ROW',text:lang()==='fr'?`la ligne ${r+1} contient déjà une reine en ${cellName(rr,cc)}.`:`row ${r+1} already contains a queen at ${cellName(rr,cc)}.`};
+    if(cc===c)return {technique:'Q_EXCLUSION_COLUMN',text:lang()==='fr'?`la colonne ${c+1} contient déjà une reine en ${cellName(rr,cc)}.`:`column ${c+1} already contains a queen at ${cellName(rr,cc)}.`};
+    if(current.reg[rr][cc]===current.reg[r][c])return {technique:'Q_EXCLUSION_REGION',text:lang()==='fr'?`${queenZoneBadge(current.reg[r][c])} contient déjà une reine en ${cellName(rr,cc)}.`:`${queenZoneBadge(current.reg[r][c])} already contains a queen at ${cellName(rr,cc)}.`};
+    if(Math.abs(rr-r)<=1&&Math.abs(cc-c)<=1)return {technique:'Q_EXCLUSION_ADJACENCY',text:lang()==='fr'?`${cellName(r,c)} est adjacente à la reine de ${cellName(rr,cc)}.`:`${cellName(r,c)} is adjacent to the queen at ${cellName(rr,cc)}.`};
   }
   return null
 }
@@ -739,45 +2291,45 @@ function findQueenLogicalHint(){
   let n=current.n,cands=Array.from({length:n},(_,r)=>Array.from({length:n},(_,c)=>queenCellAllowed(r,c)));
   // First expose direct X deductions if auto-cross is disabled or some X is missing.
   for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.state[r][c]===0&&!cands[r][c]){
-    let why=queenDirectExclusionReason(r,c);if(why)return {r,c,v:1,rank:0,why}
+    let reason=queenDirectExclusionReason(r,c);if(reason)return {r,c,v:1,rank:0,why:reason.text,technique:reason.technique}
   }
-  function forcedFrom(cells,reasonFr,reasonEn){
+  function forcedFrom(cells,reasonFr,reasonEn,technique){
     let open=cells.filter(([r,c])=>cands[r][c]&&current.state[r][c]!==2),q=cells.filter(([r,c])=>current.state[r][c]===2);
-    if(!q.length&&open.length===1)return {r:open[0][0],c:open[0][1],v:2,rank:0,why:lang()==='fr'?reasonFr:reasonEn}
+    if(!q.length&&open.length===1)return {r:open[0][0],c:open[0][1],v:2,rank:0,why:lang()==='fr'?reasonFr:reasonEn,technique}
     return null
   }
-  for(let r=0;r<n;r++){let h=forcedFrom(Array.from({length:n},(_,c)=>[r,c]),`toutes les autres cases de la ligne ${r+1} sont exclues`,`all other cells in row ${r+1} are excluded; only one queen position remains.`);if(h)return h}
-  for(let c=0;c<n;c++){let h=forcedFrom(Array.from({length:n},(_,r)=>[r,c]),`toutes les autres cases de la colonne ${c+1} sont exclues.`,`all other cells in column ${c+1} are excluded.`);if(h)return h}
+  for(let r=0;r<n;r++){let h=forcedFrom(Array.from({length:n},(_,c)=>[r,c]),`toutes les autres cases de la ligne ${r+1} sont exclues`,`all other cells in row ${r+1} are excluded; only one queen position remains.`,'Q_UNIQUE_ROW');if(h)return h}
+  for(let c=0;c<n;c++){let h=forcedFrom(Array.from({length:n},(_,r)=>[r,c]),`toutes les autres cases de la colonne ${c+1} sont exclues.`,`all other cells in column ${c+1} are excluded.`,'Q_UNIQUE_COLUMN');if(h)return h}
   let ids=[...new Set(current.reg.flat())];
-  for(let id of ids){let cells=[];for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.reg[r][c]===id)cells.push([r,c]);let h=forcedFrom(cells,`toutes les autres cases de ${queenZoneBadge(id)} sont exclues : cette zone n’a plus qu’une seule place possible pour sa reine.`,`all other cells in ${queenZoneBadge(id)} are excluded; only one queen position remains.`);if(h)return h}
+  for(let id of ids){let cells=[];for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.reg[r][c]===id)cells.push([r,c]);let h=forcedFrom(cells,`toutes les autres cases de ${queenZoneBadge(id)} sont exclues : cette zone n’a plus qu’une seule place possible pour sa reine.`,`all other cells in ${queenZoneBadge(id)} are excluded; only one queen position remains.`,'Q_UNIQUE_REGION');if(h)return h}
   return null
 }
 
 function findTangoLogicalHint(){
   let s=current.state,n=6;
-  function out(r,c,v,whyFr,whyEn){if(r>=0&&r<n&&c>=0&&c<n&&s[r][c]===-1)return {r,c,v,why:lang()==='fr'?whyFr:whyEn};return null}
+  function out(r,c,v,whyFr,whyEn,technique){if(r>=0&&r<n&&c>=0&&c<n&&s[r][c]===-1)return {r,c,v,why:lang()==='fr'?whyFr:whyEn,technique};return null}
   // 3/3 balance
-  for(let r=0;r<n;r++){for(let v=0;v<=1;v++){let count=s[r].filter(x=>x===v).length;if(count===3)for(let c=0;c<n;c++){let h=out(r,c,1-v,`la ligne contient déjà 3 ${v===1?'soleils':'lunes'} ; les cases restantes doivent être des ${v===1?'lunes':'soleils'}.`,`the row already has 3 ${v===1?'suns':'moons'}; remaining cells must be ${v===1?'moons':'suns'}.`);if(h)return h}}}
-  for(let c=0;c<n;c++){for(let v=0;v<=1;v++){let count=0;for(let r=0;r<n;r++)if(s[r][c]===v)count++;if(count===3)for(let r=0;r<n;r++){let h=out(r,c,1-v,`la colonne contient déjà 3 ${v===1?'soleils':'lunes'} ; les cases restantes doivent être des ${v===1?'lunes':'soleils'}.`,`the column already has 3 ${v===1?'suns':'moons'}; remaining cells must be ${v===1?'moons':'suns'}.`);if(h)return h}}}
+  for(let r=0;r<n;r++){for(let v=0;v<=1;v++){let count=s[r].filter(x=>x===v).length;if(count===3)for(let c=0;c<n;c++){let h=out(r,c,1-v,`la ligne contient déjà 3 ${v===1?'soleils':'lunes'} ; les cases restantes doivent être des ${v===1?'lunes':'soleils'}.`,`the row already has 3 ${v===1?'suns':'moons'}; remaining cells must be ${v===1?'moons':'suns'}.`,'T_BALANCE_ROW');if(h)return h}}}
+  for(let c=0;c<n;c++){for(let v=0;v<=1;v++){let count=0;for(let r=0;r<n;r++)if(s[r][c]===v)count++;if(count===3)for(let r=0;r<n;r++){let h=out(r,c,1-v,`la colonne contient déjà 3 ${v===1?'soleils':'lunes'} ; les cases restantes doivent être des ${v===1?'lunes':'soleils'}.`,`the column already has 3 ${v===1?'suns':'moons'}; remaining cells must be ${v===1?'moons':'suns'}.`,'T_BALANCE_COLUMN');if(h)return h}}}
   // no three: XX_ _XX X_X
   for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(s[r][c]===-1){
     let pairs=[[[r,c-2],[r,c-1]],[[r,c-1],[r,c+1]],[[r,c+1],[r,c+2]],[[r-2,c],[r-1,c]],[[r-1,c],[r+1,c]],[[r+1,c],[r+2,c]]];
-    for(let pair of pairs){let a=pair[0],b=pair[1];if(a[0]>=0&&a[0]<n&&a[1]>=0&&a[1]<n&&b[0]>=0&&b[0]<n&&b[1]>=0&&b[1]<n){let va=s[a[0]][a[1]],vb=s[b[0]][b[1]];if(va!==-1&&va===vb)return {r,c,v:1-va,why:lang()==='fr'?`deux symboles identiques encadrent ou précèdent cette case ; un troisième identique est interdit.`:`two identical symbols surround or precede this cell; a third identical symbol is forbidden.`}}}
+    for(let pair of pairs){let a=pair[0],b=pair[1];if(a[0]>=0&&a[0]<n&&a[1]>=0&&a[1]<n&&b[0]>=0&&b[0]<n&&b[1]>=0&&b[1]<n){let va=s[a[0]][a[1]],vb=s[b[0]][b[1]];if(va!==-1&&va===vb)return {r,c,v:1-va,technique:'T_NO_THREE',why:lang()==='fr'?`deux symboles identiques encadrent ou précèdent cette case ; un troisième identique est interdit.`:`two identical symbols surround or precede this cell; a third identical symbol is forbidden.`}}}
   }
   // relation with known neighbor
   for(let [r,c,d,rel] of current.edges){let r2=d==='r'?r:r+1,c2=d==='r'?c+1:c,a=s[r][c],b=s[r2][c2];
-    if(a===-1&&b!==-1)return {r,c,v:rel==='='?b:1-b,why:lang()==='fr'?`la relation ${rel} avec la case voisine impose ce symbole.`:`the ${rel} relation with the adjacent cell forces this symbol.`};
-    if(b===-1&&a!==-1)return {r:r2,c:c2,v:rel==='='?a:1-a,why:lang()==='fr'?`la relation ${rel} avec la case voisine impose ce symbole.`:`the ${rel} relation with the adjacent cell forces this symbol.`}
+    if(a===-1&&b!==-1)return {r,c,v:rel==='='?b:1-b,technique:rel==='='?'T_RELATION_EQUAL':'T_RELATION_OPPOSITE',why:lang()==='fr'?`la relation ${rel} avec la case voisine impose ce symbole.`:`the ${rel} relation with the adjacent cell forces this symbol.`};
+    if(b===-1&&a!==-1)return {r:r2,c:c2,v:rel==='='?a:1-a,technique:rel==='='?'T_RELATION_EQUAL':'T_RELATION_OPPOSITE',why:lang()==='fr'?`la relation ${rel} avec la case voisine impose ce symbole.`:`the ${rel} relation with the adjacent cell forces this symbol.`}
   }
   return null
 }
 
 function findSudokuLogicalHint(){
   let empties=[];for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(current.empty.has(r*6+c)&&current.state[r][c]===0)empties.push([r,c]);
-  for(let [r,c] of empties){let cand=sudokuCandidatesAt(r,c);if(cand.length===1)return {r,c,v:cand[0],why:lang()==='fr'?`après élimination par la ligne, la colonne et le bloc 2×3, seul ${cand[0]} reste possible.`:`after elimination by the row, column and 2×3 box, only ${cand[0]} remains possible.`}}
-  let units=[];for(let r=0;r<6;r++)units.push({cells:Array.from({length:6},(_,c)=>[r,c]),nameFr:`la ligne ${r+1}`,nameEn:`row ${r+1}`});for(let c=0;c<6;c++)units.push({cells:Array.from({length:6},(_,r)=>[r,c]),nameFr:`la colonne ${c+1}`,nameEn:`column ${c+1}`});
-  for(let br=0;br<6;br+=2)for(let bc=0;bc<6;bc+=3){let cells=[];for(let r=br;r<br+2;r++)for(let c=bc;c<bc+3;c++)cells.push([r,c]);units.push({cells,nameFr:`le bloc ${Math.floor(br/2)+1}-${Math.floor(bc/3)+1}`,nameEn:`the 2×3 box at rows ${br+1}-${br+2}, columns ${bc+1}-${bc+3}`})}
-  for(let u of units)for(let v=1;v<=6;v++){let places=u.cells.filter(([r,c])=>current.state[r][c]===0&&sudokuCandidatesAt(r,c).includes(v));if(places.length===1){let [r,c]=places[0];return {r,c,v,why:lang()==='fr'?`${v} n’a qu’une seule position possible dans ${u.nameFr}.`:`${v} has only one possible position in ${u.nameEn}.`}}}
+  for(let [r,c] of empties){let cand=sudokuCandidatesAt(r,c);if(cand.length===1)return {r,c,v:cand[0],technique:'S_NAKED_SINGLE',why:lang()==='fr'?`après élimination par la ligne, la colonne et le bloc 2×3, seul ${cand[0]} reste possible.`:`after elimination by the row, column and 2×3 box, only ${cand[0]} remains possible.`}}
+  let units=[];for(let r=0;r<6;r++)units.push({cells:Array.from({length:6},(_,c)=>[r,c]),nameFr:`la ligne ${r+1}`,nameEn:`row ${r+1}`,technique:'S_HIDDEN_ROW'});for(let c=0;c<6;c++)units.push({cells:Array.from({length:6},(_,r)=>[r,c]),nameFr:`la colonne ${c+1}`,nameEn:`column ${c+1}`,technique:'S_HIDDEN_COLUMN'});
+  for(let br=0;br<6;br+=2)for(let bc=0;bc<6;bc+=3){let cells=[];for(let r=br;r<br+2;r++)for(let c=bc;c<bc+3;c++)cells.push([r,c]);units.push({cells,nameFr:`le bloc ${Math.floor(br/2)+1}-${Math.floor(bc/3)+1}`,nameEn:`the 2×3 box at rows ${br+1}-${br+2}, columns ${bc+1}-${bc+3}`,technique:'S_HIDDEN_BOX'})}
+  for(let u of units)for(let v=1;v<=6;v++){let places=u.cells.filter(([r,c])=>current.state[r][c]===0&&sudokuCandidatesAt(r,c).includes(v));if(places.length===1){let [r,c]=places[0];return {r,c,v,technique:u.technique,why:lang()==='fr'?`${v} n’a qu’une seule position possible dans ${u.nameFr}.`:`${v} has only one possible position in ${u.nameEn}.`}}}
   return null
 }
 
@@ -798,9 +2350,10 @@ function patchRectCandidates(id){
   return out
 }
 function findPatchLogicalHint(){
-  for(let id of current.ids){let cands=patchRectCandidates(id);if(!cands.length)continue;let common=new Set(cands[0].map(x=>keyCell(...x)));for(let k of [...common])if(!cands.every(cs=>cs.some(x=>keyCell(...x)===k)))common.delete(k);
-    for(let k of common){let [r,c]=k.split(',').map(Number);if(current.paint[r][c]!==id){return {r,c,id,why:lang()==='fr'?`cette case appartient à tous les rectangles encore compatibles avec l’indice de la zone ${id+1}.`:`this cell belongs to every rectangle still compatible with region ${id+1}'s clue.`}}}
-    if(cands.length===1){for(let [r,c] of cands[0])if(current.paint[r][c]!==id)return {r,c,id,why:lang()==='fr'?`il ne reste qu’un seul rectangle compatible avec l’indice de la zone ${id+1}.`:`only one rectangle remains compatible with region ${id+1}'s clue.`}}
+  for(let id of current.ids){let cands=patchRectCandidates(id);if(!cands.length)continue;
+    if(cands.length===1){for(let [r,c] of cands[0])if(current.paint[r][c]!==id)return {r,c,id,technique:'P_SINGLE_RECTANGLE',why:lang()==='fr'?`il ne reste qu’un seul rectangle compatible avec l’indice de la zone ${id+1}.`:`only one rectangle remains compatible with region ${id+1}'s clue.`}}
+    let common=new Set(cands[0].map(x=>keyCell(...x)));for(let k of [...common])if(!cands.every(cs=>cs.some(x=>keyCell(...x)===k)))common.delete(k);
+    for(let k of common){let [r,c]=k.split(',').map(Number);if(current.paint[r][c]!==id){return {r,c,id,technique:'P_MANDATORY_CELL',why:lang()==='fr'?`cette case appartient à tous les rectangles encore compatibles avec l’indice de la zone ${id+1}.`:`this cell belongs to every rectangle still compatible with region ${id+1}'s clue.`}}}
   }
   return null
 }
@@ -1345,20 +2898,67 @@ function findPatchRank2Hint(){
   }
   return null
 }
+function coachLookText(kind,[r,c],message={}){
+  let row=`${tr('rowLabel')} ${r+1}`,col=`${tr('columnLabel')} ${c+1}`;
+  if(kind==='queens'&&current?.reg?.[r])return `${tr('zone')} ${current.reg[r][c]+1} · ${row} · ${col}`;
+  if(kind==='patches'&&message?.reasoning?.action?.value!=null)return `${tr('zone')} ${Number(message.reasoning.action.value)+1} · ${row} · ${col}`;
+  return `${row} · ${col}`
+}
+function coachRuleText(message={}){
+  let id=message?.reasoning?.technique;
+  if(id&&TECHNIQUE_LIBRARY[id])return `<span class="coach-technique-title">${techniqueTitle(id)}</span><code class="coach-technique-id">${id}</code><span class="coach-technique-summary">${techniqueSummary(id)}</span>`;
+  let rank=Math.max(0,Math.min(3,Number(message.rank)||0));
+  return rank===0?tr('directReason'):tr(`rank${rank}`)
+}
+function coachUsage(stage,technique=null){
+  if(!current)return;
+  let u=current.coachUsage||(current.coachUsage={where:0,rule:0,why:0,reveal:0,maxStage:0,techniques:{}});
+  if(!u.techniques)u.techniques={};
+  let k=['','where','rule','why','reveal'][stage];if(k)u[k]=(u[k]||0)+1;
+  u.maxStage=Math.max(u.maxStage||0,stage);
+  if(technique&&TECHNIQUE_LIBRARY[technique]){
+    let t=u.techniques[technique]||(u.techniques[technique]={where:0,rule:0,why:0,reveal:0});
+    if(k)t[k]=(t[k]||0)+1;
+    if(k)masteryRecord(technique,k)
+  }
+}
 function hintStage(kind,target,message,apply){
   if(!DETAILED_HINT_LANGS.has(lang())&&message.rank!=null){let g=genericLocalizedHint(kind,target,message.rank,message.value);message={...message,...g}}
-  markHintUsed();updateScoreFlags();
   if(message.reasoning)current.lastReasoning=message.reasoning;
-  if(!current.hintFlow||current.hintFlow.kind!==kind||current.hintFlow.key!==target.join(','))current.hintFlow={kind,key:target.join(','),stage:0};
-  let h=current.hintFlow;h.stage++;
-  clearHintFocus();focusHint(target);
-  if(h.stage===1)showHintNotice(`<b>${tr('hintMove')} :</b> ${message.move}<br><span class="hint-secondary">${message.where}</span>`);
-  else if(h.stage===2)showHintNotice(`<b>${tr('hintMove')} :</b> ${message.move}<br><b>${tr('hintWhy')} :</b> ${message.why}`);
-  else{let before=historySnapshotKey();apply();historyRecord({type:'COACH_APPLY',reasoning:message.reasoning||null},before);current.hintFlow=null;showHintNotice(`<b>${tr('hintMove')} :</b> ${message.move}<br><b>${tr('hintWhy')} :</b> ${message.why}<br><span class="hint-applied">${message.reveal}</span>`);haptic(12)}
-  saveCurrent()
+  let technique=message?.reasoning?.technique||null,isNew=!current.hintFlow||current.hintFlow.kind!==kind||current.hintFlow.key!==target.join(',');
+  if(isNew){
+    let plan=adaptiveCoachPlan(technique);
+    current.hintFlow={kind,key:target.join(','),stage:0,plan};
+  }
+  let h=current.hintFlow,previous=h.stage||0,next=isNew?Math.max(1,Math.min(3,h.plan?.entryStage||1)):Math.min(4,previous+1);
+  h.stage=next;
+  for(let s=previous+1;s<=next;s++)coachUsage(s,technique);
+  if(technique)current.masteryPendingAid={technique,stage:h.stage,target:[...target]};
+  clearHintFocus();
+  if(h.stage<=2)focusHintContext(kind,target,message);else focusHint(target);
+  let progress=`<span class="coach-progress">${h.stage}/4</span>`,note=adaptiveCoachNote(h.plan),blocks=[];
+  // If adaptation jumps on the first request, show every level actually delivered.
+  for(let s=(isNew?1:h.stage);s<=h.stage;s++)blocks.push(coachStageBlock(s,kind,target,message));
+  if(h.stage<4){
+    showHintNotice(`${progress}${blocks.join('<br>')}${note}`)
+  }else{
+    let before=historySnapshotKey();markHintUsed();updateScoreFlags();apply();
+    historyRecord({type:'COACH_APPLY',reasoning:message.reasoning||null,coachStage:4,adaptivePlan:h.plan||null},before);
+    current.hintFlow=null;
+    showHintNotice(`${progress}${coachStageBlock(4,kind,target,message)}${note}`);
+    haptic(12)
+  }
+  saveCurrent();if(current?.trainingPendingComplete){current.trainingPendingComplete=false;finishTrainingExercise()}
 }
 function focusHint([r,c]){let board=document.querySelector('.board');if(!board)return;let n=current.n||6,d=board.children[r*n+c];if(d)d.classList.add('hint-focus')}
-function clearHintFocus(){document.querySelectorAll('.hint-focus').forEach(x=>x.classList.remove('hint-focus'))}
+function focusHintContext(kind,[r,c],message={}){
+  let board=document.querySelector('.board');if(!board)return;let n=current.n||6,cells=[...board.children],add=(rr,cc)=>{let d=cells[rr*n+cc];if(d)d.classList.add('hint-context')};
+  for(let i=0;i<n;i++){add(r,i);add(i,c)}
+  if(kind==='sudoku'){let br=Math.floor(r/2)*2,bc=Math.floor(c/3)*3;for(let rr=br;rr<br+2;rr++)for(let cc=bc;cc<bc+3;cc++)add(rr,cc)}
+  if(kind==='queens'&&current?.reg?.[r]){let z=current.reg[r][c];for(let rr=0;rr<n;rr++)for(let cc=0;cc<n;cc++)if(current.reg[rr][cc]===z)add(rr,cc)}
+  if(kind==='patches'&&message?.reasoning?.action?.value!=null){let id=Number(message.reasoning.action.value),pos=current?.clues?.[id]?.pos;if(pos)add(pos[0],pos[1])}
+}
+function clearHintFocus(){document.querySelectorAll('.hint-focus,.hint-context').forEach(x=>{x.classList.remove('hint-focus');x.classList.remove('hint-context')})}
 function touchSave(fn,action='MOVE'){return()=>{if(paused)return;let before=historySnapshotKey();closeHintNotice();current.hintFlow=null;clearHintFocus();fn();historyRecord(action,before);saveCurrent()}}
 // QUEENS
 const queenBases={easy:{sol:[1,3,5,0,2,4],reg:[[0,0,1,1,1,1],[0,1,1,1,1,1],[0,0,0,0,2,2],[3,4,4,4,2,2],[4,4,4,4,2,2],[4,4,4,4,5,2]]},medium:{sol:[2,5,1,4,0,3,6],reg:[[0,0,0,0,0,1,1],[2,0,6,6,6,1,6],[2,2,6,3,3,1,6],[2,2,6,5,3,1,6],[4,2,6,5,3,3,6],[4,2,6,5,5,5,6],[6,6,6,6,6,6,6]]},hard:{sol:[2,5,0,3,6,1,4,7],reg:[[0,0,0,0,0,4,4,4],[2,2,0,0,0,1,4,4],[2,7,7,4,4,4,4,4],[2,2,7,3,3,4,4,4],[5,2,7,6,3,4,4,7],[5,5,7,6,6,6,6,7],[7,7,7,7,6,6,7,7],[7,7,7,7,7,7,7,7]]}};
@@ -1370,7 +2970,7 @@ function solvedT(){return !!current&&current.game==='tango'&&current.state.every
 function solvedS(){return !!current&&current.game==='sudoku'&&current.state.every((row,r)=>row.every((v,c)=>v===current.sol[r][c]))}
 function solvedP(){return !!current&&current.game==='patches'&&current.paint.every((row,r)=>row.every((v,c)=>v===current.reg[r][c]))}
 function maybeAutoFinish(){
-  if(!current||current.completed||paused)return false;
+  if(!current||current.completed||paused||current.training)return false;
   let ok=current.game==='queens'?solvedQ():current.game==='tango'?solvedT():current.game==='sudoku'?solvedS():current.game==='patches'?solvedP():false;
   if(ok){finish(`${tr('congrats')} ${gameLabel(current.game)}`);return true}
   return false
@@ -1426,7 +3026,7 @@ b.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
 b.addEventListener('touchend',e=>e.preventDefault(),{passive:false});
 b.onpointerdown=e=>{if(paused)return;let d=boardCellAt(e.clientX,e.clientY);if(!d)return;e.preventDefault();historyBefore=historySnapshotKey();dragging=true;pointerId=e.pointerId;startCell=d;dragAxis=null;dragged=false;visited.clear();let r=+d.dataset.r,col=+d.dataset.c;dragMode=current.state[r][col]===1?'remove':'add';try{b.setPointerCapture(pointerId)}catch(_){}};
 b.onpointermove=e=>{if(!dragging||e.pointerId!==pointerId)return;e.preventDefault();let hit=boardCellAt(e.clientX,e.clientY);if(hit)applyDragTo(hit)};
-let endDrag=e=>{if(!dragging||e.pointerId!==pointerId)return;e.preventDefault();let finalHit=boardCellAt(e.clientX,e.clientY);if(finalHit)applyDragTo(finalHit);try{b.releasePointerCapture(pointerId)}catch(_){};let d=startCell;dragging=false;pointerId=null;if(!dragged&&d){let r=+d.dataset.r,col=+d.dataset.c;current.hintFlow=null;clearHintFocus();let prev=current.state[r][col],next=(prev+1)%3;if(prev===2&&next===0)markBacktrack();setQueenCell(r,col,next);haptic(next===2?16:7);drawQ()}else if(dragged){haptic(7)}historyRecord({type:dragged?'QUEEN_DRAG':'QUEEN_CYCLE'},historyBefore);saveCurrent();maybeAutoFinish();historyBefore=null;startCell=null;dragAxis=null;visited.clear()};
+let endDrag=e=>{if(!dragging||e.pointerId!==pointerId)return;e.preventDefault();let finalHit=boardCellAt(e.clientX,e.clientY);if(finalHit)applyDragTo(finalHit);try{b.releasePointerCapture(pointerId)}catch(_){};let d=startCell;dragging=false;pointerId=null;if(!dragged&&d){let r=+d.dataset.r,col=+d.dataset.c;current.hintFlow=null;clearHintFocus();let prev=current.state[r][col],next=(prev+1)%3;if(prev===2&&next===0)markBacktrack();setQueenCell(r,col,next);haptic(next===2?16:7);drawQ()}else if(dragged){haptic(7)}historyRecord({type:dragged?'QUEEN_DRAG':'QUEEN_CYCLE',primaryTarget:(!dragged&&d)?[+d.dataset.r,+d.dataset.c]:null},historyBefore);saveCurrent();maybeAutoFinish();historyBefore=null;startCell=null;dragAxis=null;visited.clear()};
 b.onpointerup=endDrag;b.onpointercancel=e=>{if(!dragging||e.pointerId!==pointerId)return;try{b.releasePointerCapture(pointerId)}catch(_){};dragging=false;pointerId=null;startCell=null;dragAxis=null;visited.clear();drawQ()};
 drawQ();$('#queenAutoCross').onchange=e=>{let before=historySnapshotKey();setQueenAutoCross(e.target.checked);if(e.target.checked){for(let r=0;r<current.n;r++)for(let col=0;col<current.n;col++)if(current.state[r][col]===2)applyQueenAutoCross(r,col);drawQ();historyRecord({type:'AUTO_CROSS_ENABLE'},before);saveCurrent();showToast(tr('autoCrossOn'))}else showToast(tr('autoCrossOff'))};$('#checkBtn').onclick=checkQ;$('#hintBtn').onclick=hintQ;$('#solutionBtn').onclick=()=>{if(paused)return;current.state=current.state.map((row,r)=>row.map((_,col)=>col===current.sol[r]?2:1));drawQ();finish(tr('solutionShown'),'revealed')}}
 function drawQ(){let b=$('#qboard');if(current?.game==='queens'&&current.completed&&solvedQ())b.classList.add('queens-win');[...b.children].forEach((d,i)=>{let r=Math.floor(i/current.n),c=i%current.n,v=current.state[r][c];d.innerHTML=v===2?'<span class="queen">♛</span>':v===1?'<span class="mark">×</span>':'';d.classList.remove('error')});applyIllegalClasses(b,queenIllegalCells(),current.n);updateScoreFlags()}
@@ -1448,8 +3048,11 @@ function queenHintTimeoutMessage(stage,elapsedMs){
 }
 let queenHintSearchToken=0;
 function hintQ(){
+  if(current?.training)return trainingCoach();
   if(paused){showHintNotice(tr('hintPaused'));return}
   if(!current||current.game!=='queens'){showHintNotice(tr('noLogicalHint'));return}
+  if(showVisibleErrorsBeforeHint())return;
+  if(showExplorationContradictionBeforeHint())return;
   let token=++queenHintSearchToken;
   showHintNotice(tr('hintSearching'));
   setTimeout(()=>{
@@ -1488,7 +3091,7 @@ function renderTango(c){shell(gameLabel('tango'),`6×6 · ${tr('generated')}`,c.
 });b.appendChild(d)}drawT();$('#checkBtn').onclick=checkT;$('#hintBtn').onclick=hintT;$('#solutionBtn').onclick=()=>{if(paused)return;current.tangoPendingCell=null;current.state=current.sol.map(r=>[...r]);drawT();finish(tr('solutionShown'),'revealed')}}
 function drawT(){let b=$('#tboard');[...b.children].forEach((d,i)=>{let r=Math.floor(i/6),c=i%6,v=current.state[r][c];d.innerHTML=v===0?'<span class="tango-symbol">☾</span>':v===1?'<span class="tango-symbol">☀</span>':''});current.edges.forEach(([r,c,dir,s])=>{let d=b.children[r*6+c];let e=document.createElement('span');e.className='relation '+dir;e.textContent=s;d.appendChild(e)});let ignore=current.tangoPendingCell?keyCell(...current.tangoPendingCell):null;applyIllegalClasses(b,tangoIllegalCells(ignore),6);updateScoreFlags()}
 function checkT(){if(solvedT())finish(`${tr('congrats')} ${gameLabel('tango')}`);else status(tr('tangoIncomplete'),false)}
-function hintT(){if(paused)return;current.tangoPendingCell=null;let h=findTangoLogicalHint()||findTangoRank1Hint()||findTangoRank2Hint();if(!h)return showNoLogicalHint();let name=h.v===1?(lang()==='fr'?'un soleil ☀':'a sun ☀'):(lang()==='fr'?'une lune ☾':'a moon ☾'),move=lang()==='fr'?`Place ${name} en ligne ${h.r+1}, colonne ${h.c+1}.`:`Place ${name} at row ${h.r+1}, column ${h.c+1}.`;hintStage('tango',[h.r,h.c],{move,where:lang()==='fr'?`Le coup est déduit uniquement des symboles et relations déjà affichés.`:`The move is deduced only from the symbols and relations already displayed.`,why:h.rank===2?rank2Why(h):h.rank===1?rank1Why(h):h.why,reveal:tr('cellRevealed'),rank:h.rank||0,value:h.v,reasoning:structuredReasoning('tango',h)},()=>{current.state[h.r][h.c]=h.v;drawT();maybeAutoFinish()})}
+function hintT(){if(current?.training)return trainingCoach();if(paused)return;if(showVisibleErrorsBeforeHint())return;if(showExplorationContradictionBeforeHint())return;current.tangoPendingCell=null;let h=findTangoLogicalHint()||findTangoRank1Hint()||findTangoRank2Hint();if(!h)return showNoLogicalHint();let name=h.v===1?(lang()==='fr'?'un soleil ☀':'a sun ☀'):(lang()==='fr'?'une lune ☾':'a moon ☾'),move=lang()==='fr'?`Place ${name} en ligne ${h.r+1}, colonne ${h.c+1}.`:`Place ${name} at row ${h.r+1}, column ${h.c+1}.`;hintStage('tango',[h.r,h.c],{move,where:lang()==='fr'?`Le coup est déduit uniquement des symboles et relations déjà affichés.`:`The move is deduced only from the symbols and relations already displayed.`,why:h.rank===2?rank2Why(h):h.rank===1?rank1Why(h):h.why,reveal:tr('cellRevealed'),rank:h.rank||0,value:h.v,reasoning:structuredReasoning('tango',h)},()=>{current.state[h.r][h.c]=h.v;drawT();maybeAutoFinish()})}
 
 // MINI SUDOKU 6x6 regions 2x3
 const sudBase=[[1,2,3,4,5,6],[4,5,6,1,2,3],[2,3,4,5,6,1],[5,6,1,2,3,4],[3,4,5,6,1,2],[6,1,2,3,4,5]];
@@ -1498,7 +3101,7 @@ function sudoku(diff){let map=shuffle([1,2,3,4,5,6]),sol=sudBase.map(r=>r.map(v=
 function renderSudoku(c){shell(gameLabel('sudoku'),`6×6 · 1–6 · ${tr('generated')}`,c.diff,`<div class="board-wrap"><div class="board sudoku" id="sboard" style="grid-template-columns:repeat(6,minmax(0,1fr));grid-template-rows:repeat(6,minmax(0,1fr))"></div></div><div class="numpad" id="numpad">${[1,2,3,4,5,6].map(n=>`<button data-n="${n}">${n}</button>`).join('')}<button data-n="0" aria-label="${tr('erase')}">⌫</button></div>`,gameRules('sudoku'));let b=$('#sboard');for(let r=0;r<6;r++)for(let col=0;col<6;col++){let fixed=!c.empty.has(r*6+col),d=document.createElement('div');d.className='cell '+(fixed?'fixed ':'')+((col===2)?'boxR ':'')+((r===1||r===3)?'boxB ':'');if(!fixed)d.onclick=touchSave(()=>{current.sel=[r,col];drawS()});b.appendChild(d)}$('#numpad').querySelectorAll('button').forEach(bt=>bt.onclick=touchSave(()=>{if(current.sel){let [r,col]=current.sel,prev=current.state[r][col],next=+bt.dataset.n;if(prev!==0&&prev!==next)markBacktrack();current.state[r][col]=next;haptic(8);drawS();updateScoreFlags();maybeAutoFinish()}}));drawS();$('#checkBtn').onclick=checkS;$('#hintBtn').onclick=hintS;$('#solutionBtn').onclick=()=>{if(paused)return;current.state=current.sol.map(r=>[...r]);drawS();finish(tr('solutionShown'),'revealed')}}
 function drawS(){let sel=current.sel,sv=sel?current.state[sel[0]][sel[1]]:0;[...$('#sboard').children].forEach((d,i)=>{let r=Math.floor(i/6),c=i%6,v=current.state[r][c];d.textContent=v||'';let sameUnit=!!sel&&(r===sel[0]||c===sel[1]||(Math.floor(r/2)===Math.floor(sel[0]/2)&&Math.floor(c/3)===Math.floor(sel[1]/3)));d.classList.toggle('peer',sameUnit&&!(r===sel[0]&&c===sel[1]));d.classList.toggle('same-value',!!sv&&v===sv&&!(r===sel[0]&&c===sel[1]));d.classList.toggle('selected',!!sel&&sel[0]===r&&sel[1]===c);d.classList.remove('error')});applyIllegalClasses($('#sboard'),sudokuIllegalCells(),6);updateScoreFlags()}
 function checkS(){if(solvedS())finish(`${tr('congrats')} ${gameLabel('sudoku')}`);else status(tr('sudokuIncomplete'),false)}
-function hintS(){if(paused)return;let h=findSudokuLogicalHint()||findSudokuRank1Hint()||findSudokuRank2Hint();if(!h)return showNoLogicalHint();let move=lang()==='fr'?`Place le chiffre ${h.v} en ligne ${h.r+1}, colonne ${h.c+1}.`:`Place digit ${h.v} at row ${h.r+1}, column ${h.c+1}.`;hintStage('sudoku',[h.r,h.c],{move,where:lang()==='fr'?`Le coup est déduit uniquement des chiffres actuellement visibles.`:`The move is deduced only from the digits currently visible.`,why:h.rank===2?rank2Why(h):h.rank===1?rank1Why(h):h.why,reveal:tr('digitRevealed'),rank:h.rank||0,value:h.v,reasoning:structuredReasoning('sudoku',h)},()=>{current.state[h.r][h.c]=h.v;current.sel=[h.r,h.c];drawS();maybeAutoFinish()})}
+function hintS(){if(current?.training)return trainingCoach();if(paused)return;if(showVisibleErrorsBeforeHint())return;if(showExplorationContradictionBeforeHint())return;let h=findSudokuLogicalHint()||findSudokuRank1Hint()||findSudokuRank2Hint();if(!h)return showNoLogicalHint();let move=lang()==='fr'?`Place le chiffre ${h.v} en ligne ${h.r+1}, colonne ${h.c+1}.`:`Place digit ${h.v} at row ${h.r+1}, column ${h.c+1}.`;hintStage('sudoku',[h.r,h.c],{move,where:lang()==='fr'?`Le coup est déduit uniquement des chiffres actuellement visibles.`:`The move is deduced only from the digits currently visible.`,why:h.rank===2?rank2Why(h):h.rank===1?rank1Why(h):h.why,reveal:tr('digitRevealed'),rank:h.rank||0,value:h.v,reasoning:structuredReasoning('sudoku',h)},()=>{current.state[h.r][h.c]=h.v;current.sel=[h.r,h.c];drawS();maybeAutoFinish()})}
 
 // PATCHES — connected target regions; player paints each clue region.
 const patchDefs={
@@ -1604,7 +3207,7 @@ function schedulePatchDragPreview(anchor,end,fallbackId,lockedId=null){
 function commitPatchRectangle(anchor,end,fallbackId,lockedId=null){
   let before=historySnapshotKey(),info=patchPreviewInfo(anchor,end,fallbackId,lockedId);
   clearPatchPreview();
-  if(!info.valid){haptic(18);return false}
+  if(!info.valid){captureRejectedPatchError(info);haptic(18);return false}
   let id=info.id,hadOld=current.paint.some(row=>row.some(v=>v===id));
   let rectKeys=new Set(info.rect.cells.map(([r,c])=>r+','+c));
   let overwrite=info.rect.cells.some(([r,c])=>current.paint[r][c]!=null&&current.paint[r][c]!==id);
@@ -1702,7 +3305,7 @@ function drawP(){
   updateScoreFlags()
 }
 function checkP(){let n=current.n,all=current.paint.every(row=>row.every(v=>v!==null));if(!all){status(tr('patchAll'),false);return}let cluePositions=new Map(current.ids.map(id=>[current.clues[id].pos.join(','),id]));for(let id of current.ids){let cells=[];for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.paint[r][c]===id)cells.push([r,c]);if(!cells.length){status(tr('patchEach'),false);return}let own=current.clues[id].pos;if(!cells.some(([r,c])=>r===own[0]&&c===own[1])){status(tr('patchOwn'),false);return}let other=cells.some(([r,c])=>cluePositions.has(r+','+c)&&cluePositions.get(r+','+c)!==id);if(other){status(tr('patchTwo'),false);return}let seen=new Set([cells[0].join(',')]),q=[cells[0]],set=new Set(cells.map(x=>x.join(',')));while(q.length){let [r,c]=q.pop();for(let [rr,cc] of [[r+1,c],[r-1,c],[r,c+1],[r,c-1]]){let k=rr+','+cc;if(set.has(k)&&!seen.has(k)){seen.add(k);q.push([rr,cc])}}}if(seen.size!==cells.length){status(tr('patchConnected'),false);return}let cl=current.clues[id],sh=patchShape(cells);if(sh==='libre'){status(tr('patchRect'),false);return}if((cl.mode==='both'||cl.mode==='size')&&cells.length!==cl.size){status(tr('patchSize'),false);return}if((cl.mode==='both'||cl.mode==='shape')&&sh!==cl.shape){status(tr('patchShape'),false);return}}finish(`${tr('congrats')} ${gameLabel('patches')}`)}
-function hintP(){if(paused)return;let h=findPatchLogicalHint()||findPatchRank1Hint()||findPatchRank2Hint();if(!h)return showNoLogicalHint();let move=lang()==='fr'?`Attribue la case ligne ${h.r+1}, colonne ${h.c+1} à la zone ${h.id+1}.`:`Assign row ${h.r+1}, column ${h.c+1} to region ${h.id+1}.`;hintStage('patches',[h.r,h.c],{move,where:lang()==='fr'?`Le coup est déduit uniquement des indices et cases déjà peintes.`:`The move is deduced only from the clues and cells already painted.`,why:h.rank===2?rank2Why(h):h.rank===1?rank1Why(h):h.why,reveal:tr('patchRevealed'),rank:h.rank||0,value:h.id,reasoning:structuredReasoning('patches',h)},()=>{current.paint[h.r][h.c]=h.id;drawP();maybeAutoFinish()})}
+function hintP(){if(current?.training)return trainingCoach();if(paused)return;if(showVisibleErrorsBeforeHint())return;if(showExplorationContradictionBeforeHint())return;let h=findPatchLogicalHint()||findPatchRank1Hint()||findPatchRank2Hint();if(!h)return showNoLogicalHint();let move=lang()==='fr'?`Attribue la case ligne ${h.r+1}, colonne ${h.c+1} à la zone ${h.id+1}.`:`Assign row ${h.r+1}, column ${h.c+1} to region ${h.id+1}.`;hintStage('patches',[h.r,h.c],{move,where:lang()==='fr'?`Le coup est déduit uniquement des indices et cases déjà peintes.`:`The move is deduced only from the clues and cells already painted.`,why:h.rank===2?rank2Why(h):h.rank===1?rank1Why(h):h.why,reveal:tr('patchRevealed'),rank:h.rank||0,value:h.id,reasoning:structuredReasoning('patches',h)},()=>{current.paint[h.r][h.c]=h.id;drawP();maybeAutoFinish()})}
 // ===== v1.2 generators: generated puzzles + uniqueness checks =====
 function countQueensGenerated(reg,limit=2){const n=reg.length;let count=0,usedC=new Set(),usedR=new Set();function bt(r,prev){if(count>=limit)return;if(r===n){count++;return}for(let c=0;c<n;c++){let z=reg[r][c];if(usedC.has(c)||usedR.has(z))continue;if(r>0&&Math.abs(c-prev)===1)continue;usedC.add(c);usedR.add(z);bt(r+1,c);usedC.delete(c);usedR.delete(z);if(count>=limit)return}}bt(0,-99);return count}
 function randomQueenSolution(n){for(let t=0;t<3000;t++){let p=shuffle(Array.from({length:n},(_,i)=>i));if(p.every((c,r)=>r===0||Math.abs(c-p[r-1])!==1))return p}return null}
