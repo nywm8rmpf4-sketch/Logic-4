@@ -1,6 +1,36 @@
-# QUADLUD — v2.21.8
+# QUADLUD — v2.21.9
 
 Application web statique mobile-first regroupant **Couronnes**, **Soleil-Lune**, **Grille 6** et **Rectangles**.
+
+## v2.21.9 — Couronnes Difficile/Expert : au plus trois zones de taille 2
+- Les difficultés **Difficile** et **Expert** de Couronnes ajoutent une contrainte structurelle :
+  - aucune zone singleton, comme auparavant ;
+  - **au plus 3 zones contenant exactement 2 cases**.
+- Les contraintes logiques validées précédemment restent inchangées :
+  - Difficile 9×9 : au moins 3 inférences R1, au plus 1 R2, aucune R3 ;
+  - Expert 9×9 : au moins 1 R2, aucune R3.
+- Le générateur Difficile a été adapté structurellement plutôt que de simplement rejeter presque toutes les grilles :
+  - après suppression des singletons, `growQueenTwoCellRegions()` agrandit certaines zones de taille 2 ;
+  - une case n’est transférée que depuis une zone donneuse restant valide et connectée ;
+  - la case contenant la reine de la zone donneuse n’est jamais déplacée ;
+  - la grille est ensuite revalidée pour l’unicité et le profil logique.
+- La règle de taille utilise les fonctions partagées `queenRegionSizeCount()`, `queenSingletonRegions()` et `queenTwoCellRegions()`.
+- `logicProfile` conserve maintenant aussi `twoCellRegions` pour audit et tests.
+- Un nouveau fallback Difficile 9×9 a été prévalidé avec 0 singleton, 3 zones de taille 2 et le profil logique Difficile.
+- Le fallback Expert respecte déjà la nouvelle contrainte avec 0 zone de taille 2.
+- Compatibilité des défis :
+  - `QL11`, `QL12` et `QL13` restent interprétés avec leurs générateurs historiques ;
+  - les nouveaux défis utilisent **`QL14`** et appliquent la nouvelle contrainte structurelle.
+- Les tailles Couronnes restent **7×7 / 8×8 / 9×9 / 9×9**.
+
+### Validation spécifique v2.21.9
+- Lot réellement généré :
+  - **20 grilles Difficile** : 20/20 avec ≤ 3 zones de taille 2, 0 singleton, unicité et profil logique conformes ;
+  - **6 grilles Expert** : 6/6 avec ≤ 3 zones de taille 2, 0 singleton, unicité et profil logique conformes.
+- Vérification des fallbacks Difficile et Expert.
+- Vérification de compatibilité des anciens défis `QL11`, `QL12` et `QL13` par comparaison avec v2.21.8.
+- Vérification déterministe des nouveaux défis `QL14`.
+- Non-régression du Tuteur, du Logic Coach, des 27 techniques, des alertes configurables, de l’Exploration, de l’historique et des trois autres jeux.
 
 ## v2.21.8 — Tuteur Couronnes : croix automatiques après une reine
 - Dans le **Tuteur Couronnes**, lorsqu’une étape pose une reine, toutes les cases vides immédiatement interdites sont désormais barrées automatiquement par `×`.

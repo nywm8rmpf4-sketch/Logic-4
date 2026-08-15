@@ -5,7 +5,7 @@
  */
 'use strict';
 const $=s=>document.querySelector(s), app=$('#app'), toast=$('#toast'), timerEl=$('#timer');
-const VERSION='2.21.8', SAVE_KEY='logic4-save-v1';
+const VERSION='2.21.9', SAVE_KEY='logic4-save-v1';
 let current=null, tick=null, startedAt=0, elapsedBase=0, paused=false;
 const I18N={
 fr:{
@@ -1008,7 +1008,7 @@ function statsSummary(){
 
 
 // ===== v2.21.0 — shareable friend challenges =====
-const CHALLENGE_SCHEMA=1,CHALLENGE_GENERATOR=3;
+const CHALLENGE_SCHEMA=1,CHALLENGE_GENERATOR=4;
 const CHALLENGE_ALPHABET='23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
 const CHALLENGE_GAME_TO_CODE={queens:'Q',tango:'T',sudoku:'S',patches:'P'};
 const CHALLENGE_CODE_TO_GAME={Q:'queens',T:'tango',S:'sudoku',P:'patches'};
@@ -1028,7 +1028,7 @@ function challengeRandomSeed(len=8){
 function challengeMake(game,diff,seed=challengeRandomSeed(),generator=CHALLENGE_GENERATOR){
   if(!CHALLENGE_GAME_TO_CODE[game])return null;if(game!=='queens'&&diff==='expert')return null;if(!CHALLENGE_DIFF_TO_CODE[diff])return null;
   seed=challengeNormalizeCode(seed).slice(0,8);if(seed.length!==8||[...seed].some(c=>!CHALLENGE_ALPHABET.includes(c)))return null;
-  if(![1,2,3].includes(Number(generator)))return null;generator=Number(generator);let payload=`QL${CHALLENGE_SCHEMA}${generator}${CHALLENGE_GAME_TO_CODE[game]}${CHALLENGE_DIFF_TO_CODE[diff]}${seed}`,check=challengeChecksum(payload);
+  if(![1,2,3,4].includes(Number(generator)))return null;generator=Number(generator);let payload=`QL${CHALLENGE_SCHEMA}${generator}${CHALLENGE_GAME_TO_CODE[game]}${CHALLENGE_DIFF_TO_CODE[diff]}${seed}`,check=challengeChecksum(payload);
   return {schema:CHALLENGE_SCHEMA,generator,game,diff,seed,code:`QL${CHALLENGE_SCHEMA}${generator}-${CHALLENGE_GAME_TO_CODE[game]}${CHALLENGE_DIFF_TO_CODE[diff]}-${seed}-${check}`}
 }
 function challengeParse(raw){
@@ -1036,7 +1036,7 @@ function challengeParse(raw){
   // QL + schema + generator + game + difficulty + 8 seed chars + 2 checksum chars.
   if(n.length!==16||n.slice(0,2)!=='QL')return null;
   let schema=Number(n[2]),generator=Number(n[3]),game=CHALLENGE_CODE_TO_GAME[n[4]],diff=CHALLENGE_CODE_TO_DIFF[n[5]],seed=n.slice(6,14),check=n.slice(14);
-  if(schema!==CHALLENGE_SCHEMA||![1,2,3].includes(generator)||!game||!diff||(game!=='queens'&&diff==='expert'))return null;
+  if(schema!==CHALLENGE_SCHEMA||![1,2,3,4].includes(generator)||!game||!diff||(game!=='queens'&&diff==='expert'))return null;
   if([...seed].some(c=>!CHALLENGE_ALPHABET.includes(c)))return null;
   let payload=n.slice(0,14);if(challengeChecksum(payload)!==check)return null;
   return challengeMake(game,diff,seed,generator)
@@ -1073,6 +1073,16 @@ function challengeBuildCandidateV2(ch){
 function challengeBuildCandidateV3(ch){
   if(!ch||ch.generator!==3)return null;
   return withSeed(challengeSeedString(ch),()=>{
+    if(ch.game==='queens')return legacyQueenCandidateV3(ch.diff);
+    if(ch.game==='tango')return targetPick(collectCandidates(()=>tangoCandidate(ch.diff),6),ch.diff);
+    if(ch.game==='sudoku')return targetPick(collectCandidates(()=>sudokuCandidate(ch.diff),8),ch.diff);
+    if(ch.game==='patches')return targetPick(collectCandidates(()=>patchesCandidate(ch.diff),ch.diff==='hard'?5:4),ch.diff);
+    return null
+  })
+}
+function challengeBuildCandidateV4(ch){
+  if(!ch||ch.generator!==4)return null;
+  return withSeed(challengeSeedString(ch),()=>{
     if(ch.game==='queens')return queenCandidate(ch.diff);
     if(ch.game==='tango')return targetPick(collectCandidates(()=>tangoCandidate(ch.diff),6),ch.diff);
     if(ch.game==='sudoku')return targetPick(collectCandidates(()=>sudokuCandidate(ch.diff),8),ch.diff);
@@ -1080,7 +1090,7 @@ function challengeBuildCandidateV3(ch){
     return null
   })
 }
-function challengeBuildCandidate(ch){return ch?.generator===1?challengeBuildCandidateV1(ch):ch?.generator===2?challengeBuildCandidateV2(ch):ch?.generator===3?challengeBuildCandidateV3(ch):null}
+function challengeBuildCandidate(ch){return ch?.generator===1?challengeBuildCandidateV1(ch):ch?.generator===2?challengeBuildCandidateV2(ch):ch?.generator===3?challengeBuildCandidateV3(ch):ch?.generator===4?challengeBuildCandidateV4(ch):null}
 
 function challengePublicFingerprint(ch){return challengeFingerprintFromCandidate(ch,challengeBuildCandidate(ch))}
 function challengeInstall(ch,g){
@@ -2625,7 +2635,7 @@ function ensurePrecomputeWorker(){
   if(precomputeWorker)return precomputeWorker;
   if(typeof Worker==='undefined')return null;
   try{
-    let w=new Worker('./precompute-worker.js?v=2.21.8');
+    let w=new Worker('./precompute-worker.js?v=2.21.9');
     w.onmessage=e=>{
       let m=e.data||{};precomputeBusy=false;
       if(m.ok&&m.day===precomputeDay&&m.candidate){
@@ -3822,6 +3832,35 @@ function reduceQueenSingletons(reg,sol,maxSingles){
 }
 
 
+
+function growQueenTwoCellRegions(reg,sol,maxTwos=3){
+  reg=reg.map(row=>[...row]);let n=reg.length,guard=0;
+  while(queenTwoCellRegions(reg)>maxTwos&&guard++<n*n*4){
+    let sizes=Array(n).fill(0);for(let row of reg)for(let id of row)sizes[id]++;
+    let targets=shuffle(Array.from({length:n},(_,id)=>id).filter(id=>sizes[id]===2)),changed=false;
+    for(let id of targets){
+      let candidates=[];
+      for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(reg[r][c]===id){
+        for(let [rr,cc] of shuffle([[r+1,c],[r-1,c],[r,c+1],[r,c-1]])){
+          if(rr<0||rr>=n||cc<0||cc>=n)continue;
+          let donor=reg[rr][cc];
+          if(donor===id||sizes[donor]<=3)continue;
+          if(rr===donor&&cc===sol[donor])continue;
+          if(!queenRegionConnectedAfterMove(reg,donor,rr,cc))continue;
+          candidates.push([rr,cc,donor])
+        }
+      }
+      if(candidates.length){
+        let [rr,cc,donor]=candidates[Math.floor(Math.random()*candidates.length)];
+        reg[rr][cc]=id;sizes[id]++;sizes[donor]--;changed=true;
+        if(queenTwoCellRegions(reg)<=maxTwos)return reg
+      }
+    }
+    if(!changed)break
+  }
+  return queenTwoCellRegions(reg)<=maxTwos?reg:null
+}
+
 const queenStrictFallback={
  hard:{sol:[1,5,3,7,4,6,0,2],reg:[[0,0,2,2,2,1,1,1],[0,2,2,2,2,1,2,1],[6,6,6,2,2,2,2,2],[6,6,2,2,2,5,5,3],[6,6,7,4,4,4,5,3],[6,7,7,4,5,5,5,5],[6,7,7,5,5,7,7,5],[7,7,7,7,7,7,7,7]]},
  expert:{sol:[6,2,0,7,3,8,4,1,5],reg:[[1,1,1,0,0,0,0,3,5],[2,1,1,1,4,0,3,3,5],[2,2,2,4,4,0,4,3,5],[7,6,6,4,4,4,4,3,5],[7,7,6,4,6,6,6,6,5],[7,6,6,6,6,5,5,6,5],[7,7,7,6,6,5,5,6,5],[7,7,8,6,6,6,5,6,5],[7,8,8,8,8,8,5,5,5]]}
@@ -3889,7 +3928,22 @@ function transformedQueenFallbackV3(diff){
   return {n,sol,reg,logicProfile:queenCompactProfile(profile)}
 }
 
-function generateQueensPuzzle(diff){
+
+// Frozen Queens generator used only to reproduce v2.21.3–v2.21.8 friend-challenge generator V3 codes.
+
+const queenStrictFallbackV4={
+  hard:{sol:[4,0,3,8,2,7,5,1,6],reg:[[4,4,4,4,0,0,0,4,4],[1,1,1,4,4,4,4,4,4],[4,4,4,2,2,4,4,4,3],[4,4,4,4,4,4,4,4,3],[4,4,4,4,4,4,4,4,4],[4,4,4,4,4,4,5,5,4],[7,7,4,4,4,6,6,5,4],[4,7,4,4,4,4,8,4,4],[4,4,4,4,4,4,8,8,4]]}
+};
+function transformedQueenFallbackV4(diff){
+  let base=diff==='hard'?queenStrictFallbackV4.hard:queenStrictFallback.expert,k=Math.floor(Math.random()*8),reg=transformGrid(base.reg,k),n=reg.length,mask=base.sol.map((c,r)=>Array.from({length:n},(_,j)=>j===c?1:0));
+  mask=transformGrid(mask,k);let sol=Array(n).fill(-1);for(let r=0;r<n;r++)sol[r]=mask[r].indexOf(1);
+  if(countQueensGenerated(reg,2)!==1)throw new Error('Queens strict fallback uniqueness mismatch');
+  let profile=analyzeQueensLogicProfile(reg,{diff,budgetMs:Infinity});
+  if(!queenGenerationMatchesDifficulty(reg,profile,diff))throw new Error('Queens strict fallback profile mismatch');
+  return {n,sol,reg,logicProfile:queenCompactProfile(profile)}
+}
+
+function generateQueensPuzzleLegacyV3(diff){
   const cfg={
     easy:{n:7,single:4,maxSingles:99,attempts:320},
     medium:{n:8,single:3,maxSingles:99,attempts:620},
@@ -3907,6 +3961,28 @@ function generateQueensPuzzle(diff){
   }
   if(diff==='hard'||diff==='expert')return transformedQueenFallbackV3(diff);
   throw new Error('Queens generation failed for requested logical profile')
+}
+function legacyQueenCandidateV3(diff){let g=generateQueensPuzzleLegacyV3(diff);g.rating=queenProfileRating(g.reg,g.logicProfile);return g}
+
+function generateQueensPuzzle(diff){
+  const cfg={
+    easy:{n:7,single:4,maxSingles:99,maxTwos:99,attempts:320},
+    medium:{n:8,single:3,maxSingles:99,maxTwos:99,attempts:620},
+    hard:{n:9,single:8,maxSingles:0,maxTwos:3,attempts:900},
+    expert:{n:9,single:3,maxSingles:0,maxTwos:3,attempts:520}
+  }[diff];
+  if(!cfg)throw new Error('Unknown Queens difficulty');
+  for(let t=0;t<cfg.attempts;t++){
+    let sol=randomQueenSolution(cfg.n);if(!sol)continue;
+    let reg=queenRegionsFromSolution(sol,cfg.single);if(!reg)continue;
+    if(cfg.maxSingles===0){reg=reduceQueenSingletons(reg,sol,0);if(!reg)continue}
+    if(cfg.maxTwos<99){reg=growQueenTwoCellRegions(reg,sol,cfg.maxTwos);if(!reg)continue}
+    if(countQueensGenerated(reg,2)!==1)continue;
+    let profile=analyzeQueensLogicProfile(reg,{diff,budgetMs:Infinity});
+    if(queenGenerationMatchesDifficulty(reg,profile,diff))return {n:cfg.n,sol,reg,logicProfile:queenCompactProfile(profile)}
+  }
+  if(diff==='hard'||diff==='expert')return transformedQueenFallbackV4(diff);
+  throw new Error('Queens generation failed for requested logical/region profile')
 }
 function queens(diff){let g=generateQueensPuzzle(diff);current={game:'queens',diff,n:g.n,reg:g.reg,sol:g.sol,state:Array.from({length:g.n},()=>Array(g.n).fill(0)),generated:true,unique:true,completed:false};renderQueens(current)}
 
@@ -3959,13 +4035,15 @@ function applyQueenProfileHint(h){
   if(current.state[h.r][h.c]!==0)return false;
   current.state[h.r][h.c]=h.v;return true
 }
-function queenSingletonRegions(reg){
+function queenRegionSizeCount(reg,size){
   let sizes={};for(let id of reg.flat())sizes[id]=(sizes[id]||0)+1;
-  return Object.values(sizes).filter(x=>x===1).length
+  return Object.values(sizes).filter(x=>x===size).length
 }
+function queenSingletonRegions(reg){return queenRegionSizeCount(reg,1)}
+function queenTwoCellRegions(reg){return queenRegionSizeCount(reg,2)}
 function analyzeQueensLogicProfile(reg,options={}){
   let n=reg.length,previous=current,deadline=Date.now()+(options.budgetMs||2500),profile={
-    rank0:0,rank1:0,rank2:0,rank3:0,singletonRegions:queenSingletonRegions(reg),
+    rank0:0,rank1:0,rank2:0,rank3:0,singletonRegions:queenSingletonRegions(reg),twoCellRegions:queenTwoCellRegions(reg),
     solvedLogically:false,timeout:false,stalled:false,sequence:[]
   };
   current={game:'queens',diff:options.diff||'medium',n,reg:reg.map(r=>[...r]),state:Array.from({length:n},()=>Array(n).fill(0)),completed:false};
@@ -4013,9 +4091,16 @@ function queenProfileMatchesDifficulty(profile,diff){
   if(diff==='expert')return profile.singletonRegions===0&&profile.rank2>=1;
   return false
 }
+function queenRegionStructureMatchesDifficulty(reg,diff){
+  if(diff==='hard'||diff==='expert')return queenSingletonRegions(reg)===0&&queenTwoCellRegions(reg)<=3;
+  return true
+}
+function queenGenerationMatchesDifficulty(reg,profile,diff){
+  return queenProfileMatchesDifficulty(profile,diff)&&queenRegionStructureMatchesDifficulty(reg,diff)
+}
 function queenCompactProfile(profile){
   return {rank0:profile.rank0,rank1:profile.rank1,rank2:profile.rank2,rank3:profile.rank3,
-    singletonRegions:profile.singletonRegions,solvedLogically:profile.solvedLogically,
+    singletonRegions:profile.singletonRegions,twoCellRegions:profile.twoCellRegions,solvedLogically:profile.solvedLogically,
     timeout:!!profile.timeout,stalled:!!profile.stalled,maxRank:profile.maxRank};
 }
 function queenProfileSummary(profile){
@@ -4025,7 +4110,7 @@ function queenProfileRating(reg,profile){
   let legacy=analyzeQueens(reg),level=profile.rank2?2:profile.rank1?1:0;
   return {...legacy,technique:labelTechnique('queens',level),logicProfile:{
     rank0:profile.rank0,rank1:profile.rank1,rank2:profile.rank2,rank3:profile.rank3,
-    singletonRegions:profile.singletonRegions,solvedLogically:profile.solvedLogically,maxRank:profile.maxRank
+    singletonRegions:profile.singletonRegions,twoCellRegions:profile.twoCellRegions,solvedLogically:profile.solvedLogically,maxRank:profile.maxRank
   }}
 }
 

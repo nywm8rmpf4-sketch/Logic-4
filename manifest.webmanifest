@@ -2,7 +2,7 @@
   "id": "./",
   "name": "QUADLUD — Jeux de logique",
   "short_name": "QUADLUD",
-  "description": "QUADLUD — quatre jeux de logique en 30 langues avec Tuteur pas à pas ; dans Couronnes, les exclusions sont automatiquement barrées après chaque reine.",
+  "description": "QUADLUD — quatre jeux de logique en 30 langues ; Couronnes Difficile et Expert limitent à trois les zones de taille 2.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
@@ -27,7 +27,7 @@
       "purpose": "any maskable"
     }
   ],
-  "version": "2.21.8",
+  "version": "2.21.9",
   "copyright": "Copyright © 2026 Serge Benoliel. All rights reserved.",
   "license": "Proprietary — see LICENSE"
 }
