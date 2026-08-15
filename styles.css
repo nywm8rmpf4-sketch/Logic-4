@@ -772,3 +772,98 @@ body.busy{pointer-events:none}
 @media(max-width:620px){
   .toolbar .tutor-action{display:inline-flex!important}
 }
+
+/* v2.21.6 — navigation Tuteur au-dessus du contenu explicatif */
+.walkthrough-actions-top{margin:12px 0 8px}
+
+/* v2.21.7 — Tuteur : navigation + plateau toujours visibles, explications défilantes */
+body.tutor-active{overflow:hidden}
+body.tutor-active #app{
+  height:calc(100svh - 62px);
+  min-height:0;
+  padding:8px 12px calc(8px + env(safe-area-inset-bottom));
+  overflow:hidden
+}
+body.tutor-active .walkthrough-panel{
+  height:100%;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  padding:12px
+}
+body.tutor-active .walkthrough-head{flex:0 0 auto}
+body.tutor-active .walkthrough-head h1{font-size:clamp(23px,7vw,31px)}
+body.tutor-active .walkthrough-head p{margin-top:4px}
+body.tutor-active .walkthrough-actions-top{
+  flex:0 0 auto;
+  margin:8px 0 7px
+}
+body.tutor-active .walkthrough-board-wrap{
+  flex:0 0 auto;
+  width:min(92vw,560px,calc(100svh - 340px));
+  max-width:100%;
+  margin:0 auto 7px
+}
+body.tutor-active .walkthrough-board{
+  width:100%;
+  max-width:100%
+}
+body.tutor-active .walkthrough-scroll{
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  padding:0 2px calc(4px + env(safe-area-inset-bottom))
+}
+body.tutor-active .walkthrough-help-note{margin:3px 0 7px;padding:7px 9px}
+body.tutor-active .walkthrough-explanation{margin:7px 0 0;padding:10px 11px}
+body.tutor-active .walkthrough-complete,
+body.tutor-active .walkthrough-stalled{margin-top:7px}
+
+@media(max-width:620px){
+  body.tutor-active .walkthrough-actions{flex-wrap:nowrap;gap:5px}
+  body.tutor-active .walkthrough-actions .btn{
+    flex:1 1 0;
+    min-width:0;
+    min-height:38px;
+    padding:7px 5px;
+    font-size:11px
+  }
+  body.tutor-active .walkthrough-board-wrap{
+    width:min(calc(100vw - 50px),calc(100svh - 335px));
+  }
+}
+@media(max-height:700px) and (orientation:portrait){
+  body.tutor-active #app{padding-top:5px;padding-bottom:calc(5px + env(safe-area-inset-bottom))}
+  body.tutor-active .walkthrough-panel{padding:9px}
+  body.tutor-active .walkthrough-head h1{font-size:22px}
+  body.tutor-active .walkthrough-head p{font-size:11px}
+  body.tutor-active .walkthrough-head .btn{padding:7px 9px;font-size:11px}
+  body.tutor-active .walkthrough-actions-top{margin:5px 0}
+  body.tutor-active .walkthrough-board-wrap{
+    width:min(calc(100vw - 44px),calc(100svh - 300px));
+    margin-bottom:5px
+  }
+}
+@media(orientation:landscape) and (max-height:520px){
+  body.tutor-active #app{height:calc(100svh - 62px);padding:5px 10px}
+  body.tutor-active .walkthrough-panel{
+    display:grid;
+    grid-template-columns:minmax(220px,1fr) minmax(0,calc(100svh - 92px));
+    grid-template-rows:auto auto minmax(0,1fr);
+    column-gap:10px
+  }
+  body.tutor-active .walkthrough-head,
+  body.tutor-active .walkthrough-actions-top,
+  body.tutor-active .walkthrough-scroll{grid-column:1}
+  body.tutor-active .walkthrough-board-wrap{
+    grid-column:2;
+    grid-row:1/4;
+    align-self:center;
+    width:min(calc(100svh - 92px),46vw);
+    margin:0 auto
+  }
+  body.tutor-active .walkthrough-scroll{grid-row:3;overflow-y:auto}
+}

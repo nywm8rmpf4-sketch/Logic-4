@@ -37,7 +37,7 @@ self.setInterval=()=>0;
 self.clearInterval=__noop;
 
 // Use the exact same versioned generator implementation as the UI.
-importScripts('./app.js?v=2.21.5');
+importScripts('./app.js?v=2.21.8');
 
 function __queenBackgroundCandidate(diff,forbidden){
   let blocked=new Set(forbidden||[]);

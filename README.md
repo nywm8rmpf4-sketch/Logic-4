@@ -1,6 +1,61 @@
-# QUADLUD — v2.21.5
+# QUADLUD — v2.21.8
 
 Application web statique mobile-first regroupant **Couronnes**, **Soleil-Lune**, **Grille 6** et **Rectangles**.
+
+## v2.21.8 — Tuteur Couronnes : croix automatiques après une reine
+- Dans le **Tuteur Couronnes**, lorsqu’une étape pose une reine, toutes les cases vides immédiatement interdites sont désormais barrées automatiquement par `×`.
+- Les exclusions automatiques couvrent exactement les règles Couronnes visibles :
+  - même ligne ;
+  - même colonne ;
+  - même zone ;
+  - cases diagonalement adjacentes à une reine.
+- Ces croix sont une **propagation automatique du coup expliqué** : elles apparaissent dans le même instantané que la reine et ne créent pas de nouvelles étapes de navigation.
+- Le Tuteur passe donc directement à la prochaine déduction réelle au lieu de présenter une succession de coups R0 « placer un X » qui découlent mécaniquement de la reine déjà posée.
+- La propagation est implémentée uniquement dans le moteur du Tuteur (`walkthroughQueenAutoCross`) ; elle ne modifie pas le comportement normal de Couronnes ni la préférence historique d’auto-croisement.
+- Le moteur utilise `queenCellAllowed()` comme source de vérité pour éviter de dupliquer les règles d’exclusion.
+
+### Validation spécifique v2.21.8
+- Vérification qu’une reine posée dans le Tuteur génère immédiatement les croix de sa ligne, colonne, zone et de ses diagonales adjacentes.
+- Vérification qu’aucune case encore autorisée n’est barrée.
+- Vérification que les croix automatiques sont incluses dans le même snapshot que la reine et ne sont pas ajoutées comme étapes séparées.
+- Vérification que la propagation n’est jamais appelée pour Soleil-Lune, Grille 6 ou Rectangles.
+- Non-régression complète du Tuteur sur les 13 combinaisons jeu/difficulté.
+- Non-régression du jeu Couronnes normal, du Logic Coach, des 27 techniques, des défis partageables et des générateurs.
+
+## v2.21.7 — Tuteur : plateau et navigation toujours visibles
+- Le Tuteur utilise désormais une mise en page dédiée à la hauteur réellement visible de l’écran (`100svh`).
+- La zone supérieure est stable et conserve ensemble :
+  - l’en-tête du Tuteur ;
+  - les boutons **Étape précédente / Recommencer / Étape suivante** ;
+  - le **plateau entièrement visible**.
+- La note d’aide, l’explication logique et le message de fin sont placés dans une zone `.walkthrough-scroll` indépendante.
+- **Seule cette zone d’explication défile** lorsque son contenu est plus long que l’espace restant.
+- Sur petits écrans en portrait, le plateau est automatiquement réduit en fonction de la hauteur disponible au lieu d’être repoussé sous l’écran.
+- Une règle plus compacte est appliquée aux écrans de hauteur ≤ 700 px.
+- En paysage de faible hauteur, le Tuteur passe à deux colonnes : commandes/explications à gauche et plateau entièrement visible à droite.
+- La classe `tutor-active` désactive le défilement général de la page uniquement pendant le Tuteur ; elle est retirée au retour à la partie.
+- Aucun changement du moteur logique, de la résolution, des règles, du scoring ou de l’état réel de la partie.
+
+### Validation spécifique v2.21.7
+- Vérification structurelle de l’ordre : **en-tête → navigation → plateau → zone d’explication défilante**.
+- Vérification que `body.tutor-active` verrouille le défilement global.
+- Vérification que le plateau est borné à la fois par la largeur disponible et par `100svh`.
+- Simulation mathématique des contraintes pour plusieurs dimensions de viewport mobiles afin de vérifier que le plateau ne dépasse pas la hauteur réservée.
+- Non-régression complète du Tuteur sur les 13 combinaisons jeu/difficulté.
+- Non-régression du Logic Coach, des 27 techniques, des défis partageables, des générateurs et des tailles Couronnes 7/8/9/9.
+
+## v2.21.6 — navigation du Tuteur en haut
+- Dans le mode **Tuteur**, les commandes **Étape précédente**, **Recommencer** et **Étape suivante** sont déplacées immédiatement sous l’en-tête.
+- L’ordre devient : **en-tête → navigation → note d’aide → plateau → explication**.
+- Le joueur peut ainsi avancer ou reculer rapidement sans devoir faire défiler l’écran jusqu’au-dessous du message explicatif.
+- Aucun changement du moteur de résolution, des explications, du comptage d’aide, du chronomètre ou de l’état réel de la partie.
+- Le bouton **Tuteur** reste visible sur mobile comme en v2.21.5.
+
+### Validation spécifique v2.21.6
+- Vérification structurelle que `walkthrough-actions` précède `walkthrough-help-note`, le plateau et `walkthroughExplanationHtml`.
+- Vérification que les trois identifiants de navigation restent uniques et correctement reliés à leurs gestionnaires.
+- Non-régression du Tuteur sur les 13 combinaisons jeu/difficulté.
+- Non-régression du Logic Coach, des 27 techniques, des défis partageables et des générateurs.
 
 ## v2.21.5 — Tuteur visible sur mobile
 - Le mode précédemment nommé **« Résolution pas à pas »** est renommé **« Tuteur »**.

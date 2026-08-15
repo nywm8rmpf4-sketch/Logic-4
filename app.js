@@ -5,7 +5,7 @@
  */
 'use strict';
 const $=s=>document.querySelector(s), app=$('#app'), toast=$('#toast'), timerEl=$('#timer');
-const VERSION='2.21.5', SAVE_KEY='logic4-save-v1';
+const VERSION='2.21.8', SAVE_KEY='logic4-save-v1';
 let current=null, tick=null, startedAt=0, elapsedBase=0, paused=false;
 const I18N={
 fr:{
@@ -2491,9 +2491,21 @@ function walkthroughMoveText(game,h){
   if(game==='sudoku')return `${h.v} · ${cellName(h.r,h.c)}`;
   return `${pieceName('patches',h.id)} · ${cellName(h.r,h.c)}`
 }
+function walkthroughQueenAutoCross(){
+  if(current?.game!=='queens')return 0;
+  let added=0;
+  for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++){
+    if(current.state[r][c]!==0)continue;
+    if(!queenCellAllowed(r,c)){current.state[r][c]=1;added++}
+  }
+  return added
+}
 function walkthroughApplyHint(h){return withWalkthroughCurrent(()=>{
   if(current.game==='patches')current.paint[h.r][h.c]=h.id;
-  else current.state[h.r][h.c]=h.v;
+  else{
+    current.state[h.r][h.c]=h.v;
+    if(current.game==='queens'&&h.v===2)walkthroughQueenAutoCross()
+  }
   return true
 })}
 function walkthroughGenerateNext(){
@@ -2533,7 +2545,8 @@ function walkthroughExplanationHtml(index){
 function renderWalkthrough(){
   let s=walkthroughSession;if(!s)return;let i=s.index,snap=i===0?s.initial:s.moves[i-1].snapshot,target=walkthroughTarget(i),stateNote=s.done&&i===s.moves.length?`<div class="walkthrough-complete">✓ ${tr('walkthroughComplete')}</div>`:s.stalled&&i===s.moves.length?`<div class="walkthrough-stalled">⚠ ${tr('walkthroughStalled')}</div>`:'';
   let progress=s.done?`${i}/${s.moves.length}`:`${i}`;
-  app.innerHTML=`<section class="panel walkthrough-panel"><div class="stats-head"><div><h1>${tr('walkthrough')}</h1><p>${gameLabel(s.base.game)} · ${DIFF[s.base.diff]} · ${tr('walkthroughStep')} ${progress}</p></div><button class="btn" id="walkthroughClose">${tr('walkthroughClose')}</button></div><p class="walkthrough-help-note">💡 ${tr('walkthroughCountsAsHelp')}</p>${walkthroughBoardHtml(snap,target)}${walkthroughExplanationHtml(i)}${stateNote}<div class="walkthrough-actions"><button class="btn" id="walkthroughPrev" ${i===0?'disabled':''}>← ${tr('walkthroughPrevious')}</button><button class="btn" id="walkthroughRestart" ${i===0?'disabled':''}>↺ ${tr('walkthroughRestart')}</button><button class="btn primary" id="walkthroughNext" ${(s.done||s.stalled)&&i===s.moves.length?'disabled':''}>${tr('walkthroughNext')} →</button></div></section>`;
+  document.body.classList.add('tutor-active');
+  app.innerHTML=`<section class="panel walkthrough-panel"><div class="stats-head walkthrough-head"><div><h1>${tr('walkthrough')}</h1><p>${gameLabel(s.base.game)} · ${DIFF[s.base.diff]} · ${tr('walkthroughStep')} ${progress}</p></div><button class="btn" id="walkthroughClose">${tr('walkthroughClose')}</button></div><div class="walkthrough-actions walkthrough-actions-top"><button class="btn" id="walkthroughPrev" ${i===0?'disabled':''}>← ${tr('walkthroughPrevious')}</button><button class="btn" id="walkthroughRestart" ${i===0?'disabled':''}>↺ ${tr('walkthroughRestart')}</button><button class="btn primary" id="walkthroughNext" ${(s.done||s.stalled)&&i===s.moves.length?'disabled':''}>${tr('walkthroughNext')} →</button></div>${walkthroughBoardHtml(snap,target)}<div class="walkthrough-scroll"><p class="walkthrough-help-note">💡 ${tr('walkthroughCountsAsHelp')}</p>${walkthroughExplanationHtml(i)}${stateNote}</div></section>`;
   $('#walkthroughClose').onclick=closeWalkthrough;$('#walkthroughPrev').onclick=()=>{if(s.index>0){s.index--;renderWalkthrough()}};$('#walkthroughRestart').onclick=()=>{s.index=0;renderWalkthrough()};$('#walkthroughNext').onclick=()=>{if(s.index<s.moves.length)s.index++;else if(walkthroughGenerateNext())s.index++;renderWalkthrough()};app.querySelectorAll('button').forEach(pressFeedback)
 }
 function openWalkthrough(){
@@ -2543,7 +2556,7 @@ function openWalkthrough(){
   renderWalkthrough();return true
 }
 function closeWalkthrough(){
-  let s=walkthroughSession;if(!s||!current)return false;let elapsed=s.elapsed,wasPaused=s.wasPaused;walkthroughSession=null;
+  let s=walkthroughSession;if(!s||!current)return false;let elapsed=s.elapsed,wasPaused=s.wasPaused;walkthroughSession=null;document.body.classList.remove('tutor-active');
   if(current.game==='queens')renderQueens(current);else if(current.game==='tango')renderTango(current);else if(current.game==='sudoku')renderSudoku(current);else renderPatches(current);
   startTimer(true,elapsed,wasPaused);updatePauseButton();saveCurrent();return true
 }
@@ -2612,7 +2625,7 @@ function ensurePrecomputeWorker(){
   if(precomputeWorker)return precomputeWorker;
   if(typeof Worker==='undefined')return null;
   try{
-    let w=new Worker('./precompute-worker.js?v=2.21.5');
+    let w=new Worker('./precompute-worker.js?v=2.21.8');
     w.onmessage=e=>{
       let m=e.data||{};precomputeBusy=false;
       if(m.ok&&m.day===precomputeDay&&m.candidate){
