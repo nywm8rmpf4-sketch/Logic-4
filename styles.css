@@ -867,3 +867,16 @@ body.tutor-active .walkthrough-stalled{margin-top:7px}
   }
   body.tutor-active .walkthrough-scroll{grid-row:3;overflow-y:auto}
 }
+
+/* v2.21.10 — Tuteur Queens : preuve structurée, plateau puis navigation puis explication */
+.walkthrough-context:not(.walkthrough-target){
+  box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--accent) 42%,transparent);
+  z-index:1
+}
+.walkthrough-step-counter{font-variant-numeric:tabular-nums;white-space:nowrap}
+body.tutor-active .walkthrough-board-wrap{margin:0 auto 5px}
+body.tutor-active .walkthrough-actions-top{margin:4px 0 7px}
+@media(max-width:620px){
+  .walkthrough-context:not(.walkthrough-target){box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--accent) 42%,transparent)}
+  body.tutor-active .walkthrough-board-wrap{width:min(calc(100vw - 50px),calc(100svh - 335px))}
+}

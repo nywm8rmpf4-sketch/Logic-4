@@ -3,8 +3,8 @@
  * Copyright © 2026 Serge Benoliel. All rights reserved.
  * Proprietary software. Copying, modification, redistribution or exploitation without prior written authorization is prohibited.
  */
-const CACHE='quadlud-v2.21.9';
-const ASSETS=['./','./index.html','./styles.css?v=2.21.9','./app.js?v=2.21.9','./precompute-worker.js?v=2.21.9','./manifest.webmanifest','./icon.svg','./icon-180.png','./icon-192.png','./icon-512.png','./build-info.json','./LICENSE'];
+const CACHE='quadlud-v2.21.10';
+const ASSETS=['./','./index.html','./styles.css?v=2.21.10','./queens-logic.js?v=2.21.10','./app.js?v=2.21.10','./precompute-worker.js?v=2.21.10','./manifest.webmanifest','./icon.svg','./icon-180.png','./icon-192.png','./icon-512.png','./build-info.json','./LICENSE'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{

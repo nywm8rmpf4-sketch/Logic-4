@@ -1,6 +1,90 @@
-# QUADLUD — v2.21.9
+# QUADLUD — v2.21.10
 
 Application web statique mobile-first regroupant **Couronnes**, **Soleil-Lune**, **Grille 6** et **Rectangles**.
+
+## v2.21.10 — moteur d’inférences Queens explicable partagé par le Coach et le Tuteur
+
+Cette version reconstruit le raisonnement **Queens/Couronnes** autour d’un moteur de preuves explicites, indépendant du DOM et de la solution finale.
+
+### Architecture
+- Nouveau fichier pur **`queens-logic.js`** : moteur de règles, candidats, preuves, rangs, dépendances, contradictions et métriques.
+- `app.js` devient la couche d’adaptation/presentation pour Queens :
+  - rendu humain/localisé des preuves ;
+  - surbrillances ;
+  - intégration Logic Coach ;
+  - intégration Tuteur ;
+  - audit des coups du joueur.
+- Le moteur reçoit uniquement `n`, `reg` et l’état visible `state`. Il ne reçoit ni `current`, ni DOM, ni `sol`.
+- Les objets de déduction structurés contiennent : `rule`, `rank`, `techniqueLevel`, `premises`, `dependencies`, `focusCells`, `focusUnits`, `conclusions`, `explanationData`.
+- Le rang et le niveau de technique sont indépendants. Le rang est calculé depuis le rang des prémisses + le coût de règle, jamais depuis le nombre d’itérations d’une boucle.
+- Métriques internes exposées : `maxRank`, `maxTechniqueLevel`, `deductionsByRule`, `contradictions`.
+
+### Fermeture mécanique — coût 0
+- `QUEEN_PROPAGATION` : une reine impose immédiatement les croix de sa ligne, colonne, zone et des diagonales adjacentes ; les croix héritent du rang de la reine.
+- `SINGLETON` : ligne, colonne ou zone à une seule candidate ⇒ reine au même rang que les prémisses.
+- Le moteur recherche toujours ces conséquences de rang inférieur avant une technique de coût supérieur.
+
+### Déductions directes — coût +1
+- `LOCKED_UNIT` : zone→ligne, zone→colonne, ligne→zone, colonne→zone.
+- `COMMON_CONFLICT` : élimination d’une case incompatible avec toutes les positions restantes de la reine obligatoire d’une unité ; preuve détaillée candidat par candidat.
+- `HALL_SET` : groupes réservés génériques N unités ↔ N unités, sans hypothèse de contiguïté ; paires puis triples puis N supérieur ; symétries zones/lignes/colonnes.
+- `LOCAL_CAPACITY` : bloc 2×2 de capacité 1 et bloc 3×3 de capacité 2.
+- `NO_SUPPORT` : élimination d’une candidate qui supprimerait immédiatement tout support d’une autre unité obligatoire.
+- `MIXED_HALL` : saturation de zones par un mélange de lignes et colonnes, limitée à de petits groupes pédagogiquement explicables.
+
+### Raisonnement par contradiction — coût +2
+- `ASSUMPTION_CONTRADICTION` teste une hypothèse uniquement par règles visibles et inférences explicables.
+- Les témoins distinguent notamment : absence de candidat, contradiction de Hall, capacité locale dépassée et violation directe.
+- Aucun solveur de complétion finale n’est utilisé pour fabriquer un indice Queens.
+- La recherche hypothétique est bornée par un nombre d’étapes logiques et ordonnée paresseusement afin d’éviter les blocages de latence sur Expert.
+
+### Logic Coach Queens
+- Le Coach reconstruit les candidats depuis **l’état courant réel du joueur**.
+- Il distingue les situations : violation directe, contradiction logique, coup démontré et coup pas encore justifiable.
+- Deux appuis visibles seulement :
+  1. **où regarder**, sans révéler la conclusion ;
+  2. **preuve complète + conséquence**, puis application de la déduction et de sa fermeture mécanique.
+- L’ancienne étape intermédiaire ne réapparaît pas.
+- Une croix qui coïncide avec la solution finale mais n’est pas démontrable maintenant reste `not-yet-proven`, jamais « fausse ».
+
+### Tuteur Queens
+- Le Tuteur utilise **exactement le même moteur** et conserve une session logique persistante afin de préserver rangs et dépendances entre étapes.
+- Chaque étape stocke l’état avant, la déduction structurée, la fermeture automatique et l’état après.
+- Les croix induites par une reine apparaissent dans le même instantané et ne deviennent pas des étapes séparées.
+- Le recours Queens à la recherche exhaustive de complétions et l’ancien auto-croisement spécifique au Tuteur ont été retirés.
+- Les explications et surbrillances sont calculées à partir de la preuve structurée.
+- Le `techniqueLevel` T0–T3 reste une donnée interne de la preuve et des métriques ; le Tuteur n’affiche pas ce code comme explication principale.
+- Ordre UX validé : **plateau → navigation → explication défilante** ; le plateau et la navigation restent prioritaires sur petits écrans.
+
+### Internationalisation et compatibilité
+- Le moteur `queens-logic.js` ne contient aucun texte UI.
+- La terminologie des nouvelles règles et le message « aucune déduction démontrable » sont intégrés au mécanisme `I18N` dans les 30 langues. Les gabarits détaillés FR/EN passent également par `I18N` ; les 28 autres langues utilisent le mécanisme générique localisé déjà en place dans le Logic Coach, toujours à partir de la déduction structurée réelle.
+- Les 27 IDs historiques de techniques restent inchangés afin de ne pas casser Maîtrise / Apprendre / S’entraîner ; les nouvelles règles explicites ne créent pas artificiellement de faux IDs historiques.
+- Undo/Redo normal reste indépendant ; la navigation du Tuteur reste locale au Tuteur.
+- Après Undo puis nouveau coup, l’ancienne branche reste disponible pour Exploration mais le Redo normal préfère la nouvelle branche.
+
+### Génération et difficulté
+- **Aucun changement volontaire du générateur Queens ni des critères Easy/Medium/Hard/Expert.**
+- Les tailles restent 7×7 / 8×8 / 9×9 / 9×9 et les contraintes de v2.21.9 restent inchangées.
+- Les défis `QL11`, `QL12`, `QL13`, `QL14` et le Daily conservent leurs sorties déterministes de v2.21.9.
+- Les nouvelles métriques du moteur sont disponibles pour une future classification de difficulté mais ne sont pas utilisées pour reclasser les puzzles dans cette version.
+
+### Validation v2.21.10
+- Tests unitaires ciblés : singleton zone/ligne/colonne, propagation, Locked Unit 4 sens, Common Conflict plusieurs formes, Hall N=2/N=3 non contigus et cas négatif N→N+1, capacités 2×2/3×3, No Support, Mixed Hall, contradiction, rangs et dépendances.
+- Test fondamental : **case correcte dans la solution finale ≠ case actuellement démontrable**.
+- Test de sûreté `proveAction()` : une action ne peut pas être certifiée si sa propre hypothèse conduit à une contradiction ; le cas limite où les deux hypothèses échouent est couvert.
+- Test de traçabilité : les dépendances publiques d’une contradiction ne référencent que des déductions réelles antérieures ; les déductions temporaires d’une branche hypothétique restent confinées à `explanationData.trace`.
+- 18 grilles Queens générées (5 Easy, 5 Medium, 5 Hard, 3 Expert) entièrement résolues par le moteur de preuves sans solution cachée.
+- Coach : deux appuis, état courant, Undo/Redo, erreurs, coup pas encore justifiable.
+- Tuteur : chaîne complète, snapshots avant/après exacts, fermeture automatique, navigation et explication cohérentes.
+- Tous les 13 parcours Tuteur jeu/difficulté terminent sur une grille valide ; les trois autres jeux conservent leur chemin historique.
+- Tous les 13 générateurs Worker conservent unicité et contrats de difficulté existants.
+- Compatibilité déterministe du générateur Queens, du Daily et des défis comparée à v2.21.9.
+- Test de branche historique Undo → nouveau coup → Redo.
+- Test fonctionnel Queens normal : lancement/nouvelle partie, quatre niveaux, saisie, auto-cross, coup illégal, reset et victoire.
+- Vérification i18n/pureté : 30 langues, 27 techniques historiques, moteur sans DOM/current/solution finale.
+- Responsive/Tuteur vérifié structurellement : ordre **plateau → navigation → explication**, zone d’explication seule défilante, contraintes `svh` mobiles et priorité au plateau ; le test automatisé du Tuteur valide également cet ordre.
+- Un essai de rendu Chromium headless réel a été tenté, mais la politique de l’environnement bloque les URLs `localhost` et `file://` ; **aucun test navigateur réel ne peut donc être revendiqué pour cette livraison**. Safari/iPhone réel reste non exécuté.
 
 ## v2.21.9 — Couronnes Difficile/Expert : au plus trois zones de taille 2
 - Les difficultés **Difficile** et **Expert** de Couronnes ajoutent une contrainte structurelle :

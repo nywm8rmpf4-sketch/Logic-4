@@ -5,7 +5,7 @@
  */
 'use strict';
 const $=s=>document.querySelector(s), app=$('#app'), toast=$('#toast'), timerEl=$('#timer');
-const VERSION='2.21.9', SAVE_KEY='logic4-save-v1';
+const VERSION='2.21.10', SAVE_KEY='logic4-save-v1';
 let current=null, tick=null, startedAt=0, elapsedBase=0, paused=false;
 const I18N={
 fr:{
@@ -536,6 +536,93 @@ Object.assign(I18N.ro,{walkthrough:"Tutor"});
 Object.assign(I18N.sk,{walkthrough:"Tútor"});
 Object.assign(I18N.sl,{walkthrough:"Mentor"});
 Object.assign(I18N.sv,{walkthrough:"Handledare"});
+
+/* v2.21.10 — Queens proof-engine UI terminology */
+Object.assign(I18N.en,{"qlSingleton":"Unique position","qlLocked":"Reserved unit","qlCommonConflict":"Common conflict","qlHallPair":"Reserved pair","qlHallTriple":"Reserved triple","qlHallGroup":"Reserved group","qlCapacity":"Local capacity","qlNoSupport":"No remaining support","qlMixedHall":"Mixed reserved group","qlContradiction":"Reasoning by contradiction","qlNoDeduction":"No demonstrable deduction is available from the current visible state. No move is taken from the final solution."});
+Object.assign(I18N.zh,{"qlSingleton":"唯一位置","qlLocked":"保留单元","qlCommonConflict":"共同冲突","qlHallPair":"保留二组","qlHallTriple":"保留三组","qlHallGroup":"保留组","qlCapacity":"局部容量","qlNoSupport":"无可用支撑","qlMixedHall":"混合保留组","qlContradiction":"反证推理","qlNoDeduction":"在当前可见状态下没有可证明的推导。不会从最终答案中取用任何一步。"});
+Object.assign(I18N.hi,{"qlSingleton":"एकमात्र स्थान","qlLocked":"आरक्षित इकाई","qlCommonConflict":"साझा टकराव","qlHallPair":"आरक्षित जोड़ी","qlHallTriple":"आरक्षित तिकड़ी","qlHallGroup":"आरक्षित समूह","qlCapacity":"स्थानीय क्षमता","qlNoSupport":"कोई शेष समर्थन नहीं","qlMixedHall":"मिश्रित आरक्षित समूह","qlContradiction":"विरोधाभास से तर्क","qlNoDeduction":"वर्तमान दिखाई देने वाली स्थिति से कोई सिद्ध निष्कर्ष उपलब्ध नहीं है। अंतिम समाधान से कोई चाल नहीं ली जाती।"});
+Object.assign(I18N.es,{"qlSingleton":"Posición única","qlLocked":"Unidad reservada","qlCommonConflict":"Conflicto común","qlHallPair":"Pareja reservada","qlHallTriple":"Triple reservado","qlHallGroup":"Grupo reservado","qlCapacity":"Capacidad local","qlNoSupport":"Sin apoyo posible","qlMixedHall":"Grupo mixto reservado","qlContradiction":"Razonamiento por contradicción","qlNoDeduction":"No hay ninguna deducción demostrable disponible en el estado visible actual. No se toma ninguna jugada de la solución final."});
+Object.assign(I18N.ar,{"qlSingleton":"موضع وحيد","qlLocked":"وحدة محجوزة","qlCommonConflict":"تعارض مشترك","qlHallPair":"زوج محجوز","qlHallTriple":"ثلاثي محجوز","qlHallGroup":"مجموعة محجوزة","qlCapacity":"سعة محلية","qlNoSupport":"لا يوجد دعم ممكن","qlMixedHall":"مجموعة مختلطة محجوزة","qlContradiction":"استدلال بالتناقض","qlNoDeduction":"لا يوجد استنتاج قابل للإثبات من الحالة الظاهرة الحالية. لا تؤخذ أي نقلة من الحل النهائي."});
+Object.assign(I18N.fr,{"qlSingleton":"Position unique","qlLocked":"Unité réservée","qlCommonConflict":"Conflit commun","qlHallPair":"Paire réservée","qlHallTriple":"Triple réservé","qlHallGroup":"Groupe réservé","qlCapacity":"Capacité locale","qlNoSupport":"Aucun support possible","qlMixedHall":"Groupe mixte réservé","qlContradiction":"Raisonnement par contradiction","qlNoDeduction":"Aucune déduction démontrable n’est disponible dans l’état visible actuel. Aucun coup n’est tiré de la solution finale."});
+Object.assign(I18N.bn,{"qlSingleton":"একমাত্র অবস্থান","qlLocked":"সংরক্ষিত একক","qlCommonConflict":"সাধারণ সংঘাত","qlHallPair":"সংরক্ষিত জোড়া","qlHallTriple":"সংরক্ষিত ত্রয়ী","qlHallGroup":"সংরক্ষিত দল","qlCapacity":"স্থানীয় ধারণক্ষমতা","qlNoSupport":"কোনো সমর্থন অবশিষ্ট নেই","qlMixedHall":"মিশ্র সংরক্ষিত দল","qlContradiction":"বিরোধাভাস দ্বারা যুক্তি","qlNoDeduction":"বর্তমান দৃশ্যমান অবস্থা থেকে কোনো প্রমাণযোগ্য সিদ্ধান্ত পাওয়া যাচ্ছে না। চূড়ান্ত সমাধান থেকে কোনো চাল নেওয়া হয় না।"});
+Object.assign(I18N.pt,{"qlSingleton":"Posição única","qlLocked":"Unidade reservada","qlCommonConflict":"Conflito comum","qlHallPair":"Par reservado","qlHallTriple":"Trio reservado","qlHallGroup":"Grupo reservado","qlCapacity":"Capacidade local","qlNoSupport":"Sem suporte possível","qlMixedHall":"Grupo misto reservado","qlContradiction":"Raciocínio por contradição","qlNoDeduction":"Não há nenhuma dedução demonstrável disponível no estado visível atual. Nenhuma jogada é obtida da solução final."});
+Object.assign(I18N.id,{"qlSingleton":"Posisi tunggal","qlLocked":"Unit yang dicadangkan","qlCommonConflict":"Konflik bersama","qlHallPair":"Pasangan cadangan","qlHallTriple":"Tiga serangkai cadangan","qlHallGroup":"Grup cadangan","qlCapacity":"Kapasitas lokal","qlNoSupport":"Tidak ada dukungan tersisa","qlMixedHall":"Grup campuran cadangan","qlContradiction":"Penalaran dengan kontradiksi","qlNoDeduction":"Tidak ada deduksi yang dapat dibuktikan dari keadaan yang terlihat saat ini. Tidak ada langkah yang diambil dari solusi akhir."});
+Object.assign(I18N.ur,{"qlSingleton":"واحد مقام","qlLocked":"محفوظ اکائی","qlCommonConflict":"مشترک تصادم","qlHallPair":"محفوظ جوڑا","qlHallTriple":"محفوظ تگڑا","qlHallGroup":"محفوظ گروپ","qlCapacity":"مقامی گنجائش","qlNoSupport":"کوئی ممکن سہارا نہیں","qlMixedHall":"مخلوط محفوظ گروپ","qlContradiction":"تضاد کے ذریعے استدلال","qlNoDeduction":"موجودہ نظر آنے والی حالت سے کوئی قابلِ ثبوت نتیجہ دستیاب نہیں۔ آخری حل سے کوئی چال نہیں لی جاتی۔"});
+Object.assign(I18N.bg,{"qlSingleton":"Единствена позиция","qlLocked":"Запазена единица","qlCommonConflict":"Общ конфликт","qlHallPair":"Запазена двойка","qlHallTriple":"Запазена тройка","qlHallGroup":"Запазена група","qlCapacity":"Локален капацитет","qlNoSupport":"Няма оставаща опора","qlMixedHall":"Смесена запазена група","qlContradiction":"Разсъждение чрез противоречие","qlNoDeduction":"В текущото видимо състояние няма доказуема дедукция. Не се взема ход от крайното решение."});
+Object.assign(I18N.hr,{"qlSingleton":"Jedini položaj","qlLocked":"Rezervirana jedinica","qlCommonConflict":"Zajednički sukob","qlHallPair":"Rezervirani par","qlHallTriple":"Rezervirana trojka","qlHallGroup":"Rezervirana grupa","qlCapacity":"Lokalni kapacitet","qlNoSupport":"Nema preostale potpore","qlMixedHall":"Mješovita rezervirana grupa","qlContradiction":"Zaključivanje proturječjem","qlNoDeduction":"U trenutačno vidljivom stanju nema dokazive dedukcije. Nijedan potez ne uzima se iz konačnog rješenja."});
+Object.assign(I18N.cs,{"qlSingleton":"Jediná pozice","qlLocked":"Vyhrazená jednotka","qlCommonConflict":"Společný konflikt","qlHallPair":"Vyhrazená dvojice","qlHallTriple":"Vyhrazená trojice","qlHallGroup":"Vyhrazená skupina","qlCapacity":"Místní kapacita","qlNoSupport":"Žádná zbývající podpora","qlMixedHall":"Smíšená vyhrazená skupina","qlContradiction":"Důkaz sporem","qlNoDeduction":"V aktuálně viditelném stavu není k dispozici žádná prokazatelná dedukce. Žádný tah se nebere z konečného řešení."});
+Object.assign(I18N.da,{"qlSingleton":"Entydig placering","qlLocked":"Reserveret enhed","qlCommonConflict":"Fælles konflikt","qlHallPair":"Reserveret par","qlHallTriple":"Reserveret tregruppe","qlHallGroup":"Reserveret gruppe","qlCapacity":"Lokal kapacitet","qlNoSupport":"Ingen mulig støtte","qlMixedHall":"Blandet reserveret gruppe","qlContradiction":"Modstridsbevis","qlNoDeduction":"Der er ingen beviselig slutning i den aktuelle synlige tilstand. Intet træk hentes fra den endelige løsning."});
+Object.assign(I18N.nl,{"qlSingleton":"Unieke positie","qlLocked":"Gereserveerde eenheid","qlCommonConflict":"Gemeenschappelijk conflict","qlHallPair":"Gereserveerd paar","qlHallTriple":"Gereserveerd drietal","qlHallGroup":"Gereserveerde groep","qlCapacity":"Lokale capaciteit","qlNoSupport":"Geen mogelijke ondersteuning","qlMixedHall":"Gemengd gereserveerde groep","qlContradiction":"Redeneren via tegenspraak","qlNoDeduction":"In de huidige zichtbare toestand is geen aantoonbare deductie beschikbaar. Er wordt geen zet uit de eindoplossing gehaald."});
+Object.assign(I18N.et,{"qlSingleton":"Ainus asukoht","qlLocked":"Reserveeritud üksus","qlCommonConflict":"Ühine konflikt","qlHallPair":"Reserveeritud paar","qlHallTriple":"Reserveeritud kolmik","qlHallGroup":"Reserveeritud rühm","qlCapacity":"Kohalik maht","qlNoSupport":"Toetus puudub","qlMixedHall":"Segatud reserveeritud rühm","qlContradiction":"Vastuoluga tõestus","qlNoDeduction":"Praegusest nähtavast seisust ei leidu tõestatavat järeldust. Ühtegi käiku ei võeta lõplikust lahendusest."});
+Object.assign(I18N.fi,{"qlSingleton":"Ainoa paikka","qlLocked":"Varattu yksikkö","qlCommonConflict":"Yhteinen ristiriita","qlHallPair":"Varattu pari","qlHallTriple":"Varattu kolmikko","qlHallGroup":"Varattu ryhmä","qlCapacity":"Paikallinen kapasiteetti","qlNoSupport":"Ei mahdollista tukea","qlMixedHall":"Sekoitettu varattu ryhmä","qlContradiction":"Ristiriitatodistus","qlNoDeduction":"Nykyisestä näkyvästä tilanteesta ei ole saatavilla todistettavaa päätelmää. Mitään siirtoa ei oteta lopullisesta ratkaisusta."});
+Object.assign(I18N.de,{"qlSingleton":"Einzige Position","qlLocked":"Reservierte Einheit","qlCommonConflict":"Gemeinsamer Konflikt","qlHallPair":"Reserviertes Paar","qlHallTriple":"Reserviertes Tripel","qlHallGroup":"Reservierte Gruppe","qlCapacity":"Lokale Kapazität","qlNoSupport":"Keine mögliche Unterstützung","qlMixedHall":"Gemischt reservierte Gruppe","qlContradiction":"Widerspruchsbeweis","qlNoDeduction":"Im aktuell sichtbaren Zustand ist keine beweisbare Schlussfolgerung verfügbar. Es wird kein Zug aus der Endlösung übernommen."});
+Object.assign(I18N.el,{"qlSingleton":"Μοναδική θέση","qlLocked":"Δεσμευμένη μονάδα","qlCommonConflict":"Κοινή σύγκρουση","qlHallPair":"Δεσμευμένο ζεύγος","qlHallTriple":"Δεσμευμένη τριάδα","qlHallGroup":"Δεσμευμένη ομάδα","qlCapacity":"Τοπική χωρητικότητα","qlNoSupport":"Καμία δυνατή υποστήριξη","qlMixedHall":"Μικτή δεσμευμένη ομάδα","qlContradiction":"Συλλογισμός με αντίφαση","qlNoDeduction":"Δεν υπάρχει αποδείξιμη παραγωγή από την τρέχουσα ορατή κατάσταση. Καμία κίνηση δεν λαμβάνεται από την τελική λύση."});
+Object.assign(I18N.hu,{"qlSingleton":"Egyetlen hely","qlLocked":"Foglalt egység","qlCommonConflict":"Közös ütközés","qlHallPair":"Foglalt pár","qlHallTriple":"Foglalt hármas","qlHallGroup":"Foglalt csoport","qlCapacity":"Helyi kapacitás","qlNoSupport":"Nincs lehetséges támasz","qlMixedHall":"Vegyes foglalt csoport","qlContradiction":"Ellentmondásos bizonyítás","qlNoDeduction":"A jelenlegi látható állapotból nincs bizonyítható következtetés. A végső megoldásból nem veszünk át lépést."});
+Object.assign(I18N.ga,{"qlSingleton":"Suíomh uathúil","qlLocked":"Aonad curtha in áirithe","qlCommonConflict":"Coimhlint choiteann","qlHallPair":"Péire curtha in áirithe","qlHallTriple":"Triúr curtha in áirithe","qlHallGroup":"Grúpa curtha in áirithe","qlCapacity":"Toilleadh áitiúil","qlNoSupport":"Gan tacaíocht fágtha","qlMixedHall":"Grúpa measctha curtha in áirithe","qlContradiction":"Réasúnaíocht trí bhréagnú","qlNoDeduction":"Níl aon asbhaint inchruthaithe ar fáil ón staid infheicthe reatha. Ní ghlactar aon bhogadh ón réiteach deiridh."});
+Object.assign(I18N.it,{"qlSingleton":"Posizione unica","qlLocked":"Unità riservata","qlCommonConflict":"Conflitto comune","qlHallPair":"Coppia riservata","qlHallTriple":"Tripla riservata","qlHallGroup":"Gruppo riservato","qlCapacity":"Capacità locale","qlNoSupport":"Nessun supporto possibile","qlMixedHall":"Gruppo misto riservato","qlContradiction":"Ragionamento per contraddizione","qlNoDeduction":"Nello stato visibile attuale non è disponibile alcuna deduzione dimostrabile. Nessuna mossa viene ricavata dalla soluzione finale."});
+Object.assign(I18N.lv,{"qlSingleton":"Vienīgā pozīcija","qlLocked":"Rezervēta vienība","qlCommonConflict":"Kopīgs konflikts","qlHallPair":"Rezervēts pāris","qlHallTriple":"Rezervēts trijnieks","qlHallGroup":"Rezervēta grupa","qlCapacity":"Lokālā ietilpība","qlNoSupport":"Nav iespējama atbalsta","qlMixedHall":"Jaukta rezervēta grupa","qlContradiction":"Pamatojums ar pretrunu","qlNoDeduction":"Pašreizējā redzamajā stāvoklī nav pierādāma secinājuma. Neviens gājiens netiek ņemts no gala risinājuma."});
+Object.assign(I18N.lt,{"qlSingleton":"Vienintelė vieta","qlLocked":"Rezervuotas vienetas","qlCommonConflict":"Bendras konfliktas","qlHallPair":"Rezervuota pora","qlHallTriple":"Rezervuotas trejetas","qlHallGroup":"Rezervuota grupė","qlCapacity":"Vietinė talpa","qlNoSupport":"Nėra galimos atramos","qlMixedHall":"Mišri rezervuota grupė","qlContradiction":"Įrodymas prieštaravimu","qlNoDeduction":"Dabartinėje matomoje būsenoje nėra įrodomos išvados. Joks ėjimas neimamas iš galutinio sprendimo."});
+Object.assign(I18N.mt,{"qlSingleton":"Pożizzjoni unika","qlLocked":"Unità riżervata","qlCommonConflict":"Kunflitt komuni","qlHallPair":"Par riżervat","qlHallTriple":"Tlieta riżervati","qlHallGroup":"Grupp riżervat","qlCapacity":"Kapaċità lokali","qlNoSupport":"Ebda appoġġ possibbli","qlMixedHall":"Grupp imħallat riżervat","qlContradiction":"Raġunament b’kontradizzjoni","qlNoDeduction":"M’hemm l-ebda deduzzjoni li tista’ tiġi ppruvata mill-istat viżibbli attwali. L-ebda mossa ma tittieħed mis-soluzzjoni finali."});
+Object.assign(I18N.pl,{"qlSingleton":"Jedyna pozycja","qlLocked":"Zarezerwowana jednostka","qlCommonConflict":"Wspólny konflikt","qlHallPair":"Zarezerwowana para","qlHallTriple":"Zarezerwowana trójka","qlHallGroup":"Zarezerwowana grupa","qlCapacity":"Lokalna pojemność","qlNoSupport":"Brak możliwego wsparcia","qlMixedHall":"Mieszana grupa zarezerwowana","qlContradiction":"Rozumowanie przez sprzeczność","qlNoDeduction":"W obecnym widocznym stanie nie ma dostępnej dowodliwej dedukcji. Żaden ruch nie jest pobierany z końcowego rozwiązania."});
+Object.assign(I18N.ro,{"qlSingleton":"Poziție unică","qlLocked":"Unitate rezervată","qlCommonConflict":"Conflict comun","qlHallPair":"Pereche rezervată","qlHallTriple":"Triplet rezervat","qlHallGroup":"Grup rezervat","qlCapacity":"Capacitate locală","qlNoSupport":"Fără suport posibil","qlMixedHall":"Grup mixt rezervat","qlContradiction":"Raționament prin contradicție","qlNoDeduction":"Nu există nicio deducție demonstrabilă din starea vizibilă curentă. Nicio mutare nu este luată din soluția finală."});
+Object.assign(I18N.sk,{"qlSingleton":"Jediná pozícia","qlLocked":"Vyhradená jednotka","qlCommonConflict":"Spoločný konflikt","qlHallPair":"Vyhradená dvojica","qlHallTriple":"Vyhradená trojica","qlHallGroup":"Vyhradená skupina","qlCapacity":"Miestna kapacita","qlNoSupport":"Žiadna možná podpora","qlMixedHall":"Zmiešaná vyhradená skupina","qlContradiction":"Dôkaz sporom","qlNoDeduction":"V aktuálne viditeľnom stave nie je dostupná žiadna dokázateľná dedukcia. Žiadny ťah sa nepreberá z konečného riešenia."});
+Object.assign(I18N.sl,{"qlSingleton":"Edini položaj","qlLocked":"Rezervirana enota","qlCommonConflict":"Skupni konflikt","qlHallPair":"Rezerviran par","qlHallTriple":"Rezervirana trojica","qlHallGroup":"Rezervirana skupina","qlCapacity":"Lokalna kapaciteta","qlNoSupport":"Ni možne podpore","qlMixedHall":"Mešana rezervirana skupina","qlContradiction":"Sklepanje s protislovjem","qlNoDeduction":"V trenutnem vidnem stanju ni dokazljive dedukcije. Nobena poteza ni vzeta iz končne rešitve."});
+Object.assign(I18N.sv,{"qlSingleton":"Unik position","qlLocked":"Reserverad enhet","qlCommonConflict":"Gemensam konflikt","qlHallPair":"Reserverat par","qlHallTriple":"Reserverad trippel","qlHallGroup":"Reserverad grupp","qlCapacity":"Lokal kapacitet","qlNoSupport":"Inget möjligt stöd","qlMixedHall":"Blandad reserverad grupp","qlContradiction":"Motsägelsebevis","qlNoDeduction":"Det finns ingen bevisbar deduktion i det aktuella synliga läget. Inget drag hämtas från den slutliga lösningen."});
+/* v2.21.10 — proof explanation templates live in I18N, never in the inference engine */
+Object.assign(I18N.en,{
+  "qlAnd":" and ","qlMore":" and {count} more","qlRowsPlural":"rows","qlColumnsPlural":"columns","qlRegionsPlural":"regions",
+  "qlConflictRow":"same row","qlConflictColumn":"same column","qlConflictRegion":"same region","qlConflictAdjacency":"diagonal adjacency","qlConflictRule":"rule conflict",
+  "qlOrientSingleton":"Look at {unit}. See where its queen can still be placed.",
+  "qlOrientLocked":"Look at {source} and {target}. Where can the first unit's queen still go?",
+  "qlOrientCommon":"Look at the remaining positions in {source}, then at {target}.",
+  "qlOrientHall":"Look at {sources}. Which {targetFamily} can still contain their queens?",
+  "qlOrientCapacity":"Look at this {size}×{size} block. How many queens can it hold at most, and which units must already place their queens there?",
+  "qlOrientNoSupport":"Look at {target} and the possible positions in {support}. Would that cell leave any place for the required queen?",
+  "qlOrientMixed":"Look at {sources} and the {rows} row(s) / {columns} column(s) covering all their possible positions.",
+  "qlOrientContradiction":"Look at {cell}. Test the opposite assumption mentally before deciding.",
+  "qlConclusionQueen":"A queen must therefore be placed at {cells}.","qlConclusionXs":"We can therefore mark X at {cells}.",
+  "qlExplainSingleton":"Only one possible cell remains in {unit}. That unit must contain exactly one queen. {conclusion}",
+  "qlExplainLocked":"Every remaining position of {source} lies in {target}. Its queen must therefore be somewhere in that second unit. Since it can contain only one queen, the indicated cells cannot be used by other units. {conclusion}",
+  "qlExplainCommon":"The queen of {source} can still be placed at {candidates}. But {target} conflicts with every one of those possibilities ({conflicts}). Whichever position is chosen, that cell is forbidden. {conclusion}",
+  "qlExplainHall":"{size} units must place {size} queens in total. All their possible positions lie in {targets}. Those {size} target units are therefore reserved for those queens, so no other unit can use them. {conclusion}",
+  "qlExplainCapacity":"This {size}×{size} block can contain at most {capacity} queen(s). {sourcesCount} unit(s) already have to place their queens there, so its capacity is saturated. No other queen can enter it. {conclusion}",
+  "qlExplainNoSupport":"If a queen were placed at {target}, every remaining position in {support} would be forbidden. That unit would have no place left for its required queen. {conclusion}",
+  "qlExplainMixed":"{size} regions must place {size} queens. All their possible positions are covered by {rows} row(s) and {columns} column(s), exactly {size} capacity units. They are therefore fully reserved for that group. {conclusion}",
+  "qlAssumeQueen":"a queen","qlAssumeX":"an X",
+  "qlWitnessNoCandidate":"{unit} would have no possible place left for its queen.","qlWitnessHall":"a group of units would require more queens than the available units can hold.","qlWitnessCapacity":"a local capacity would be exceeded.","qlWitnessRule":"the Queens rules would be violated.",
+  "qlExplainContradiction":"Suppose {assumed} were placed at {cell}. After the logical consequences of that assumption, {detail} The assumption is impossible. {conclusion}",
+  "qlCurrentNoCandidate":"With the current marks, {unit} has no possible place left for its queen. At least one earlier decision must be revisited.",
+  "qlCurrentHall":"The current marks create a capacity contradiction: several units must place their queens in too few {targetFamily}. An earlier decision must be revisited.",
+  "qlCurrentCapacity":"The current marks would force too many queens into a {size}×{size} block whose maximum capacity is {capacity}. An earlier decision must be revisited.",
+  "qlCurrentRule":"Two visible queens are incompatible ({reason}).","qlCurrentGeneric":"The current state contains a demonstrable logical contradiction.","qlLogicalDeduction":"Logical deduction"
+});
+Object.assign(I18N.fr,{
+  "qlAnd":" et ","qlMore":" et {count} autre(s)","qlRowsPlural":"lignes","qlColumnsPlural":"colonnes","qlRegionsPlural":"zones",
+  "qlConflictRow":"même ligne","qlConflictColumn":"même colonne","qlConflictRegion":"même zone","qlConflictAdjacency":"contact diagonal","qlConflictRule":"conflit de règle",
+  "qlOrientSingleton":"Regarde {unit}. Observe où sa reine peut encore être placée.",
+  "qlOrientLocked":"Regarde {source} et {target}. Où la reine de la première unité peut-elle encore se placer ?",
+  "qlOrientCommon":"Regarde les positions encore possibles dans {source}, puis la case {target}.",
+  "qlOrientHall":"Regarde {sources}. Dans quelles {targetFamily} leurs reines peuvent-elles encore aller ?",
+  "qlOrientCapacity":"Regarde ce bloc {size}×{size}. Combien de reines peut-il contenir au maximum, et quelles unités doivent déjà y placer leurs reines ?",
+  "qlOrientNoSupport":"Regarde {target} et les positions possibles dans {support}. Cette case laisserait-elle encore une place à la reine obligatoire ?",
+  "qlOrientMixed":"Regarde {sources} et les {rows} ligne(s) / {columns} colonne(s) qui couvrent toutes leurs positions possibles.",
+  "qlOrientContradiction":"Regarde {cell}. Testons mentalement l'hypothèse opposée avant de décider.",
+  "qlConclusionQueen":"La reine doit donc être placée en {cells}.","qlConclusionXs":"On peut donc placer des croix en {cells}.",
+  "qlExplainSingleton":"Il ne reste qu'une seule case possible dans {unit}. Cette unité doit contenir exactement une reine. {conclusion}",
+  "qlExplainLocked":"Toutes les positions encore possibles de {source} sont dans {target}. Sa reine sera donc forcément quelque part dans cette seconde unité. Comme celle-ci ne peut contenir qu'une reine, les autres unités ne peuvent plus utiliser les cases indiquées. {conclusion}",
+  "qlExplainCommon":"La reine de {source} peut encore être placée en {candidates}. Mais {target} est en conflit avec chacune de ces possibilités ({conflicts}). Quelle que soit la position choisie, cette case serait interdite. {conclusion}",
+  "qlExplainHall":"{size} unités doivent placer {size} reines au total. Toutes leurs positions possibles sont contenues dans {targets}. Ces {size} unités cibles sont donc réservées à ces reines ; aucune autre unité ne peut les utiliser. {conclusion}",
+  "qlExplainCapacity":"Ce bloc {size}×{size} ne peut contenir que {capacity} reine(s) au maximum. {sourcesCount} unité(s) doivent déjà y placer leurs reines : sa capacité est saturée. Aucune autre reine ne peut y entrer. {conclusion}",
+  "qlExplainNoSupport":"Si une reine était placée en {target}, chacune des positions encore possibles de {support} serait interdite. Cette unité n'aurait alors plus aucun emplacement pour sa reine obligatoire. {conclusion}",
+  "qlExplainMixed":"{size} zones doivent placer {size} reines. Toutes leurs positions possibles sont couvertes par {rows} ligne(s) et {columns} colonne(s), soit exactement {size} unités de capacité. Elles sont donc entièrement réservées à ce groupe. {conclusion}",
+  "qlAssumeQueen":"une reine","qlAssumeX":"une croix",
+  "qlWitnessNoCandidate":"{unit} n'aurait plus aucun emplacement possible pour sa reine.","qlWitnessHall":"un groupe d'unités demanderait plus de reines que les unités disponibles ne peuvent en accueillir.","qlWitnessCapacity":"une capacité locale serait dépassée.","qlWitnessRule":"les règles de Queens seraient violées.",
+  "qlExplainContradiction":"Essayons {assumed} en {cell}. Après les conséquences logiques de cette hypothèse, {detail} L'hypothèse est donc impossible. {conclusion}",
+  "qlCurrentNoCandidate":"Avec les marques actuelles, {unit} n'a plus aucun emplacement possible pour sa reine. Il faut revenir sur au moins une décision précédente.",
+  "qlCurrentHall":"Les marques actuelles créent une contradiction de capacité : plusieurs unités doivent placer leurs reines dans trop peu de {targetFamily}. Il faut revenir sur une décision précédente.",
+  "qlCurrentCapacity":"Les marques actuelles imposeraient trop de reines dans un bloc {size}×{size}, dont la capacité maximale est {capacity}. Il faut revenir sur une décision précédente.",
+  "qlCurrentRule":"Deux reines visibles sont incompatibles ({reason}).","qlCurrentGeneric":"L'état actuel contient une contradiction logique démontrable.","qlLogicalDeduction":"Déduction logique"
+});
 let DIFF={};
 function lang(){let l=prefs().lang;return SUPPORTED_LANGS.includes(l)?l:'fr'}
 function dateLocale(){return {"en":"en-US","zh":"zh-CN","hi":"hi-IN","es":"es-ES","ar":"ar","fr":"fr-FR","bn":"bn-BD","pt":"pt-PT","id":"id-ID","ur":"ur-PK","bg":"bg-BG","hr":"hr-HR","cs":"cs-CZ","da":"da-DK","nl":"nl-NL","et":"et-EE","fi":"fi-FI","de":"de-DE","el":"el-GR","hu":"hu-HU","ga":"ga-IE","it":"it-IT","lv":"lv-LV","lt":"lt-LT","mt":"mt-MT","pl":"pl-PL","ro":"ro-RO","sk":"sk-SK","sl":"sl-SI","sv":"sv-SE"}[lang()]||'en-US'}
@@ -1899,6 +1986,114 @@ function structuredReasoning(game,h){
     }
   }
 }
+
+// ===== v2.21.10 — Queens explicit proof engine adapter =====
+function queenLogicAvailable(){return typeof QueensLogic!=='undefined'&&QueensLogic?.createSession}
+function queenLogicBoard(c=current,state=null){return {n:c.n,reg:cloneGrid(c.reg),state:cloneGrid(state||c.state)}}
+function queenLogicSession(c=current,state=null){if(!queenLogicAvailable())throw new Error('Queens inference engine unavailable');return QueensLogic.createSession(queenLogicBoard(c,state))}
+function queenUnitCells(ref,c=current){
+  if(!ref||!c)return [];
+  if(ref.family==='row')return Array.from({length:c.n},(_,col)=>[Number(ref.id),col]);
+  if(ref.family==='column')return Array.from({length:c.n},(_,row)=>[row,Number(ref.id)]);
+  let out=[];for(let r=0;r<c.n;r++)for(let col=0;col<c.n;col++)if(c.reg[r][col]===ref.id)out.push([r,col]);return out
+}
+function queenUnitHuman(ref){
+  if(!ref)return '';
+  if(ref.family==='row')return `${tr('rowLabel')} ${Number(ref.id)+1}`;
+  if(ref.family==='column')return `${tr('columnLabel')} ${Number(ref.id)+1}`;
+  return queenZoneBadge(Number(ref.id))
+}
+function queenFormat(key,vars={}){let text=String(tr(key)||key);return text.replace(/\{([A-Za-z0-9_]+)\}/g,(_,k)=>vars[k]??'')}
+function queenUnitListHuman(units){return (units||[]).map(queenUnitHuman).join(tr('qlAnd'))}
+function queenCellListHuman(cells,limit=8){let a=(cells||[]).map(x=>cellName(x[0],x[1]));if(a.length<=limit)return a.join(', ');return a.slice(0,limit).join(', ')+queenFormat('qlMore',{count:a.length-limit})}
+function queenConflictReasonHuman(reasons){let r=reasons?.[0],key=r==='ROW'?'qlConflictRow':r==='COLUMN'?'qlConflictColumn':r==='REGION'?'qlConflictRegion':r==='ADJACENCY'?'qlConflictAdjacency':'qlConflictRule';return tr(key)}
+function queenRuleHumanTitle(d){
+  let N=d?.explanationData?.size,key=d?.rule==='SINGLETON'?'qlSingleton':d?.rule==='LOCKED_UNIT'?'qlLocked':d?.rule==='COMMON_CONFLICT'?'qlCommonConflict':d?.rule==='HALL_SET'?(N===2?'qlHallPair':N===3?'qlHallTriple':'qlHallGroup'):d?.rule==='LOCAL_CAPACITY'?'qlCapacity':d?.rule==='NO_SUPPORT'?'qlNoSupport':d?.rule==='MIXED_HALL'?'qlMixedHall':d?.rule==='ASSUMPTION_CONTRADICTION'?'qlContradiction':null;
+  return key?tr(key):tr('qlLogicalDeduction')
+}
+function queenDeductionPremiseCells(d,c=current){
+  if(!d)return [];let x=d.explanationData||{},cells=[];
+  if(Array.isArray(x.sourceCandidates))cells.push(...x.sourceCandidates);
+  if(Array.isArray(x.supportCandidates))cells.push(...x.supportCandidates);
+  if(Array.isArray(x.target))cells.push(x.target);
+  if(x.block)cells.push(...x.block);
+  if(x.sourceCandidates&&typeof x.sourceCandidates==='object'&&!Array.isArray(x.sourceCandidates))for(let a of Object.values(x.sourceCandidates))cells.push(...a);
+  for(let u of d.focusUnits||[])cells.push(...queenUnitCells(u,c));
+  if(x.assumption?.cell)cells.push(x.assumption.cell);
+  if(x.witness?.cells)cells.push(...x.witness.cells);
+  let seen=new Set(),out=[];for(let cell of cells){if(!Array.isArray(cell))continue;let k=cell.join(',');if(!seen.has(k)){seen.add(k);out.push(cell)}}return out
+}
+function queenTargetFamilyHuman(f){return tr(f==='row'?'qlRowsPlural':f==='column'?'qlColumnsPlural':'qlRegionsPlural')}
+function queenDeductionOrientation(d){
+  let x=d.explanationData||{};if(!DETAILED_HINT_LANGS.has(lang())){let c=d.conclusions?.[0],g=c?genericLocalizedHint('queens',c.cell,d.rank,c.value):{where:tr('visibleOnly')};return `${queenRuleHumanTitle(d)} · ${g.where}`}
+  if(d.rule==='SINGLETON')return queenFormat('qlOrientSingleton',{unit:queenUnitHuman(x.unit)});
+  if(d.rule==='LOCKED_UNIT')return queenFormat('qlOrientLocked',{source:queenUnitHuman(x.sourceUnit),target:queenUnitHuman(x.targetUnit)});
+  if(d.rule==='COMMON_CONFLICT')return queenFormat('qlOrientCommon',{source:queenUnitHuman(x.sourceUnit),target:cellName(...x.target)});
+  if(d.rule==='HALL_SET')return queenFormat('qlOrientHall',{sources:queenUnitListHuman(x.sourceUnits),targetFamily:queenTargetFamilyHuman(x.targetFamily)});
+  if(d.rule==='LOCAL_CAPACITY')return queenFormat('qlOrientCapacity',{size:x.size});
+  if(d.rule==='NO_SUPPORT')return queenFormat('qlOrientNoSupport',{target:cellName(...x.target),support:queenUnitHuman(x.supportUnit)});
+  if(d.rule==='MIXED_HALL')return queenFormat('qlOrientMixed',{sources:queenUnitListHuman(x.sourceUnits),rows:x.rows.length,columns:x.columns.length});
+  if(d.rule==='ASSUMPTION_CONTRADICTION')return queenFormat('qlOrientContradiction',{cell:cellName(...x.assumption.cell)});
+  return tr('visibleOnly')
+}
+function queenDeductionConclusionText(d){
+  let cs=d.conclusions||[],queens=cs.filter(x=>x.value===2).map(x=>x.cell),xs=cs.filter(x=>x.value===1).map(x=>x.cell),parts=[];
+  if(queens.length)parts.push(queenFormat('qlConclusionQueen',{cells:queenCellListHuman(queens)}));
+  if(xs.length)parts.push(queenFormat('qlConclusionXs',{cells:queenCellListHuman(xs)}));
+  return parts.join(' ')
+}
+function queenDeductionExplanation(d){
+  let x=d.explanationData||{},conclusion=queenDeductionConclusionText(d);if(!DETAILED_HINT_LANGS.has(lang())){let c=d.conclusions?.[0];if(!c)return queenRuleHumanTitle(d);let g=genericLocalizedHint('queens',c.cell,d.rank,c.value);return `${queenRuleHumanTitle(d)}. ${g.why} ${g.move}`}
+  if(d.rule==='SINGLETON')return queenFormat('qlExplainSingleton',{unit:queenUnitHuman(x.unit),conclusion});
+  if(d.rule==='LOCKED_UNIT')return queenFormat('qlExplainLocked',{source:queenUnitHuman(x.sourceUnit),target:queenUnitHuman(x.targetUnit),conclusion});
+  if(d.rule==='COMMON_CONFLICT'){let conflicts=(x.conflicts||[]).map(z=>`${cellName(...z.candidate)} → ${queenConflictReasonHuman(z.reasons)}`).join('; ');return queenFormat('qlExplainCommon',{source:queenUnitHuman(x.sourceUnit),candidates:queenCellListHuman(x.sourceCandidates),target:cellName(...x.target),conflicts,conclusion})}
+  if(d.rule==='HALL_SET')return queenFormat('qlExplainHall',{size:x.size,targets:queenUnitListHuman(x.targetUnits),conclusion});
+  if(d.rule==='LOCAL_CAPACITY')return queenFormat('qlExplainCapacity',{size:x.size,capacity:x.capacity,sourcesCount:x.sourceUnits.length,conclusion});
+  if(d.rule==='NO_SUPPORT')return queenFormat('qlExplainNoSupport',{target:cellName(...x.target),support:queenUnitHuman(x.supportUnit),conclusion});
+  if(d.rule==='MIXED_HALL')return queenFormat('qlExplainMixed',{size:x.size,rows:x.rows.length,columns:x.columns.length,conclusion});
+  if(d.rule==='ASSUMPTION_CONTRADICTION'){
+    let a=x.assumption,w=x.witness||{},detail=w.kind==='no_candidate'?queenFormat('qlWitnessNoCandidate',{unit:queenUnitHuman(w.unit)}):w.kind==='hall_contradiction'?tr('qlWitnessHall'):w.kind==='capacity_contradiction'?tr('qlWitnessCapacity'):tr('qlWitnessRule');
+    return queenFormat('qlExplainContradiction',{assumed:tr(a.value===2?'qlAssumeQueen':'qlAssumeX'),cell:cellName(...a.cell),detail,conclusion})
+  }
+  return conclusion
+}
+function queenLegacyTechniqueForDeduction(d){
+  if(!d)return null;if(d.rule==='SINGLETON'){let f=d.explanationData?.unit?.family;return f==='row'?'Q_UNIQUE_ROW':f==='column'?'Q_UNIQUE_COLUMN':'Q_UNIQUE_REGION'}
+  if(d.rule==='ASSUMPTION_CONTRADICTION')return 'Q_CONTRADICTION_R2';return null
+}
+function queenDeductionReasoning(d,automatic=[]){
+  return {schema:2,source:'queens-inference-engine',game:'queens',rule:d.rule,technique:queenLegacyTechniqueForDeduction(d),rank:d.rank,techniqueLevel:d.techniqueLevel,premises:JSON.parse(JSON.stringify(d.premises||[])),dependencies:[...(d.dependencies||[])],focusCells:(d.focusCells||[]).map(x=>[...x]),focusUnits:JSON.parse(JSON.stringify(d.focusUnits||[])),conclusions:JSON.parse(JSON.stringify(d.conclusions||[])),automatic:JSON.parse(JSON.stringify(automatic||[])),explanationData:JSON.parse(JSON.stringify(d.explanationData||{}))}
+}
+function queenLogicContradictionText(w){
+  if(!w)return '';
+  if(w.kind==='no_candidate')return queenFormat('qlCurrentNoCandidate',{unit:queenUnitHuman(w.unit)});
+  if(w.kind==='hall_contradiction')return queenFormat('qlCurrentHall',{targetFamily:queenTargetFamilyHuman(w.targetFamily)});
+  if(w.kind==='capacity_contradiction')return queenFormat('qlCurrentCapacity',{size:w.size,capacity:w.capacity});
+  if(w.kind==='rule_violation')return queenFormat('qlCurrentRule',{reason:queenConflictReasonHuman(w.reasons)});
+  return tr('qlCurrentGeneric')
+}
+function queenFocusDeduction(d,reveal=false){
+  clearHintFocus();let board=$('#qboard')||document.querySelector('.board');if(!board||!current||!d)return;let n=current.n,ctx=queenDeductionPremiseCells(d,current),conclusions=(d.conclusions||[]).map(x=>x.cell),mark=(cell,cls)=>{let x=board.children[cell[0]*n+cell[1]];if(x)x.classList.add(cls)};
+  for(let cell of ctx)mark(cell,'hint-context');if(reveal)for(let cell of conclusions)mark(cell,'hint-focus')
+}
+function queenApplyDeductionToCurrent(d){
+  if(!d||!current||current.game!=='queens')return null;
+  let engine=queenLogicSession(),applied=engine.applyDeduction(d);if(!applied?.deduction)return null;
+  let changes=[...(applied.deduction.conclusions||[])];for(let a of applied.automatic||[])changes.push(...(a.conclusions||[]));
+  for(let c of changes){let [r,col]=c.cell;if(current.state[r][col]===0)current.state[r][col]=c.value}
+  return applied
+}
+function queenCurrentLogicResult(){let session=queenLogicSession();return {session,...session.nextDeduction()}}
+function queenShowLogicalContradiction(w){
+  current.hintFlow=null;clearHintFocus();let cells=w?.cells||w?.premises?.flatMap?.(p=>p.cell?[p.cell]:[])||[];let board=$('#qboard');if(board)for(let [r,c] of cells){let d=board.children[r*current.n+c];if(d)d.classList.add('error-focus')}
+  showHintNotice(`<b>⚠ ${tr('contradictionFound')}</b><br>${queenLogicContradictionText(w)}`);return true
+}
+function queenCoachHandleDeduction(d){
+  let boardKey=historySnapshotKey(),sig=d.id+'|'+d.rank,flow=current.hintFlow,isSame=flow?.kind==='queens-proof'&&flow.boardKey===boardKey&&flow.signature===sig;
+  if(!isSame){current.hintFlow={kind:'queens-proof',boardKey,signature:sig,stage:1,deduction:JSON.parse(JSON.stringify(d))};coachUsage(1,queenLegacyTechniqueForDeduction(d));queenFocusDeduction(d,false);showHintNotice(`<span class="coach-progress">1/2</span><b>${tr('where')} :</b> ${queenDeductionOrientation(d)}`);saveCurrent();return}
+  let proof=flow.deduction||d,technique=queenLegacyTechniqueForDeduction(proof),before=historySnapshotKey();coachUsage(2,technique);coachUsage(3,technique);markHintUsed();updateScoreFlags();queenFocusDeduction(proof,true);let application=queenApplyDeductionToCurrent(proof);if(!application){current.hintFlow=null;showHintNotice(tr('hintError'));return}drawQ();historyRecord({type:'COACH_APPLY',reasoning:queenDeductionReasoning(proof,application.automatic),coachStage:2,coachFlowVersion:3},before);current.hintFlow=null;
+  showHintNotice(`<span class="coach-progress">2/2</span><b>${queenRuleHumanTitle(proof)}</b><br>${queenDeductionExplanation(proof)}`);maybeAutoFinish();saveCurrent();haptic(12)
+}
 function cloneGrid(x){return Array.isArray(x)?x.map(r=>Array.isArray(r)?[...r]:r):x}
 function puzzleSnapshot(){
   if(!current)return null;
@@ -2044,7 +2239,7 @@ function patchRectangleJustification(action){
 function firstKnownLogicalMoveFromSnapshot(beforeKey,deadline=Date.now()+250){
   return withAuditSnapshot(beforeKey,()=>{
     let h=null,g=current.game;
-    if(g==='queens'){h=findQueenLogicalHint()||findQueenRank1Hint(deadline);if(!h?.timeout)h=h||findQueenRank2Hint(deadline);if(!h?.timeout)h=h||findQueenRank3Hint(deadline)}
+    if(g==='queens'){let q=queenLogicSession(),r=q.nextDeduction();return r.deduction?queenDeductionReasoning(r.deduction):null}
     else if(g==='tango')h=findTangoLogicalHint()||findTangoRank1Hint()||findTangoRank2Hint();
     else if(g==='sudoku')h=findSudokuLogicalHint()||findSudokuRank1Hint()||findSudokuRank2Hint();
     else if(g==='patches')h=findPatchLogicalHint()||findPatchRank1Hint()||findPatchRank2Hint();
@@ -2056,7 +2251,11 @@ function evaluateMoveJustification(beforeKey,action,error=null){
   if(current.game==='patches'&&action.type==='PATCH_RECTANGLE')return withAuditSnapshot(beforeKey,()=>patchRectangleJustification(action));
   let ch=auditConstructiveChange(action);if(!ch)return null;let deadline=Date.now()+350;
   let result=withAuditSnapshot(beforeKey,()=>{
-    if(current.game==='queens')return justifyQueenAt(ch.row,ch.column,ch.to,deadline);
+    if(current.game==='queens'){
+      let q=queenLogicSession(),p=q.proveAction([ch.row,ch.column],ch.to);
+      if(p.status==='proven'){let d=p.deduction,t=queenLegacyTechniqueForDeduction(d),x=proofResult('justified',t,d.rank,[ch.row,ch.column],{logicalStatus:'proven',deduction:queenDeductionReasoning(d)});x.logicalStatus='proven';return x}
+      let x=proofResult('unjustified',null,null,[ch.row,ch.column],{logicalStatus:p.status,contradiction:p.contradiction||null});x.logicalStatus=p.status;return x
+    }
     if(current.game==='tango')return justifyTangoAt(ch.row,ch.column,ch.to);
     if(current.game==='sudoku')return justifySudokuAt(ch.row,ch.column,ch.to);
     if(current.game==='patches')return justifyPatchCellAt(ch.row,ch.column,ch.to);
@@ -2436,15 +2635,6 @@ function walkthroughComplete(){return withWalkthroughCurrent(()=>{
   }
   return false
 })}
-function walkthroughQueenCompletionCount(limit=1){
-  let n=current.n,count=0,usedC=new Set(),usedR=new Set();
-  function bt(r,prev){if(count>=limit)return;if(r===n){count++;return}
-    let forced=[];for(let c=0;c<n;c++)if(current.state[r][c]===2)forced.push(c);if(forced.length>1)return;
-    let cols=forced.length?forced:Array.from({length:n},(_,c)=>c).filter(c=>current.state[r][c]!==1);
-    for(let c of cols){let z=current.reg[r][c];if(usedC.has(c)||usedR.has(z))continue;if(r>0&&Math.abs(c-prev)===1)continue;usedC.add(c);usedR.add(z);bt(r+1,c);usedC.delete(c);usedR.delete(z);if(count>=limit)return}
-  }bt(0,-99);return count
-}
-
 function walkthroughTangoCount(vr=null,vc=null,vv=null,limit=1){
   let givens=new Map();for(let r=0;r<6;r++)for(let c=0;c<6;c++){let v=current.state[r][c];if(v!==-1)givens.set(r*6+c,v)}
   if(vr!=null)givens.set(vr*6+vc,vv);return countTangoSolutions(givens,current.edges,limit)
@@ -2465,10 +2655,6 @@ function walkthroughPatchCompletionCount(limit=1){
 }
 function walkthroughExhaustiveHint(){return withWalkthroughCurrent(()=>{
   let fr=lang()==='fr';
-  if(current.game==='queens')for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(current.state[r][c]===0){
-    let counts=[];for(let v of [1,2]){current.state[r][c]=v;let n=walkthroughQueenCompletionCount(1);current.state[r][c]=0;counts.push([v,n])}let good=counts.filter(x=>x[1]>0);
-    if(good.length===1){let v=good[0][0];return {r,c,v,rank:4,walkthroughExhaustive:true,walkthroughWhy:fr?`En testant toutes les complétions compatibles avec les règles visibles, l'autre choix ne permet aucune grille complète valide. ${pieceName('queens',v)} est donc imposé en ${cellName(r,c)}.`:`Testing all completions compatible with the visible rules shows that the other choice permits no valid complete grid. ${pieceName('queens',v)} is therefore forced at ${cellName(r,c)}.`}}
-  }
   if(current.game==='tango')for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(current.state[r][c]===-1){
     let vals=[0,1].filter(v=>tangoCandidateLocallyLegal(r,c,v)),counts=vals.map(v=>[v,walkthroughTangoCount(r,c,v,1)]),good=counts.filter(x=>x[1]>0);
     if(good.length===1&&counts.length>1){let v=good[0][0];return {r,c,v,rank:3,walkthroughExhaustive:true,walkthroughWhy:fr?`En testant toutes les complétions compatibles avec les règles visibles, l'autre symbole ne mène à aucune grille complète valide. ${pieceName('tango',v)} est donc imposé en ${cellName(r,c)}.`:`Testing all completions compatible with the visible rules shows that the other symbol leads to no valid complete grid. ${pieceName('tango',v)} is therefore forced at ${cellName(r,c)}.`}}
@@ -2485,10 +2671,7 @@ function walkthroughExhaustiveHint(){return withWalkthroughCurrent(()=>{
 })}
 
 function walkthroughFindHint(){return withWalkthroughCurrent(()=>{
-  if(current.game==='queens'){
-    let deadline=Date.now()+5000,h=findQueenLogicalHint()||findQueenRank1Hint(deadline);if(h?.timeout)return h;
-    h=h||findQueenRank2Hint(deadline);if(h?.timeout)return h;h=h||findQueenRank3Hint(deadline);if(h?.timeout)return h;return h||walkthroughExhaustiveHint()
-  }
+  if(current.game==='queens')return null;
   if(current.game==='tango')return findTangoLogicalHint()||findTangoRank1Hint()||findTangoRank2Hint()||walkthroughExhaustiveHint();
   if(current.game==='sudoku')return findSudokuLogicalHint()||findSudokuRank1Hint()||findSudokuRank2Hint()||walkthroughExhaustiveHint();
   if(current.game==='patches')return findPatchLogicalHint()||findPatchRank1Hint()||findPatchRank2Hint()||walkthroughExhaustiveHint();
@@ -2501,25 +2684,30 @@ function walkthroughMoveText(game,h){
   if(game==='sudoku')return `${h.v} · ${cellName(h.r,h.c)}`;
   return `${pieceName('patches',h.id)} · ${cellName(h.r,h.c)}`
 }
-function walkthroughQueenAutoCross(){
-  if(current?.game!=='queens')return 0;
-  let added=0;
-  for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++){
-    if(current.state[r][c]!==0)continue;
-    if(!queenCellAllowed(r,c)){current.state[r][c]=1;added++}
-  }
-  return added
-}
 function walkthroughApplyHint(h){return withWalkthroughCurrent(()=>{
   if(current.game==='patches')current.paint[h.r][h.c]=h.id;
-  else{
-    current.state[h.r][h.c]=h.v;
-    if(current.game==='queens'&&h.v===2)walkthroughQueenAutoCross()
-  }
+  else current.state[h.r][h.c]=h.v;
   return true
 })}
+function walkthroughGenerateQueensNext(){
+  let s=walkthroughSession;if(!s||s.base.game!=='queens'||s.done||s.stalled)return false;
+  if(!s.queenLogic)s.queenLogic=queenLogicSession(s.work,s.work.state);
+  if(walkthroughComplete()){s.done=true;s.total=s.moves.length;return false}
+  let result=s.queenLogic.nextDeduction();
+  if(result.contradiction){s.stalled=true;s.logicContradiction=result.contradiction;return false}
+  if(!result.deduction){s.stalled=true;return false}
+  let beforeSnapshot=walkthroughSnapshot(s.work),applied=s.queenLogic.applyDeduction(result.deduction),d=applied.deduction;if(!d){s.stalled=true;return false}
+  s.work.state=cloneGrid(s.queenLogic.state);
+  let reasoning=queenDeductionReasoning(d,applied.automatic),info={
+    rule:d.rule,technique:queenLegacyTechniqueForDeduction(d),rank:d.rank,techniqueLevel:d.techniqueLevel,target:d.conclusions?.[0]?.cell?[...d.conclusions[0].cell]:null,
+    deduction:reasoning,where:queenDeductionOrientation(d),why:queenDeductionExplanation(d),move:queenDeductionConclusionText(d),automatic:JSON.parse(JSON.stringify(applied.automatic||[])),metrics:s.queenLogic.metrics(),beforeSnapshot
+  };
+  info.snapshot=walkthroughSnapshot(s.work);s.moves.push(info);
+  if(walkthroughComplete()){s.done=true;s.total=s.moves.length;s.metrics=s.queenLogic.metrics()}
+  return true
+}
 function walkthroughGenerateNext(){
-  let s=walkthroughSession;if(!s||s.done||s.stalled)return false;
+  let s=walkthroughSession;if(!s||s.done||s.stalled)return false;if(s.base.game==='queens')return walkthroughGenerateQueensNext();
   if(walkthroughComplete()){s.done=true;s.total=s.moves.length;return false}
   let h=walkthroughFindHint();
   if(!h||h.timeout){s.stalled=true;s.timeout=!!h?.timeout;return false}
@@ -2532,10 +2720,11 @@ function walkthroughGenerateNext(){
   return true
 }
 function walkthroughTarget(index){return index>0?walkthroughSession?.moves?.[index-1]?.target:null}
-function walkthroughBoardHtml(snapshot,target=null){
+function walkthroughBoardHtml(snapshot,target=null,deduction=null){
   let s=walkthroughSession,c=s.base,n=c.n||6,initial=s.initial,targetKey=target?target.join(','):null,cells=[];
   if(c.game==='queens'){
-    for(let r=0;r<n;r++)for(let col=0;col<n;col++){let v=snapshot.state[r][col],cls='cell walkthrough-cell'+(targetKey===`${r},${col}`?' walkthrough-target':''),body=v===2?'<span class="queen">♛</span>':v===1?'<span class="mark">×</span>':'';cells.push(`<div class="${cls}" style="background:${QUEEN_REGION_COLORS[c.reg[r][col]%QUEEN_REGION_COLORS.length]}">${body}</div>`)}
+    let context=new Set(queenDeductionPremiseCells(deduction,c).map(x=>x.join(','))),conclusions=new Set((deduction?.conclusions||[]).map(x=>x.cell.join(',')));
+    for(let r=0;r<n;r++)for(let col=0;col<n;col++){let k=`${r},${col}`,v=snapshot.state[r][col],cls='cell walkthrough-cell'+(context.has(k)?' walkthrough-context':'')+(conclusions.has(k)?' walkthrough-target':''),body=v===2?'<span class="queen">♛</span>':v===1?'<span class="mark">×</span>':'';cells.push(`<div class="${cls}" style="background:${QUEEN_REGION_COLORS[c.reg[r][col]%QUEEN_REGION_COLORS.length]}">${body}</div>`)}
   }else if(c.game==='tango'){
     let rel=new Map();for(let [r,col,d,x] of c.edges||[]){let k=r+','+col,a=rel.get(k)||[];a.push(`<span class="relation ${d}">${x}</span>`);rel.set(k,a)}
     for(let r=0;r<6;r++)for(let col=0;col<6;col++){let v=snapshot.state[r][col],fixed=initial.state[r][col]!==-1,body=v===0?'<span class="tango-symbol">☾</span>':v===1?'<span class="tango-symbol">☀</span>':'',cls='cell walkthrough-cell'+(fixed?' fixed':'')+(targetKey===`${r},${col}`?' walkthrough-target':'');cells.push(`<div class="${cls}">${body}${(rel.get(r+','+col)||[]).join('')}</div>`)}
@@ -2549,20 +2738,23 @@ function walkthroughBoardHtml(snapshot,target=null){
 }
 function walkthroughExplanationHtml(index){
   let s=walkthroughSession;if(index===0)return `<div class="walkthrough-explanation start"><b>${tr('walkthroughStart')}</b><p>${tr('walkthroughSub')}</p></div>`;
-  let m=s.moves[index-1],tech=m.technique?techniqueTitle(m.technique):techniqueTerm('contradiction'),rank=m.exhaustive?'R+':`R${m.rank}`;
+  let m=s.moves[index-1];
+  if(s.base.game==='queens'&&m?.deduction){let d=m.deduction;return `<div class="walkthrough-explanation"><div class="walkthrough-tech"><b>${queenRuleHumanTitle(d)}</b><span>R${d.rank}</span></div><p><b>${tr('where')} :</b> ${queenDeductionOrientation(d)}</p><p><b>${tr('walkthroughWhy')}</b><br>${queenDeductionExplanation(d)}</p></div>`}
+  let tech=m.technique?techniqueTitle(m.technique):techniqueTerm('contradiction'),rank=m.exhaustive?'R+':`R${m.rank}`;
   return `<div class="walkthrough-explanation"><div class="walkthrough-tech"><b>${tech}</b><span>${rank}</span></div><p><b>${tr('where')} :</b> ${m.where}</p><p><b>${tr('walkthroughWhy')}</b><br>${m.why||''}</p><p class="walkthrough-move"><b>${tr('hintMove')} :</b> ${m.move}</p></div>`
 }
 function renderWalkthrough(){
-  let s=walkthroughSession;if(!s)return;let i=s.index,snap=i===0?s.initial:s.moves[i-1].snapshot,target=walkthroughTarget(i),stateNote=s.done&&i===s.moves.length?`<div class="walkthrough-complete">✓ ${tr('walkthroughComplete')}</div>`:s.stalled&&i===s.moves.length?`<div class="walkthrough-stalled">⚠ ${tr('walkthroughStalled')}</div>`:'';
-  let progress=s.done?`${i}/${s.moves.length}`:`${i}`;
-  document.body.classList.add('tutor-active');
-  app.innerHTML=`<section class="panel walkthrough-panel"><div class="stats-head walkthrough-head"><div><h1>${tr('walkthrough')}</h1><p>${gameLabel(s.base.game)} · ${DIFF[s.base.diff]} · ${tr('walkthroughStep')} ${progress}</p></div><button class="btn" id="walkthroughClose">${tr('walkthroughClose')}</button></div><div class="walkthrough-actions walkthrough-actions-top"><button class="btn" id="walkthroughPrev" ${i===0?'disabled':''}>← ${tr('walkthroughPrevious')}</button><button class="btn" id="walkthroughRestart" ${i===0?'disabled':''}>↺ ${tr('walkthroughRestart')}</button><button class="btn primary" id="walkthroughNext" ${(s.done||s.stalled)&&i===s.moves.length?'disabled':''}>${tr('walkthroughNext')} →</button></div>${walkthroughBoardHtml(snap,target)}<div class="walkthrough-scroll"><p class="walkthrough-help-note">💡 ${tr('walkthroughCountsAsHelp')}</p>${walkthroughExplanationHtml(i)}${stateNote}</div></section>`;
+  let s=walkthroughSession;if(!s)return;let i=s.index,snap=i===0?s.initial:s.moves[i-1].snapshot,target=walkthroughTarget(i),deduction=i>0?s.moves[i-1]?.deduction:null;
+  let stateNote=s.done&&i===s.moves.length?`<div class="walkthrough-complete">✓ ${tr('walkthroughComplete')}</div>`:s.stalled&&i===s.moves.length?`<div class="walkthrough-stalled">⚠ ${s.logicContradiction?queenLogicContradictionText(s.logicContradiction):tr('walkthroughStalled')}</div>`:'';
+  let total=s.done?s.moves.length:'…',progress=`${i}/${total}`;document.body.classList.add('tutor-active');
+  app.innerHTML=`<section class="panel walkthrough-panel"><div class="stats-head walkthrough-head"><div><h1>${tr('walkthrough')}</h1><p>${gameLabel(s.base.game)} · ${DIFF[s.base.diff]}</p></div><button class="btn" id="walkthroughClose">${tr('walkthroughClose')}</button></div>${walkthroughBoardHtml(snap,target,deduction)}<div class="walkthrough-actions walkthrough-actions-top"><button class="btn" id="walkthroughPrev" ${i===0?'disabled':''}>← ${tr('walkthroughPrevious')}</button><button class="btn walkthrough-step-counter" id="walkthroughRestart" ${i===0?'disabled':''} title="${tr('walkthroughRestart')}">${tr('walkthroughStep')} ${progress} · ↺</button><button class="btn primary" id="walkthroughNext" ${(s.done||s.stalled)&&i===s.moves.length?'disabled':''}>${tr('walkthroughNext')} →</button></div><div class="walkthrough-scroll"><p class="walkthrough-help-note">💡 ${tr('walkthroughCountsAsHelp')}</p>${walkthroughExplanationHtml(i)}${stateNote}</div></section>`;
   $('#walkthroughClose').onclick=closeWalkthrough;$('#walkthroughPrev').onclick=()=>{if(s.index>0){s.index--;renderWalkthrough()}};$('#walkthroughRestart').onclick=()=>{s.index=0;renderWalkthrough()};$('#walkthroughNext').onclick=()=>{if(s.index<s.moves.length)s.index++;else if(walkthroughGenerateNext())s.index++;renderWalkthrough()};app.querySelectorAll('button').forEach(pressFeedback)
 }
 function openWalkthrough(){
   if(!current||current.training)return false;let root=walkthroughRootSnapshot(),work=walkthroughVisibleClone(current,root);if(!work)return false;
   let elapsed=timerSeconds(),wasPaused=paused;stopTimer(true);current.walkthroughUsed=true;markHintUsed();updateScoreFlags();saveCurrent();
-  walkthroughSession={schema:1,base:work,work,initial:walkthroughSnapshot(work),moves:[],index:0,done:false,stalled:false,elapsed,wasPaused};
+  walkthroughSession={schema:2,base:work,work,initial:walkthroughSnapshot(work),moves:[],index:0,done:false,stalled:false,elapsed,wasPaused};
+  if(work.game==='queens'){walkthroughSession.queenLogic=queenLogicSession(work,work.state);work.state=cloneGrid(walkthroughSession.queenLogic.state);walkthroughSession.initial=walkthroughSnapshot(work)}
   renderWalkthrough();return true
 }
 function closeWalkthrough(){
@@ -2635,7 +2827,7 @@ function ensurePrecomputeWorker(){
   if(precomputeWorker)return precomputeWorker;
   if(typeof Worker==='undefined')return null;
   try{
-    let w=new Worker('./precompute-worker.js?v=2.21.9');
+    let w=new Worker('./precompute-worker.js?v=2.21.10');
     w.onmessage=e=>{
       let m=e.data||{};precomputeBusy=false;
       if(m.ok&&m.day===precomputeDay&&m.candidate){
@@ -3538,28 +3730,15 @@ function hintQ(){
   if(!current||current.game!=='queens'){showHintNotice(tr('noLogicalHint'));return}
   if(showVisibleErrorsBeforeHint())return;
   if(showExplorationContradictionBeforeHint())return;
-  let token=++queenHintSearchToken;
-  showHintNotice(tr('hintSearching'));
+  let token=++queenHintSearchToken;showHintNotice(tr('hintSearching'));
   setTimeout(()=>{
     if(token!==queenHintSearchToken||!current||current.game!=='queens')return;
-    let started=Date.now(),stage=0;
     try{
-      let deadline=started+QUEEN_HINT_BUDGET_MS,h=findQueenLogicalHint();
-      if(!h){stage=1;h=findQueenRank1Hint(deadline)}
-      if(h?.timeout||hintBudgetExpired(deadline)){showHintNotice(queenHintTimeoutMessage(stage||1,Date.now()-started));return}
-      if(!h){stage=2;h=findQueenRank2Hint(deadline)}
-      if(h?.timeout||hintBudgetExpired(deadline)){showHintNotice(queenHintTimeoutMessage(stage,Date.now()-started));return}
-      if(!h){stage=3;h=findQueenRank3Hint(deadline)}
-      if(h?.timeout||hintBudgetExpired(deadline)){showHintNotice(queenHintTimeoutMessage(stage,Date.now()-started));return}
-      if(!h){showHintNotice(queenHintNoResultMessage(Date.now()-started));return}
-      let isX=h.v===1,move=lang()==='fr'?(isX?`Place un X en ligne ${h.r+1}, colonne ${h.c+1}.`:`Place une reine ♛ en ligne ${h.r+1}, colonne ${h.c+1}.`):(isX?`Mark X at row ${h.r+1}, column ${h.c+1}.`:`Place a queen ♛ at row ${h.r+1}, column ${h.c+1}.`);
-      let why=h.rank===3?rank3Why(h):h.rank===2?rank2Why(h):h.rank===1?rank1Why(h):h.why;
-      hintStage('queens',[h.r,h.c],{move,where:lang()==='fr'?`Indice de rang ${h.rank||0}, déduit uniquement de l’état visible.`:`Rank ${h.rank||0} hint, deduced only from the visible state.`,why,reveal:tr('queenPlaced'),rank:h.rank||0,value:h.v,reasoning:structuredReasoning('queens',h)},()=>{setQueenCell(h.r,h.c,h.v===1?1:2);drawQ();maybeAutoFinish()})
-    }catch(err){
-      console.error('Queens hint search failed',err);
-      let detail=String(err?.message||err||'').slice(0,120);
-      showHintNotice(!DETAILED_HINT_LANGS.has(lang())?`<b>${tr('hintError')}</b>`:(lang()==='fr'?`<b>Erreur pendant la recherche d’indice${stage?` (rang ${stage})`:''}.</b><br>${detail||'Le calcul n’a pas pu être terminé.'}<br>Aucun indice non vérifié n’est affiché.`:`<b>Error during hint search${stage?` (rank ${stage})`:''}.</b><br>${detail||'The calculation could not be completed.'}<br>No unverified hint is shown.`))
-    }
+      let result=queenCurrentLogicResult();
+      if(result.contradiction){queenShowLogicalContradiction(result.contradiction);return}
+      if(!result.deduction){showHintNotice(`<b>${tr('noLogicalHint')}</b><br>${tr('qlNoDeduction')}`);return}
+      queenCoachHandleDeduction(result.deduction)
+    }catch(err){console.error('Queens proof engine failed',err);showHintNotice(`<b>${tr('hintError')}</b>`)}
   },0)
 }
 
