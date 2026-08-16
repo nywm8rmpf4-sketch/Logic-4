@@ -1,6 +1,54 @@
-# QUADLUD — v2.21.17
+# QUADLUD — v2.21.18
 
 Application web statique mobile-first regroupant **Couronnes**, **Soleil-Lune**, **Grille 6** et **Rectangles**.
+
+
+## v2.21.18 — Grille 6 : moteur d’inférences explicable partagé Coach/Tuteur
+
+Reconstruction du raisonnement pédagogique de **Grille 6** autour d’un moteur autonome `sudoku-logic.js`. Le solveur de complétion/génération historique reste séparé : le Logic Coach, le Tuteur et l’audit des coups raisonnent désormais à partir de l’état visible et de preuves structurées, sans consulter `current.sol`.
+
+### Moteur logique Grille 6
+- Modèle explicite de faits `VALUE(cell,value)` et `NOT_CANDIDATE(cell,value)` avec prémisses, dépendances et chaînes de preuve.
+- R0 : propagation ligne / colonne / bloc 2×3.
+- R1 : candidat unique.
+- R2 : position unique distincte pour ligne, colonne et bloc.
+- R3 : candidat verrouillé dans les deux sens bloc↔ligne/colonne.
+- R4 : paires et triplets nus/cachés.
+- R5 : contradiction par hypothèse niveau 1.
+- R6 : conséquence commune à toutes les branches d’une cellule.
+- R7 : contradiction imbriquée niveau 2, strictement bornée.
+- Contradictions C1–C4 : doublon, zéro candidat, chiffre sans position et valeur incompatible.
+- API logique : `createSession`, `clone`, `snapshot`, `candidates`, `nextDeduction`, `applyDeduction`, `diagnose`, `proveValue`, `nextValueStep`, `solveLogically`, `metrics`.
+
+### Logic Coach et Tuteur
+- Le **Logic Coach** consomme directement les déductions de `SudokuLogic` et conserve le parcours actuel en trois affichages : où regarder → technique/justification → chiffre.
+- Une séquence Coach révèle **au maximum un chiffre** ; après le coup, la déduction suivante est recalculée depuis l’état réel.
+- Le **Tuteur** utilise le même moteur et ajoute **exactement un chiffre maximum par étape**.
+- `walkthroughExhaustiveHint()` n’utilise plus la recherche de complétion pour Grille 6 ; `countMiniSudoku()` reste disponible pour génération, unicité et validation technique.
+- Coach et Tuteur reconstruisent leur session depuis la grille ; aucune session logique complexe n’est persistée dans Undo/Redo ou `localStorage`.
+
+### Audit, historique, persistance et i18n
+- `proveValue()` distingue `proven`, `incorrect`, `not-yet-proven` et `contradictory` : un coup compatible mais non démontré n’est plus assimilé à un coup faux.
+- Le diagnostic de branche Exploration et le prochain coup logique de l’audit utilisent également `SudokuLogic`.
+- La saisie clavier Grille 6 rejoint l’historique arborescent : Undo/Redo 1 à N, changement de branche et invalidation correcte du Redo sont couverts.
+- Après Undo/Redo ou reprise d’une sauvegarde, les candidats et preuves sont reconstruits depuis l’état restauré.
+- Les nouvelles techniques disposent d’intitulés dans les 30 langues ; FR/EN conservent une prose pédagogique détaillée, les autres locales utilisent une preuve symbolique localisée/neutre plutôt qu’un fallback anglais.
+
+### Validation v2.21.18
+- 7 suites moteur Grille 6 (`core`, R1/R2, R3/R4, R5/R6/R7, `proveValue`, `nextValueStep`, `solveLogically`) : **OK**.
+- Tests navigateur Grille 6 Coach, Tuteur, audit, Undo/Redo/persistance/i18n/mobile et puzzles complets : **OK** sous Chromium.
+- Puzzles générés reproductibles : easy seed `10101` → 16 étapes (16 Naked Singles) ; medium seed `20202` → 22 étapes (22 Naked Singles) ; hard seed `123456789` → 25 étapes (21 Naked Singles + 4 Hidden Singles ligne). Les trois sont uniques, résolus complètement, sans budget avancé atteint, et le résultat correspond à la solution du générateur utilisée uniquement comme oracle QA.
+- Grille contradictoire dédiée : contradiction C1 détectée avant tout placement — **OK**.
+- 6 suites moteur Rectangles + intégration Rectangles : **OK**.
+- Smoke Chromium Rectangles et régression navigateur globale Couronnes / Soleil-Lune / Grille 6 / Rectangles : **OK**.
+- Viewport Chromium 390×844, absence de débordement horizontal et parcours Coach/Tuteur : **OK**.
+- Safari/iPhone/iPad physique et gestes tactiles matériels : **non exécutés** dans cet environnement.
+- Relecture linguistique native des 28 traductions hors FR/EN : **non exécutée**.
+
+### Limites connues
+- Les budgets R5–R7 garantissent une recherche bornée ; une grille compatible peut donc être déclarée bloquée si aucune preuve n’est trouvée dans ces limites, jamais résolue par une explication fabriquée.
+- La fixture historique `S_CONTRADICTION_R2` de la bibliothèque d’entraînement est marquée `unique:true` alors qu’un recomptage autonome trouve 6 complétions ; elle reste une dette QA préexistante et n’a pas été utilisée comme oracle de résolution complète.
+
 
 ## v2.21.17 — Rectangles : un rectangle par étape dans le Tuteur
 
