@@ -1,6 +1,90 @@
-# QUADLUD — v2.21.10
+# QUADLUD — v2.21.11
 
 Application web statique mobile-first regroupant **Couronnes**, **Soleil-Lune**, **Grille 6** et **Rectangles**.
+
+## v2.21.11 — moteur d’inférences Soleil/Lune explicable partagé par le Coach et le Tuteur
+
+Cette version reconstruit **Soleil/Lune** autour d’un moteur de preuves explicites suivant le même principe architectural que le moteur Queens de v2.21.10. L’évolution a été réalisée et stabilisée en **8 étapes** : modèle de faits, fermeture coût 0, règles simples, raisonnement relationnel, rangs/hypothèses, Coach, Tuteur, puis i18n/mobile/non-régression.
+
+### Architecture
+- Nouveau fichier pur **`tango-logic.js`**, sans DOM, sans accès à `current` et sans lecture de la solution finale.
+- Le même `TangoLogic.Session` alimente le Logic Coach, le Tuteur et la justification logique des coups.
+- Les faits logiques distinguent :
+  - `VALUE(cell,SUN|MOON)` ;
+  - `SAME(A,B)` ;
+  - `OPPOSITE(A,B)`.
+- Les relations `SAME/OPPOSITE` sont représentées par un graphe de parité et peuvent être déduites même sans signe `=` ou `×` dessiné dans la grille.
+- Une déduction structurée contient notamment `id`, `rule`, `ruleCost`, `rank`, `techniqueLevel`, `premises`, `dependencies`, `focusCells`, `focusRelations`, `focusUnits`, `conclusions` et `explanationData`.
+- Les IDs de déduction appliquée sont stables (`D…`) et continuent après restauration de relations virtuelles persistées ; les dépendances publiques ne pointent que vers des déductions réelles antérieures.
+- Le rang est calculé comme **max(rang des prémisses) + coût de règle**. Le niveau de technique T0–T3 reste une dimension indépendante.
+
+### Fermeture logique — coût 0
+- `GIVEN_VALUE` : valeurs initiales R0.
+- `EXPLICIT_RELATION` : relations `=` / `×` initiales R0.
+- `RELATION_PROPAGATION` : une valeur connue traverse une relation sans augmenter le rang.
+- `RELATION_CLOSURE` : fermeture de parité `same+same`, `same+opposite`, `opposite+same`, `opposite+opposite`, également sans hausse artificielle du rang.
+- Les conséquences mécaniques sont regroupées dans la même étape pédagogique du Tuteur.
+
+### Déductions directes — coût +1
+- `TRIPLE_CONSTRAINT` : règle générale sur les trois positions `AA?`, `?AA`, `A?A`, horizontalement et verticalement ; elle fonctionne aussi avec une relation déduite entre les extrémités.
+- `BALANCE_QUOTA` : équilibre calculé depuis `n/2`, sans quota `3` codé en dur dans le moteur.
+- `BALANCE_RELATION` : les deux dernières cases devant contenir un Soleil et une Lune deviennent `OPPOSITE` sans imposer arbitrairement leur orientation.
+- `RELATION_BALANCE` : exploite les paires `SAME/OPPOSITE` dans les quotas.
+- `RELATION_BALANCE_COMPONENT` : oriente une composante relationnelle lorsque seule une des deux orientations respecte les contraintes.
+- `LINE_DOMAIN_SUPPORT` : domaine des complétions valides d’une ligne/colonne pour produire une valeur ou une relation forcée ; cette règle reste derrière Triple/Balance dans l’ordre pédagogique.
+
+### Raisonnements hypothétiques — coût +2
+- `ASSUMPTION_CONTRADICTION` : teste SUN/MOON, propage les conséquences logiques et conclut uniquement lorsqu’une contradiction structurée est réellement atteinte.
+- `COMMON_CONSEQUENCE` : si les deux orientations d’une hypothèse démontrent la même conséquence ailleurs, cette conséquence devient prouvée.
+- Les contradictions structurées couvrent notamment `TRIPLE_OVERFLOW`, `BALANCE_OVERFLOW`, `BALANCE_DEFICIT`, `RELATION_CONFLICT`, `VALUE_CONFLICT` et `NO_LINE_COMPLETION`.
+- Les faits créés uniquement dans une branche hypothétique restent confinés à `explanationData`; ils ne deviennent jamais de fausses prémisses publiques.
+
+### Sélection pédagogique et métriques
+- Ordre de choix : rang minimal, `techniqueLevel` minimal, priorité pédagogique, clarté/stabilité.
+- À état comparable, Triple et Balance sont préférés à Relation Component / Domain Support, eux-mêmes préférés aux hypothèses.
+- Métriques internes disponibles : `maxRank`, `maxTechniqueLevel`, `deductionsByRule`, `countTriple`, `countBalance`, `countRelationBalance`, `countDomainSupport`, `countContradictions`, `countCommonConsequences`.
+- Ces métriques ne changent pas encore automatiquement les niveaux Easy/Medium/Hard.
+
+### Logic Coach Soleil/Lune
+- Le Coach analyse uniquement l’état réel courant : symboles posés, relations initiales et relations virtuelles déjà démontrées.
+- Deux appuis visibles :
+  1. **orientation** et surbrillance des cellules/relations réellement impliquées ;
+  2. **preuve humaine + conclusion**, puis application de la déduction et de sa fermeture coût 0.
+- Les textes sont produits par la couche UI depuis la déduction structurée ; le moteur logique ne contient aucun texte français/anglais.
+- L’audit distingue `proven`, `incorrect`, `contradictory` et `not-yet-proven`.
+- Une valeur qui correspond à `sol` mais qui n’est pas démontrable dans l’état courant reste `not-yet-proven`.
+
+### Tuteur Soleil/Lune
+- Le Tuteur utilise exactement la même session logique persistante que le Coach et ne fait plus appel à la recherche exhaustive historique de complétions Tango.
+- Chaque étape conserve l’état avant, la preuve, les conséquences automatiques coût 0, les relations virtuelles, l’état après et les métriques.
+- La navigation précédente/suivante repose sur ces snapshots déterministes et ne modifie jamais la partie réelle du joueur.
+- Les relations virtuelles sont surlignées temporairement mais ne sont pas dessinées comme de nouveaux signes permanents du puzzle.
+- Ordre UX : **grille → navigation → explication défilante**. Le mécanisme générique du Tuteur conserve priorité à la grille sur petits écrans.
+
+### Règles du jeu et génération
+- Les règles effectives restent : quota Soleil/Lune, interdiction des triples horizontaux/verticaux, `=` identique, `×` opposé.
+- **Aucune unicité de ligne/colonne n’a été ajoutée. Aucune règle diagonale n’a été ajoutée.**
+- **Le générateur Soleil/Lune n’a pas été modifié.** Sa source et ses sorties déterministes ont été comparées à v2.21.10 sur des seeds fixes, le Daily et les défis `QL14`.
+
+### Internationalisation
+- 30 langues conservées.
+- Les noms courts/localisés des nouvelles familles logiques et les messages nécessaires au Coach sont ajoutés au mécanisme I18N.
+- Les explications détaillées FR/EN sont rendues depuis la preuve ; les autres langues utilisent les gabarits localisés génériques existants, toujours à partir de la même preuve structurée.
+
+### Validation v2.21.11
+- Tests unitaires positifs et négatifs : valeurs initiales, relations explicites, propagation `=`/`×`, quatre compositions de fermeture, Triple dans les trois formes et deux orientations, quota ligne/colonne SUN/MOON, Balance Relation, Relation Balance, composantes, Domain Support VALUE/SAME/OPPOSITE, contradiction, Common Consequence.
+- Tests explicites de rang : R0 initial, propagation/fermeture R0, règle +1 → R1, relation R1 → propagation R1, nouvelle règle +1 sur faits R1 → rang supérieur, contradiction +2 depuis R0 → R2.
+- Tests de sécurité : pas de triple diagonal, quota non atteint sans propagation abusive, relation `=` insuffisante sans valeur arbitraire, domaine non forcé sans conclusion, hypothèse non contradictoire sans conclusion.
+- Test fondamental : **valeur correcte dans la solution ≠ valeur démontrable maintenant**.
+- Coach : deux appuis, état courant, relation virtuelle, Undo/Redo, erreur et `not-yet-proven`.
+- Tuteur : Easy/Medium/Hard résolus entièrement par `TangoLogic`, preuves structurées, IDs/dépendances stables, snapshots exacts et aucune recherche exhaustive Tango.
+- **13/13 parcours Tuteur** des quatre jeux terminent ; toutes les étapes Soleil/Lune proviennent de `tango-inference-engine`.
+- **13/13 générateurs Worker** conservent unicité et contrats existants ; profils Queens inchangés.
+- Compatibilité générateur Soleil/Lune : candidats, Daily fixe et empreintes `QL14` identiques à v2.21.10 ; fonctions de génération comparées source-à-source sans modification.
+- Test fonctionnel Soleil/Lune normal : nouvelle partie, niveaux disponibles, saisie Soleil/Lune, violations Triple/quota/`=`/`×`, reset, victoire, Undo/Redo et branche après Undo.
+- Vérification i18n : 30 langues et nouvelles clés présentes ; moteur pur sans DOM/current/solution finale.
+- **Chromium headless réel** : rendu final testé en 390×844, 375×667 et 1280×800 via `page.set_content`; grille dans le viewport, navigation sous la grille et avant l’explication, page globale verrouillée et seule la zone d’explication défilante. La navigation directe `localhost/file://` est bloquée par la politique de l’environnement, d’où l’utilisation de `set_content`.
+- **Safari/iPhone réel non exécuté** ; le contrôle iPhone reste donc un rendu Chromium aux dimensions mobiles, pas un E2E Safari/iOS.
 
 ## v2.21.10 — moteur d’inférences Queens explicable partagé par le Coach et le Tuteur
 

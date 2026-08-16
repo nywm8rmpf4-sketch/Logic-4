@@ -2,7 +2,7 @@
   "id": "./",
   "name": "QUADLUD — Jeux de logique",
   "short_name": "QUADLUD",
-  "description": "QUADLUD — quatre jeux de logique en 30 langues avec moteur d’inférences Queens explicable partagé par le Logic Coach et le Tuteur.",
+  "description": "QUADLUD — quatre jeux de logique en 30 langues avec moteurs de preuves explicables pour Couronnes et Soleil-Lune, Logic Coach et Tuteur.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
@@ -27,7 +27,7 @@
       "purpose": "any maskable"
     }
   ],
-  "version": "2.21.10",
+  "version": "2.21.11",
   "copyright": "Copyright © 2026 Serge Benoliel. All rights reserved.",
   "license": "Proprietary — see LICENSE"
 }

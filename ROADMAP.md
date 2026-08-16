@@ -29,6 +29,7 @@ Le Logic Coach doit enseigner progressivement le raisonnement réel à partir de
   - **v2.21.8** — patch Tuteur Couronnes : croix automatiques après chaque reine — ✅ terminé
   - **v2.21.9** — patch Couronnes : Difficile/Expert ≤ 3 zones de taille 2 — ✅ terminé
   - **v2.21.10** — moteur d’inférences Queens explicable partagé Coach/Tuteur — ✅ terminé
+  - **v2.21.11** — moteur d’inférences Soleil/Lune explicable partagé Coach/Tuteur — ✅ terminé
 - **v2.22** — Accessibilité — prochain jalon
 - **v2.23** — Confidentialité / portabilité des données
 - **v2.24** — Préparation iOS
