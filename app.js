@@ -5,7 +5,7 @@
  */
 'use strict';
 const $=s=>document.querySelector(s), app=$('#app'), toast=$('#toast'), timerEl=$('#timer');
-const VERSION='2.21.11', SAVE_KEY='logic4-save-v1';
+const VERSION='2.21.12', SAVE_KEY='logic4-save-v1';
 let current=null, tick=null, startedAt=0, elapsedBase=0, paused=false;
 const I18N={
 fr:{
@@ -602,6 +602,10 @@ Object.assign(I18N.sv,{"tlgRelationPropagation":"Relationsspridning","tlgTriple"
 Object.assign(I18N.en,{"tlgOrientProp":"Look at {source}, {target}, and the relation between them.","tlgOrientTriple":"Look at these three consecutive cells in {unit}.","tlgOrientQuota":"Count the suns and moons already fixed in {unit}.","tlgOrientBalanceRelation":"Look at the two unresolved cells of {unit} and what is still missing for balance.","tlgOrientRelationBalance":"Look at the highlighted relation together with the balance of {unit}.","tlgOrientComponent":"Follow the highlighted relation chain and compare its two possible orientations.","tlgOrientDomain":"Look at {unit}: combine its balance, no-three rule, and known relations.","tlgOrientContradiction":"Try the other symbol mentally at {cell} and follow its forced consequences.","tlgOrientCommon":"Compare both possible symbols at {cell}; watch for a consequence that appears in both cases.","tlgExplainProp":"{source} is {sourceValue}. The relation says the two cells are {relation}, so {target} must be {targetValue}.","tlgExplainTripleValue":"In {unit}, the two highlighted cells are both {value}. A third {value} in the same three-cell window is forbidden, so {target} must be {opposite}.","tlgExplainTripleRelation":"In this group of three cells, two positions are known to be identical. The third must therefore be opposite to them. {conclusion}","tlgExplainQuota":"{unit} must contain {quota} suns and {quota} moons. With the values already fixed, the remaining highlighted cells are forced. {conclusion}","tlgExplainBalanceRelation":"Only two cells remain in {unit}. Exactly one sun and one moon are still missing, so these two cells must be opposite.","tlgExplainRelationBalance":"The highlighted relation contributes a fixed pattern to {unit}. Combining it with the values already present leaves only one possible balance. {conclusion}","tlgExplainComponent":"The highlighted cells form one relation component with only two global orientations. One orientation violates {reason}; the other is forced. {conclusion}","tlgExplainDomain":"In {unit}, test the opposite of the highlighted conclusion locally. No arrangement of the remaining cells can then satisfy balance, the no-three rule, and the known relations together. The highlighted conclusion is therefore forced. {conclusion}","tlgExplainContradiction":"Assume {assumed} at {cell}. Following only the visible rules leads to {reason}. That hypothesis is impossible. {conclusion}","tlgExplainCommon":"Whether {cell} is a sun or a moon, the same highlighted consequence follows after logical propagation. {conclusion}","tlgContrTriple":"three identical consecutive symbols","tlgContrOverflow":"too many copies of one symbol for the quota","tlgContrDeficit":"not enough remaining cells to reach the quota","tlgContrRelation":"an incompatible relation","tlgContrValue":"two incompatible values","tlgContrNoDomain":"no valid completion for the row or column"});
 Object.assign(I18N.fr,{"tlgOrientProp":"Regarde {source}, {target} et la relation qui les relie.","tlgOrientTriple":"Regarde ces trois cases consécutives dans {unit}.","tlgOrientQuota":"Compte les Soleils et les Lunes déjà fixés dans {unit}.","tlgOrientBalanceRelation":"Regarde les deux cases non résolues de {unit} et ce qu’il manque encore pour l’équilibrer.","tlgOrientRelationBalance":"Regarde la relation surlignée avec l’équilibre de {unit}.","tlgOrientComponent":"Suis la chaîne de relations surlignée et compare ses deux orientations possibles.","tlgOrientDomain":"Regarde {unit} : combine son équilibre, la règle des trois et les relations connues.","tlgOrientContradiction":"Essaie mentalement l’autre symbole en {cell} et suis ses conséquences forcées.","tlgOrientCommon":"Compare les deux symboles possibles en {cell} et cherche une conséquence présente dans les deux cas.","tlgExplainProp":"{source} contient {sourceValue}. La relation impose que les deux cases soient {relation} ; {target} doit donc contenir {targetValue}.","tlgExplainTripleValue":"Dans {unit}, les deux cases surlignées contiennent toutes deux {value}. Un troisième {value} dans ce groupe de trois est interdit ; {target} doit donc contenir {opposite}.","tlgExplainTripleRelation":"Dans ce groupe de trois cases, deux positions sont démontrées identiques. La troisième doit donc leur être opposée. {conclusion}","tlgExplainQuota":"{unit} doit contenir {quota} Soleils et {quota} Lunes. Avec les valeurs déjà fixées, les cases restantes surlignées sont imposées. {conclusion}","tlgExplainBalanceRelation":"Il ne reste que deux cases dans {unit}. Il manque exactement un Soleil et une Lune : ces deux cases doivent donc être opposées.","tlgExplainRelationBalance":"La relation surlignée apporte une contribution déterminée à l’équilibre de {unit}. Avec les valeurs déjà présentes, une seule possibilité reste compatible. {conclusion}","tlgExplainComponent":"Les cases surlignées forment une même chaîne de relations qui n’a que deux orientations globales. L’une viole {reason} ; l’autre est donc imposée. {conclusion}","tlgExplainDomain":"Dans {unit}, teste localement l’opposé de la conclusion surlignée. Il ne reste alors aucune manière de remplir les autres cases qui respecte à la fois l’équilibre, la règle des trois et les relations connues. La conclusion surlignée est donc démontrée. {conclusion}","tlgExplainContradiction":"Supposons {assumed} en {cell}. En propageant uniquement les règles visibles, on obtient {reason}. Cette hypothèse est impossible. {conclusion}","tlgExplainCommon":"Que {cell} soit un Soleil ou une Lune, la même conséquence surlignée apparaît après propagation logique. {conclusion}","tlgContrTriple":"trois symboles identiques consécutifs","tlgContrOverflow":"trop d’exemplaires d’un symbole pour respecter le quota","tlgContrDeficit":"pas assez de cases restantes pour atteindre le quota","tlgContrRelation":"une relation incompatible","tlgContrValue":"deux valeurs incompatibles","tlgContrNoDomain":"aucune complétion valide pour la ligne ou la colonne"});
 
+/* v2.21.12 — Rectangles proof-engine UI terminology */
+Object.assign(I18N.en,{"plClueSingleton":"Unique rectangle","plCellSingleton":"Unique cell coverage","plRectClosure":"Rectangular closure","plAreaCompletion":"Area completion","plCommonCoverage":"Common coverage","plCellLocked":"Cell locked to one region","plLockedSet":"Reserved space","plNoSupportClue":"No support for another clue","plNoSupportCell":"No support for a cell","plLocalDomain":"Local domain support","plContradiction":"Reasoning by contradiction","plCommonConsequence":"Common consequence","plNoDeduction":"No demonstrable Rectangles deduction is available from the current visible state. No move is taken from the final solution.","plOrientClue":"Look at {zone} and all rectangles still compatible with its clue.","plOrientCell":"Look at {cell}. Which regions can still cover it?","plOrientCommon":"Compare all remaining rectangles for {zone}.","plOrientLocked":"Look at {cell} and the regions whose remaining rectangles can still reach it.","plOrientSet":"Look at regions {zones} and the space their remaining rectangles can reach.","plOrientNoSupportClue":"Test the highlighted rectangle for {zone} against {other}.","plOrientNoSupportCell":"Test the highlighted rectangle for {zone} and watch {cell}.","plOrientLocal":"Look only at the highlighted local group of regions {zones}.","plOrientContradiction":"Assume the highlighted rectangle for {zone}, then propagate the forced consequences.","plOrientCommonConsequence":"Compare every remaining rectangle for {zone} and look for a consequence shared by all branches.","plExplainClueSingleton":"Only one rectangle remains compatible with this clue and the facts already proved. {zone} must therefore use it. {conclusion}","plExplainCellSingleton":"This cell has only one remaining (region, rectangle) support. That rectangle is mandatory. {conclusion}","plExplainRectClosure":"These cells already belong to {zone}. Because a region is a full rectangle, every cell in their minimal bounding rectangle must belong to it too. {conclusion}","plExplainAreaCompletion":"The proved cells of {zone} already span a bounding rectangle of area {area}, exactly the required area. The rectangle is therefore fixed. {conclusion}","plExplainCommon":"{zone} still has several possible rectangles, but every one contains the highlighted cell(s). They therefore belong to that region. {conclusion}","plExplainLocked":"Every cell must belong to a region. For {cell}, all remaining covering rectangles belong to {zone}. That cell must therefore belong to it. {conclusion}","plExplainSet":"These regions need at least {required} cells in total, and all their remaining rectangles are confined to exactly {available} cells. That space is fully reserved for them. {conclusion}","plExplainNoSupportClue":"If {zone} used this rectangle, every remaining rectangle of {other} would overlap it. The other clue would have no possible region, so this rectangle is impossible. {conclusion}","plExplainNoSupportCell":"If {zone} used this rectangle, {cell} would have no remaining possible coverage. Every cell must be covered, so this rectangle is impossible. {conclusion}","plExplainLocal":"Among all compatible combinations for this small local group, the highlighted candidate never appears (or the highlighted ownership appears in every combination). The conclusion is therefore forced. {conclusion}","plExplainContradiction":"Assume this rectangle for {zone}. Logical propagation leads to: {reason}. The assumption is impossible, so that rectangle can be eliminated. {conclusion}","plExplainCommonConsequence":"Each remaining rectangle for {zone} was propagated separately. Every branch proves the same highlighted fact, so that fact is true without choosing between the alternatives. {conclusion}","plContrNoCandidate":"a clue has no rectangle left","plContrNoCover":"a cell has no possible region left","plContrOverlap":"two selected rectangles overlap","plContrOwner":"one cell would belong to two regions","plContrArea":"the proved cells require more area than the clue allows","plContrShape":"no rectangle can satisfy the clue shape","plContrCapacity":"the regions need more cells than they can reach","plContrLocal":"the local group has no compatible completion","plEliminated":"candidate eliminated","plGeometry":"For area {area}, the possible dimensions are {all}. The shape constraint keeps {kept}. The borders, other clues, and already proved facts then leave only the highlighted placement."});
+Object.assign(I18N.fr,{"plClueSingleton":"Rectangle unique","plCellSingleton":"Couverture unique d’une case","plRectClosure":"Fermeture rectangulaire","plAreaCompletion":"Surface complétée","plCommonCoverage":"Case commune aux formes","plCellLocked":"Case réservée à une zone","plLockedSet":"Espace réservé","plNoSupportClue":"Plus de support pour un indice","plNoSupportCell":"Plus de couverture pour une case","plLocalDomain":"Support local des domaines","plContradiction":"Raisonnement par contradiction","plCommonConsequence":"Conséquence commune","plNoDeduction":"Aucune déduction Rectangles démontrable n’est disponible dans l’état visible actuel. Aucun coup n’est tiré de la solution finale.","plOrientClue":"Regarde {zone} et tous les rectangles encore compatibles avec son indice.","plOrientCell":"Regarde {cell}. Quelles zones peuvent encore la recouvrir ?","plOrientCommon":"Compare toutes les formes encore possibles de {zone}.","plOrientLocked":"Regarde {cell} et les zones dont les rectangles encore possibles peuvent l’atteindre.","plOrientSet":"Regarde les zones {zones} et l’espace que leurs rectangles encore possibles peuvent atteindre.","plOrientNoSupportClue":"Teste le rectangle surligné de {zone} par rapport à {other}.","plOrientNoSupportCell":"Teste le rectangle surligné de {zone} et observe {cell}.","plOrientLocal":"Regarde seulement le petit groupe local de zones {zones}.","plOrientContradiction":"Suppose le rectangle surligné pour {zone}, puis propage les conséquences forcées.","plOrientCommonConsequence":"Compare tous les rectangles encore possibles de {zone} et cherche une conséquence commune à toutes les branches.","plExplainClueSingleton":"Un seul rectangle reste compatible avec cet indice et les faits déjà démontrés. {zone} doit donc l’utiliser. {conclusion}","plExplainCellSingleton":"Cette case ne possède plus qu’un seul support (zone, rectangle). Ce rectangle est donc obligatoire. {conclusion}","plExplainRectClosure":"Ces cases appartiennent déjà à {zone}. Comme une zone doit former un rectangle plein, toutes les cases de leur rectangle englobant minimal appartiennent aussi à cette zone. {conclusion}","plExplainAreaCompletion":"Les cases démontrées de {zone} occupent déjà une boîte englobante d’aire {area}, exactement égale à la surface imposée. Le rectangle est donc déterminé. {conclusion}","plExplainCommon":"{zone} peut encore prendre plusieurs formes, mais toutes contiennent la ou les cases surlignées. Elles appartiennent donc forcément à cette zone. {conclusion}","plExplainLocked":"Chaque case doit appartenir à une zone. Pour {cell}, tous les rectangles qui peuvent encore la couvrir appartiennent à {zone}. Cette case lui appartient donc forcément. {conclusion}","plExplainSet":"Ces zones ont besoin d’au moins {required} cases au total, et toutes leurs formes encore possibles sont confinées dans exactement {available} cases. Cet espace leur est donc entièrement réservé. {conclusion}","plExplainNoSupportClue":"Si {zone} prenait ce rectangle, tous les rectangles encore possibles de {other} le chevaucheraient. L’autre indice n’aurait plus aucune zone possible : ce rectangle est donc impossible. {conclusion}","plExplainNoSupportCell":"Si {zone} prenait ce rectangle, {cell} ne pourrait plus appartenir à aucun rectangle. Toutes les cases doivent être recouvertes : ce rectangle est donc impossible. {conclusion}","plExplainLocal":"Parmi toutes les combinaisons compatibles de ce petit groupe local, le candidat surligné n’apparaît jamais (ou la propriété surlignée apparaît toujours). La conclusion est donc démontrée. {conclusion}","plExplainContradiction":"Supposons ce rectangle pour {zone}. La propagation logique conduit à : {reason}. L’hypothèse est impossible ; ce rectangle peut donc être éliminé. {conclusion}","plExplainCommonConsequence":"Chaque rectangle encore possible de {zone} a été propagé séparément. Toutes les branches démontrent le même fait surligné : ce fait est donc vrai sans choisir entre les alternatives. {conclusion}","plContrNoCandidate":"un indice n’a plus aucun rectangle possible","plContrNoCover":"une case ne peut plus appartenir à aucune zone","plContrOverlap":"deux rectangles sélectionnés se chevauchent","plContrOwner":"une case devrait appartenir à deux zones","plContrArea":"les cases démontrées imposent une aire trop grande","plContrShape":"aucun rectangle ne peut respecter la forme de l’indice","plContrCapacity":"les zones ont besoin de plus de cases qu’elles ne peuvent en atteindre","plContrLocal":"le sous-problème local n’a aucune complétion compatible","plEliminated":"candidat éliminé","plGeometry":"Pour une surface {area}, les dimensions possibles sont {all}. La contrainte de forme conserve {kept}. Les bords, les autres indices et les faits déjà démontrés ne laissent ensuite que le placement surligné."});
+
 /* v2.21.10 — proof explanation templates live in I18N, never in the inference engine */
 Object.assign(I18N.en,{
   "qlAnd":" and ","qlMore":" and {count} more","qlRowsPlural":"rows","qlColumnsPlural":"columns","qlRegionsPlural":"regions",
@@ -818,18 +822,18 @@ function sudokuIllegalCells(){
   for(let br=0;br<6;br+=2)for(let bc=0;bc<6;bc+=3){let a=[];for(let r=br;r<br+2;r++)for(let c=bc;c<bc+3;c++)a.push([r,c]);dup(a)}
   return bad
 }
+function patchVisibleIssueForId(id){
+  let n=current.n,cells=[];for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.paint[r][c]===id)cells.push([r,c]);if(!cells.length)return null;
+  let cl=current.clues[id],own=cl.pos,foreign=[];for(const other of current.ids){let p=current.clues[other].pos;if(other!==id&&cells.some(([r,c])=>r===p[0]&&c===p[1]))foreign.push(p)}
+  if(foreign.length)return {rule:'P_TWO_CLUES',cells:[...cells,own,...foreign],target:foreign[0],region:id};
+  let rs=cells.map(x=>x[0]),cs=cells.map(x=>x[1]),h=Math.max(...rs)-Math.min(...rs)+1,w=Math.max(...cs)-Math.min(...cs)+1,selected=current.patchSelectedRects?.[id];
+  if((cl.mode==='size'||cl.mode==='both')&&(cells.length>cl.size||h*w>cl.size||(selected&&h*w!==cl.size)))return {rule:'P_SIZE',cells:[...cells,own],target:cells[cells.length-1],region:id};
+  if(selected&&(cl.mode==='shape'||cl.mode==='both')){let sh=h===w?'carré':h>w?'vertical':'horizontal';if(sh!==cl.shape)return {rule:'P_SHAPE',cells:[...cells,own],target:cells[cells.length-1],region:id}}
+  return null
+}
+function patchLogicVisibleContradiction(){if(!patchesLogicAvailable())return null;let w;try{w=patchesLogicSession().diagnoseBasic()}catch(_){return null}if(!w)return null;if(w.kind==='NO_COVER_FOR_CELL')return {rule:'P_NO_COVER',cells:[w.cell],target:w.cell,logicContradiction:w};if(w.kind==='NO_CANDIDATE_FOR_CLUE'||w.kind==='SHAPE_IMPOSSIBLE')return {rule:'P_NO_CANDIDATE',cells:[current.clues[w.clue].pos],target:current.clues[w.clue].pos,region:w.clue,logicContradiction:w};if(w.kind==='AREA_OVERFLOW')return {rule:'P_SIZE',cells:w.cells||[current.clues[w.clue].pos],target:current.clues[w.clue].pos,region:w.clue,logicContradiction:w};if(w.kind==='OWNER_CONFLICT')return {rule:'P_OWNER_CONFLICT',cells:w.cell?[w.cell]:[],target:w.cell||null,logicContradiction:w};if(w.kind==='SELECTED_OVERLAP')return {rule:'P_OVERLAP',cells:(w.rectangles||[]).flatMap(x=>PatchesLogic.helpers.rectCells(x)),target:null,logicContradiction:w};if(w.kind==='COVERAGE_DEFICIT'||w.kind==='NO_LOCAL_COMPLETION')return {rule:'P_LOGIC_CONTRADICTION',cells:w.cells||[],target:w.cell||null,logicContradiction:w};return null}
 function patchIllegalCells(){
-  let bad=new Set(),n=current.n;
-  for(let id of current.ids){
-    let cells=[];for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.paint[r][c]===id)cells.push([r,c]);if(!cells.length)continue;
-    let own=current.clues[id].pos,cl=current.clues[id];
-    for(let [r,c] of cells){for(let other of current.ids){let p=current.clues[other].pos;if(other!==id&&p[0]===r&&p[1]===c){bad.add(keyCell(r,c));bad.add(keyCell(...own))}}}
-    let rs=cells.map(x=>x[0]),cs=cells.map(x=>x[1]),h=Math.max(...rs)-Math.min(...rs)+1,w=Math.max(...cs)-Math.min(...cs)+1;
-    let impossible=false;if((cl.mode==='size'||cl.mode==='both')&&(cells.length>cl.size||h*w>cl.size))impossible=true;
-    if((cl.mode==='shape'||cl.mode==='both')&&((cl.shape==='vertical'&&w>1)||(cl.shape==='horizontal'&&h>1)))impossible=true;
-    if(impossible){cells.forEach(x=>bad.add(keyCell(...x)));bad.add(keyCell(...own))}
-  }
-  return bad
+  let bad=new Set();for(const id of current.ids){let e=patchVisibleIssueForId(id);for(const [r,c] of e?.cells||[])bad.add(keyCell(r,c))}return bad
 }
 function applyIllegalClasses(board,bad,n){if(!board)return;[...board.children].forEach((d,i)=>d.classList.toggle('illegal',bad.has(keyCell(Math.floor(i/n),i%n))))}
 function illegalAlertsEnabled(){return prefs().notifyIllegal!==false}
@@ -901,23 +905,9 @@ function sudokuErrorFromAction(action){
   return null
 }
 function patchErrorFromAction(action){
-  let bad=patchIllegalCells(),changed=changedTargets(action),ids=new Set();
-  if(action?.region!=null)ids.add(Number(action.region));
-  for(let ch of changed)if(ch.to!=null)ids.add(Number(ch.to));
-  for(let id of ids){
-    if(!current.ids.includes(id))continue;
-    let cells=[];for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(current.paint[r][c]===id)cells.push([r,c]);
-    if(!cells.length)continue;
-    let changedBad=changed.some(ch=>bad.has(keyCell(ch.row,ch.column)))||cells.some(([r,c])=>bad.has(keyCell(r,c)));
-    if(!changedBad)continue;
-    let clueCells=[];
-    for(let other of current.ids){let p=current.clues[other].pos;if(cells.some(([r,c])=>r===p[0]&&c===p[1]))clueCells.push({id:other,pos:p})}
-    if(clueCells.some(x=>x.id!==id))return {rule:'P_TWO_CLUES',cells:[...cells,current.clues[id].pos],target:cells[0],region:id};
-    let cl=current.clues[id],rs=cells.map(x=>x[0]),cs=cells.map(x=>x[1]),h=Math.max(...rs)-Math.min(...rs)+1,w=Math.max(...cs)-Math.min(...cs)+1;
-    if((cl.mode==='size'||cl.mode==='both')&&(cells.length>cl.size||h*w>cl.size))return {rule:'P_SIZE',cells:[...cells,current.clues[id].pos],target:cells[0],region:id};
-    if((cl.mode==='shape'||cl.mode==='both')&&((cl.shape==='vertical'&&w>1)||(cl.shape==='horizontal'&&h>1)))return {rule:'P_SHAPE',cells:[...cells,current.clues[id].pos],target:cells[0],region:id}
-  }
-  return null
+  let ids=new Set();if(action?.region!=null)ids.add(Number(action.region));for(const ch of changedTargets(action))if(ch.to!=null)ids.add(Number(ch.to));
+  for(const id of ids){if(!current.ids.includes(id))continue;let e=patchVisibleIssueForId(id);if(e)return e}
+  let logic=patchLogicVisibleContradiction();return logic||null
 }
 
 // ===== v2.18.1 — Logic Coach always explains visible errors before suggesting a move =====
@@ -968,16 +958,8 @@ function sudokuVisibleErrors(){
   return out
 }
 function patchVisibleErrors(){
-  let out=[],n=current.n;
-  for(let id of current.ids){
-    let cells=[];for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.paint[r][c]===id)cells.push([r,c]);if(!cells.length)continue;
-    let cl=current.clues[id],own=cl.pos,foreign=[];
-    for(let other of current.ids){let p=current.clues[other].pos;if(other!==id&&cells.some(([r,c])=>r===p[0]&&c===p[1]))foreign.push(p)}
-    if(foreign.length){out.push(normalizeVisibleError({rule:'P_TWO_CLUES',cells:[...cells,own,...foreign],target:foreign[0],region:id}));continue}
-    let rs=cells.map(x=>x[0]),cs=cells.map(x=>x[1]),h=Math.max(...rs)-Math.min(...rs)+1,w=Math.max(...cs)-Math.min(...cs)+1;
-    if((cl.mode==='size'||cl.mode==='both')&&(cells.length>cl.size||h*w>cl.size)){out.push(normalizeVisibleError({rule:'P_SIZE',cells:[...cells,own],target:cells[cells.length-1],region:id}));continue}
-    if((cl.mode==='shape'||cl.mode==='both')&&((cl.shape==='vertical'&&w>1)||(cl.shape==='horizontal'&&h>1)))out.push(normalizeVisibleError({rule:'P_SHAPE',cells:[...cells,own],target:cells[cells.length-1],region:id}))
-  }
+  let out=[];for(const id of current.ids){let e=patchVisibleIssueForId(id);if(e)out.push(normalizeVisibleError(e))}
+  if(!out.length){let e=patchLogicVisibleContradiction();if(e)out.push(normalizeVisibleError(e))}
   return out
 }
 function currentVisibleErrors(){
@@ -1019,6 +1001,9 @@ function errorRuleTitle(e){
   if(e.rule==='P_SHAPE')return tr('patchShape');
   if(e.rule==='P_OVERLAP')return tr('errorOverlap');
   if(e.rule==='P_CLUE')return tr('patchEach');
+  if(e.rule==='P_NO_COVER')return tr('patchAll');
+  if(e.rule==='P_NO_CANDIDATE')return tr('patchEach');
+  if(e.rule==='P_OWNER_CONFLICT'||e.rule==='P_LOGIC_CONTRADICTION')return tr('errorConflict');
   return tr('errorRule')
 }
 function errorDetailedMessage(e){
@@ -1218,7 +1203,7 @@ function challengeInstall(ch,g){
   if(ch.game==='queens')current={game:'queens',diff:ch.diff,n:g.n,reg:g.reg,sol:g.sol,rating:g.rating,state:Array.from({length:g.n},()=>Array(g.n).fill(0)),generated:true,unique:true,completed:false};
   else if(ch.game==='tango'){let state=Array.from({length:6},()=>Array(6).fill(-1));for(let i of g.givens)state[Math.floor(i/6)][i%6]=g.sol[Math.floor(i/6)][i%6];current={game:'tango',diff:ch.diff,n:6,sol:g.sol,givens:g.givens,edges:g.edges,rating:g.rating,state,generated:true,unique:true,completed:false}}
   else if(ch.game==='sudoku'){current={game:'sudoku',diff:ch.diff,n:6,sol:g.sol,empty:g.empty,rating:g.rating,state:g.sol.map((r,ri)=>r.map((v,c)=>g.empty.has(ri*6+c)?0:v)),sel:null,generated:true,unique:true,completed:false}}
-  else if(ch.game==='patches'){const pal=['#f3c6a8','#b9d9c1','#c6d4ed','#e2c3df','#f0dc9d','#c7e0e3','#d5ceb8','#d4e3b4','#edbfc1','#c8c4e8','#e5d0a4','#b7d7d1'];current={game:'patches',diff:ch.diff,n:g.n,reg:g.reg,ids:g.ids,cellsBy:g.cellsBy,clues:g.clues,rating:g.rating,pal,active:g.ids[0],paint:Array.from({length:g.n},()=>Array(g.n).fill(null)),generated:true,unique:true,completed:false}}
+  else if(ch.game==='patches'){const pal=['#f3c6a8','#b9d9c1','#c6d4ed','#e2c3df','#f0dc9d','#c7e0e3','#d5ceb8','#d4e3b4','#edbfc1','#c8c4e8','#e5d0a4','#b7d7d1'];current={game:'patches',diff:ch.diff,n:g.n,reg:g.reg,ids:g.ids,cellsBy:g.cellsBy,clues:g.clues,rating:g.rating,pal,active:g.ids[0],paint:Array.from({length:g.n},()=>Array(g.n).fill(null)),patchSelectedRects:{},patchLogicEvidence:patchEmptyEvidence(),generated:true,unique:true,completed:false}}
   current.challenge=true;current.challengeCode=ch.code;current.challengeSeed=ch.seed;current.challengeGenerator=ch.generator;current.challengeFingerprint=challengeFingerprintFromCandidate(ch,g);
   if(ch.game==='queens')renderQueens(current);else if(ch.game==='tango')renderTango(current);else if(ch.game==='sudoku')renderSudoku(current);else renderPatches(current)
 }
@@ -1584,11 +1569,11 @@ function masteryDirectHintFromSnapshot(beforeKey){
   let s;try{s=JSON.parse(beforeKey)}catch(_){return null}
   if(!s||s.game!==current.game)return null;
   let snap=current,clone={...current};
-  if(s.state)clone.state=cloneGrid(s.state);if(s.paint)clone.paint=cloneGrid(s.paint);
+  if(s.state)clone.state=cloneGrid(s.state);if(s.paint)clone.paint=cloneGrid(s.paint);if('patchSelectedRects' in s)clone.patchSelectedRects=JSON.parse(JSON.stringify(s.patchSelectedRects||{}));if('patchLogicEvidence' in s)clone.patchLogicEvidence=JSON.parse(JSON.stringify(s.patchLogicEvidence||patchEmptyEvidence()));
   if('tangoPendingCell' in s)clone.tangoPendingCell=s.tangoPendingCell?[...s.tangoPendingCell]:null;if('tangoDerivedRelations' in s)clone.tangoDerivedRelations=JSON.parse(JSON.stringify(s.tangoDerivedRelations||[]));
   current=clone;
   try{
-    let h=clone.game==='queens'?findQueenLogicalHint():clone.game==='tango'?findTangoLogicalHint():clone.game==='sudoku'?findSudokuLogicalHint():clone.game==='patches'?findPatchLogicalHint():null;
+    let h=clone.game==='queens'?findQueenLogicalHint():clone.game==='tango'?findTangoLogicalHint():clone.game==='sudoku'?findSudokuLogicalHint():clone.game==='patches'?patchLegacyHintFromEngine():null;
     return h&&h.technique&&TECHNIQUE_LIBRARY[h.technique]?h:null
   }catch(_){return null}finally{current=snap}
 }
@@ -1828,7 +1813,7 @@ function trainingDifficulty(id){let x=TECHNIQUE_LIBRARY[id];if(!x)return 'easy';
 function trainingSetQueenBase(g,diff){current={game:'queens',diff,n:g.n,reg:g.reg,sol:g.sol,rating:g.rating,state:Array.from({length:g.n},()=>Array(g.n).fill(0)),generated:true,unique:true,completed:false,training:true}}
 function trainingSetTangoBase(g,diff,blank=true){let state=Array.from({length:6},()=>Array(6).fill(-1));if(!blank)for(let i of g.givens)state[Math.floor(i/6)][i%6]=g.sol[Math.floor(i/6)][i%6];current={game:'tango',diff,n:6,sol:g.sol,givens:new Set(blank?[]:g.givens),edges:blank?[]:g.edges,rating:g.rating,state,generated:true,unique:true,completed:false,training:true,tangoPendingCell:null}}
 function trainingSetSudokuBase(g,diff){current={game:'sudoku',diff,n:6,sol:g.sol,empty:new Set(Array.from({length:36},(_,i)=>i)),rating:g.rating,state:Array.from({length:6},()=>Array(6).fill(0)),sel:null,generated:true,unique:true,completed:false,training:true}}
-function trainingSetPatchBase(g,diff){const pal=['#f3c6a8','#b9d9c1','#c6d4ed','#e2c3df','#f0dc9d','#c7e0e3','#d5ceb8','#d4e3b4','#edbfc1','#c8c4e8','#e5d0a4','#b7d7d1'];current={game:'patches',diff,n:g.n,reg:g.reg,ids:g.ids,cellsBy:g.cellsBy,clues:g.clues,rating:g.rating,pal,active:g.ids[0],paint:Array.from({length:g.n},()=>Array(g.n).fill(null)),generated:true,unique:true,completed:false,training:true}}
+function trainingSetPatchBase(g,diff){const pal=['#f3c6a8','#b9d9c1','#c6d4ed','#e2c3df','#f0dc9d','#c7e0e3','#d5ceb8','#d4e3b4','#edbfc1','#c8c4e8','#e5d0a4','#b7d7d1'];current={game:'patches',diff,n:g.n,reg:g.reg,ids:g.ids,cellsBy:g.cellsBy,clues:g.clues,rating:g.rating,pal,active:g.ids[0],paint:Array.from({length:g.n},()=>Array(g.n).fill(null)),patchSelectedRects:{},patchLogicEvidence:patchEmptyEvidence(),generated:true,unique:true,completed:false,training:true}}
 function trainingSudokuDirectHint(id){
   if(!current||current.game!=='sudoku')return null;
   if(id==='S_NAKED_SINGLE'){
@@ -1847,7 +1832,7 @@ function trainingHintForId(id,deadline=Date.now()+1800){
   if(x.game==='queens')h=r===0?findQueenLogicalHint():r===1?findQueenRank1Hint(deadline):r===2?findQueenRank2Hint(deadline):findQueenRank3Hint(deadline);
   else if(x.game==='tango')h=r===0?findTangoLogicalHint():r===1?findTangoRank1Hint():findTangoRank2Hint();
   else if(x.game==='sudoku')h=r===0?trainingSudokuDirectHint(id):r===1?findSudokuRank1Hint():findSudokuRank2Hint();
-  else if(x.game==='patches')h=r===0?findPatchLogicalHint():r===1?findPatchRank1Hint():findPatchRank2Hint();
+  else if(x.game==='patches')h=patchLegacyHintFromEngine(id);
   if(!h||h.timeout||coachTechniqueId(x.game,h)!==id)return null;h.technique=id;return h
 }
 function trainingBuildQueensDirect(id,deadline){
@@ -1914,7 +1899,7 @@ function trainingRandomProgress(game,base,p){
   if(game==='queens'){current.state=Array.from({length:current.n},()=>Array(current.n).fill(0));for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++){if(c===current.sol[r]){if(Math.random()<p*.55)current.state[r][c]=2}else if(Math.random()<p*.42)current.state[r][c]=1}}
   else if(game==='tango'){current.state=Array.from({length:6},()=>Array(6).fill(-1));current.givens=new Set();for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(Math.random()<p){current.state[r][c]=current.sol[r][c];current.givens.add(r*6+c)}}
   else if(game==='sudoku'){current.empty=new Set();current.state=current.sol.map(r=>[...r]);for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(Math.random()>p){current.empty.add(r*6+c);current.state[r][c]=0}}
-  else if(game==='patches'){current.paint=Array.from({length:current.n},()=>Array(current.n).fill(null));for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(Math.random()<p)current.paint[r][c]=current.reg[r][c]}
+  else if(game==='patches'){current.paint=Array.from({length:current.n},()=>Array(current.n).fill(null));current.patchSelectedRects={};current.patchLogicEvidence=patchEmptyEvidence();for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(Math.random()<p)current.paint[r][c]=current.reg[r][c]}
 }
 const TRAINING_ADVANCED_FIXTURES={"Q_CONTRADICTION_R1":{"game":"queens","diff":"medium","n":7,"reg":[[2,2,2,0,0,0,0],[2,2,1,1,0,0,0],[2,2,2,1,1,1,0],[4,4,4,4,3,1,0],[4,4,4,4,4,1,0],[4,4,4,4,4,4,5],[6,4,4,4,4,4,4]],"sol":[5,3,1,4,2,6,0],"rating":{"score":259,"technique":"recherche contrainte","solved":true,"remain":0,"level":2,"nodes":123,"singles":3},"state":[[0,1,0,1,0,0,0],[0,0,0,2,0,0,1],[1,0,0,0,1,0,0],[0,0,0,0,0,0,0],[0,0,0,1,0,0,1],[0,1,0,1,0,0,2],[2,0,1,0,1,0,0]],"generated":true,"unique":true,"completed":false},"Q_CONTRADICTION_R2":{"game":"queens","diff":"hard","n":8,"reg":[[7,7,7,7,7,7,7,7],[6,7,7,5,5,7,7,5],[6,7,7,4,5,5,5,5],[6,6,7,4,4,4,5,3],[6,6,2,2,2,5,5,3],[6,6,6,2,2,2,2,2],[0,2,2,2,2,1,2,1],[0,0,2,2,2,1,1,1]],"sol":[2,0,6,4,7,3,5,1],"rating":{"score":172,"technique":"propagation croisée","solved":true,"remain":0,"level":1,"nodes":75,"singles":0},"state":[[0,0,2,0,0,0,0,0],[2,1,1,1,0,0,0,0],[0,0,1,0,0,0,2,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,1,0,0],[0,0,1,0,0,0,0,1],[0,0,1,1,1,0,0,0],[0,0,0,1,1,0,0,0]],"generated":true,"unique":true,"completed":false},"Q_CONTRADICTION_R3":{"game":"queens","diff":"hard","n":8,"reg":[[0,0,0,0,0,0,1,1],[2,0,0,3,0,1,1,1],[2,3,3,3,0,1,1,1],[2,3,3,3,3,3,1,1],[3,3,4,3,3,7,1,1],[3,4,4,4,7,7,7,5],[4,4,4,7,7,6,6,7],[4,4,7,7,7,7,7,7]],"sol":[1,6,0,4,2,7,5,3],"rating":{"score":228,"technique":"recherche contrainte","solved":true,"remain":0,"level":2,"nodes":104,"singles":1},"state":[[0,0,1,0,1,0,1,0],[0,0,0,0,0,0,0,1],[0,0,0,0,0,0,0,0],[0,1,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0]],"generated":true,"unique":true,"completed":false},"T_CONTRADICTION_R1":{"game":"tango","diff":"medium","n":6,"sol":[[0,1,1,0,0,1],[0,1,1,0,1,0],[1,0,0,1,0,1],[1,0,1,1,0,0],[0,1,0,0,1,1],[1,0,0,1,1,0]],"givens":[3,4,7,8,21,22,31],"edges":[[2,1,"d","="],[1,1,"r","="],[4,0,"r","×"],[4,1,"r","×"],[1,0,"d","×"]],"rating":{"score":68,"technique":"chaîne de contraintes","solved":false,"remain":18,"level":2},"state":[[-1,-1,-1,0,0,-1],[-1,1,1,-1,-1,-1],[-1,-1,-1,-1,-1,-1],[-1,-1,-1,1,0,-1],[-1,-1,-1,-1,-1,-1],[-1,0,-1,-1,-1,-1]],"generated":true,"unique":true,"completed":false,"tangoPendingCell":null},"T_CONTRADICTION_R2":{"game":"tango","diff":"hard","n":6,"sol":[[0,1,0,1,1,0],[0,1,1,0,0,1],[1,0,1,1,0,0],[0,1,0,0,1,1],[1,0,0,1,0,1],[1,0,1,0,1,0]],"givens":[1,4,5,6,7,8,9,10,13,16,17,18,19,22,29,30,31,32,33,35],"edges":[[3,2,"r","="],[2,0,"d","×"],[0,1,"d","="],[1,3,"r","="],[3,3,"r","×"],[4,1,"r","="],[1,1,"r","="]],"rating":{"score":99,"technique":"chaîne de contraintes","solved":false,"remain":33,"level":2},"state":[[-1,1,-1,-1,1,0],[0,1,1,0,0,-1],[-1,0,-1,-1,0,0],[0,1,-1,-1,1,-1],[-1,-1,-1,-1,-1,1],[1,0,1,0,-1,0]],"generated":true,"unique":true,"completed":false,"tangoPendingCell":null},"S_CONTRADICTION_R1":{"game":"sudoku","diff":"medium","n":6,"sol":[[6,2,1,5,4,3],[5,4,3,6,2,1],[2,1,5,4,3,6],[4,3,6,2,1,5],[1,5,4,3,6,2],[3,6,2,1,5,4]],"empty":[2,3,4,5,6,7,11,13,16,18,20,21,28,29,30,31,33],"rating":{"score":22,"technique":"single nu","solved":true,"remain":0,"level":0},"state":[[6,2,0,0,0,0],[0,0,3,6,2,0],[2,0,5,4,0,6],[0,3,0,0,1,5],[1,5,4,3,0,0],[0,0,2,0,5,4]],"sel":null,"generated":true,"unique":true,"completed":false},"S_CONTRADICTION_R2":{"game":"sudoku","diff":"hard","n":6,"sol":[[2,3,4,1,5,6],[5,6,1,4,2,3],[6,4,5,2,3,1],[3,1,2,5,6,4],[4,2,6,3,1,5],[1,5,3,6,4,2]],"empty":[1,3,4,5,6,7,8,9,11,13,15,16,19,20,21,22,24,25,26,27,28,30,34,35],"rating":{"score":26,"technique":"single nu","solved":true,"remain":0,"level":0},"state":[[2,0,4,0,0,0],[0,0,0,0,2,0],[6,0,5,0,0,1],[3,0,0,0,0,4],[0,0,0,0,0,5],[0,5,3,6,0,0]],"sel":null,"generated":true,"unique":true,"completed":false},"P_CONTRADICTION_R1":{"game":"patches","diff":"medium","n":6,"reg":[[0,2,2,2,4,4],[1,3,3,3,4,4],[5,6,7,7,7,7],[8,8,8,8,8,8],[9,9,9,9,9,9],[9,9,9,9,9,9]],"ids":[0,1,2,3,4,5,6,7,8,9],"cellsBy":{"0":[[0,0]],"1":[[1,0]],"2":[[0,1],[0,2],[0,3]],"3":[[1,1],[1,2],[1,3]],"4":[[0,4],[0,5],[1,4],[1,5]],"5":[[2,0]],"6":[[2,1]],"7":[[2,2],[2,3],[2,4],[2,5]],"8":[[3,0],[3,1],[3,2],[3,3],[3,4],[3,5]],"9":[[4,0],[4,1],[4,2],[4,3],[4,4],[4,5],[5,0],[5,1],[5,2],[5,3],[5,4],[5,5]]},"clues":{"0":{"pos":[0,0],"size":1,"shape":"carré","mode":"size"},"1":{"pos":[1,0],"size":1,"shape":"carré","mode":"shape"},"2":{"pos":[0,2],"size":3,"shape":"horizontal","mode":"size"},"3":{"pos":[1,1],"size":3,"shape":"horizontal","mode":"size"},"4":{"pos":[1,5],"size":4,"shape":"carré","mode":"none"},"5":{"pos":[2,0],"size":1,"shape":"carré","mode":"size"},"6":{"pos":[2,1],"size":1,"shape":"carré","mode":"shape"},"7":{"pos":[2,5],"size":4,"shape":"horizontal","mode":"size"},"8":{"pos":[3,0],"size":6,"shape":"horizontal","mode":"shape"},"9":{"pos":[5,0],"size":12,"shape":"horizontal","mode":"size"}},"rating":{"score":23,"technique":"couverture forcée","solved":true,"remain":0,"level":1},"pal":["#f3c6a8","#b9d9c1","#c6d4ed","#e2c3df","#f0dc9d","#c7e0e3","#d5ceb8","#d4e3b4","#edbfc1","#c8c4e8","#e5d0a4","#b7d7d1"],"active":0,"paint":[[0,null,null,null,null,null],[null,null,null,null,null,null],[null,null,null,null,null,null],[null,8,null,null,null,null],[null,null,null,null,null,null],[9,9,9,null,9,9]],"generated":true,"unique":true,"completed":false},"P_CONTRADICTION_R2":{"game":"patches","diff":"hard","n":7,"reg":[[0,0,0,0,1,1,2],[0,0,0,0,1,1,2],[3,3,3,3,3,3,3],[4,4,4,4,4,5,7],[4,4,4,4,4,6,7],[8,8,8,8,8,8,8],[9,9,9,9,9,9,9]],"ids":[0,1,2,3,4,5,6,7,8,9],"cellsBy":{"0":[[0,0],[0,1],[0,2],[0,3],[1,0],[1,1],[1,2],[1,3]],"1":[[0,4],[0,5],[1,4],[1,5]],"2":[[0,6],[1,6]],"3":[[2,0],[2,1],[2,2],[2,3],[2,4],[2,5],[2,6]],"4":[[3,0],[3,1],[3,2],[3,3],[3,4],[4,0],[4,1],[4,2],[4,3],[4,4]],"5":[[3,5]],"6":[[4,5]],"7":[[3,6],[4,6]],"8":[[5,0],[5,1],[5,2],[5,3],[5,4],[5,5],[5,6]],"9":[[6,0],[6,1],[6,2],[6,3],[6,4],[6,5],[6,6]]},"clues":{"0":{"pos":[1,3],"size":8,"shape":"horizontal","mode":"size"},"1":{"pos":[1,5],"size":4,"shape":"carré","mode":"shape"},"2":{"pos":[0,6],"size":2,"shape":"vertical","mode":"size"},"3":{"pos":[2,4],"size":7,"shape":"horizontal","mode":"shape"},"4":{"pos":[4,0],"size":10,"shape":"horizontal","mode":"size"},"5":{"pos":[3,5],"size":1,"shape":"carré","mode":"size"},"6":{"pos":[4,5],"size":1,"shape":"carré","mode":"none"},"7":{"pos":[4,6],"size":2,"shape":"vertical","mode":"size"},"8":{"pos":[5,2],"size":7,"shape":"horizontal","mode":"size"},"9":{"pos":[6,4],"size":7,"shape":"horizontal","mode":"none"}},"rating":{"score":59,"technique":"enchaînement spatial","solved":false,"remain":8,"level":2},"pal":["#f3c6a8","#b9d9c1","#c6d4ed","#e2c3df","#f0dc9d","#c7e0e3","#d5ceb8","#d4e3b4","#edbfc1","#c8c4e8","#e5d0a4","#b7d7d1"],"active":0,"paint":[[null,null,null,0,null,null,null],[null,0,null,null,null,1,null],[null,null,null,null,3,null,null],[null,4,4,null,null,null,null],[null,4,null,null,4,null,7],[null,8,8,8,8,8,8],[null,9,9,9,null,9,9]],"generated":true,"unique":true,"completed":false}};
 function trainingLoadAdvancedFixture(id,deadline){
@@ -2149,13 +2134,39 @@ function tangoCurrentLogicResult(){let engine=tangoLogicSession(),result=engine.
 function tangoLogicContradictionText(w){if(!w)return '';let unit=w.family!=null?tangoUnitHuman({family:w.family,id:w.id}):'';return `${unit?unit+' : ':''}${tangoContradictionReason(w)}.`}
 function tangoCoachHandleDeduction(d){let boardKey=historySnapshotKey(),sig=d.signature||d.id,flow=current.hintFlow,isSame=flow?.kind==='tango-proof'&&flow.boardKey===boardKey&&flow.signature===sig;if(!isSame){current.hintFlow={kind:'tango-proof',boardKey,signature:sig,stage:1,deduction:JSON.parse(JSON.stringify(d))};coachUsage(1,tangoLegacyTechniqueForDeduction(d));tangoFocusDeduction(d,false);showHintNotice(`<span class="coach-progress">1/2</span><b>${tr('where')} :</b> ${tangoDeductionOrientation(d)}`);saveCurrent();return}let proof=flow.deduction||d,before=historySnapshotKey();coachUsage(2,tangoLegacyTechniqueForDeduction(proof));coachUsage(3,tangoLegacyTechniqueForDeduction(proof));markHintUsed();updateScoreFlags();tangoFocusDeduction(proof,true);let application=tangoApplyDeductionToCurrent(proof);if(!application){current.hintFlow=null;showHintNotice(tr('hintError'));return}drawT();historyRecord({type:'COACH_APPLY',reasoning:tangoDeductionReasoning(application.deduction,application.automatic),coachStage:2,coachFlowVersion:3},before);current.hintFlow=null;showHintNotice(`<span class="coach-progress">2/2</span><b>${tangoRuleHumanTitle(proof)}</b><br>${tangoDeductionExplanation(proof)}`);maybeAutoFinish();saveCurrent();haptic(12)}
 
+// ===== v2.21.12 — Rectangles explicit proof engine adapter =====
+function patchesLogicAvailable(){return typeof globalThis!=='undefined'&&globalThis.PatchesLogic&&typeof globalThis.PatchesLogic.createSession==='function'}
+function patchEmptyEvidence(){return {schema:1,owners:[],notOwners:[],selected:[],eliminated:[]}}
+function patchesLogicSession(c=current,paint=null,selectedRects=null,logicEvidence=null){if(!patchesLogicAvailable()||!c||c.game!=='patches')throw new Error('Rectangles logic engine unavailable');return PatchesLogic.createSession({n:c.n,ids:[...(c.ids||[])],clues:JSON.parse(JSON.stringify(c.clues||{})),paint:cloneGrid(paint||c.paint),selectedRects:JSON.parse(JSON.stringify(selectedRects||c.patchSelectedRects||{})),logicEvidence:JSON.parse(JSON.stringify(logicEvidence||c.patchLogicEvidence||patchEmptyEvidence()))})}
+function patchFormat(k,vars={}){return String(tr(k)).replace(/\{(\w+)\}/g,(_,x)=>vars[x]??'')}
+function patchZoneName(id){return `${tr('zone')} ${Number(id)+1}`}
+function patchZonesName(ids){return (ids||[]).map(patchZoneName).join(lang()==='fr'?' et ':' and ')}
+function patchLegacyTechniqueForDeduction(d){if(!d)return null;if(d.rule==='CLUE_SINGLETON'||d.rule==='CELL_SINGLETON'||d.rule==='AREA_COMPLETION')return 'P_SINGLE_RECTANGLE';if(d.rule==='COMMON_COVERAGE'||d.rule==='CELL_LOCKED_TO_CLUE'||d.rule==='RECTANGULAR_CLOSURE')return 'P_MANDATORY_CELL';if(d.rule==='COVERAGE_LOCKED_SET'||d.rule==='NO_SUPPORT_CLUE'||d.rule==='NO_SUPPORT_CELL'||d.rule==='LOCAL_DOMAIN_SUPPORT')return 'P_CONTRADICTION_R1';if(d.rule==='ASSUMPTION_CONTRADICTION'||d.rule==='COMMON_CONSEQUENCE')return 'P_CONTRADICTION_R2';return null}
+function patchLegacyHintFromEngine(expectedTechnique=null){if(!current||current.game!=='patches'||!patchesLogicAvailable())return null;let engine,result;try{engine=patchesLogicSession();result=engine.nextDeduction()}catch(_){return null}let d=result?.deduction;if(!d)return null;let technique=patchLegacyTechniqueForDeduction(d);if(!technique||(expectedTechnique&&technique!==expectedTechnique))return null;let owner=(d.conclusions||[]).find(c=>c.type==='OWNER'&&current.paint?.[c.cell?.[0]]?.[c.cell?.[1]]!==c.clue),selected=(d.conclusions||[]).find(c=>c.type==='SELECTED_RECT'),cell=owner?.cell,id=owner?.clue;if(!cell&&selected){id=selected.clue;let cells=selected.rectangle?.cells||PatchesLogic.helpers.rectCells(selected.rectangle||{});cell=cells.find(x=>current.paint?.[x[0]]?.[x[1]]!==id)||cells[0]}if(!cell)return null;return {r:cell[0],c:cell[1],id,rank:d.rank,technique,why:patchDeductionExplanation(d),structuredDeduction:JSON.parse(JSON.stringify(d)),reasoning:patchDeductionReasoning(d)}}
+function patchRuleHumanTitle(d){if(!d)return tr('logic');if(!DETAILED_HINT_LANGS.has(lang()))return `${tr('logic')} · T${d.techniqueLevel??0}`;let k={CLUE_SINGLETON:'plClueSingleton',CELL_SINGLETON:'plCellSingleton',RECTANGULAR_CLOSURE:'plRectClosure',AREA_COMPLETION:'plAreaCompletion',COMMON_COVERAGE:'plCommonCoverage',CELL_LOCKED_TO_CLUE:'plCellLocked',COVERAGE_LOCKED_SET:'plLockedSet',NO_SUPPORT_CLUE:'plNoSupportClue',NO_SUPPORT_CELL:'plNoSupportCell',LOCAL_DOMAIN_SUPPORT:'plLocalDomain',ASSUMPTION_CONTRADICTION:'plContradiction',COMMON_CONSEQUENCE:'plCommonConsequence'}[d.rule];return k?tr(k):d.rule}
+function patchRectHuman(r){if(!r)return '';let h=r.r1-r.r0+1,w=r.c1-r.c0+1;return `${h}×${w} · ${cellName(r.r0,r.c0)}–${cellName(r.r1,r.c1)}`}
+function patchDeductionConclusionText(d){let out=[];for(const c of d?.conclusions||[]){if(c.type==='OWNER')out.push(`${cellName(...c.cell)} → ${patchZoneName(c.clue)}`);else if(c.type==='SELECTED_RECT')out.push(`${patchZoneName(c.clue)} → ${patchRectHuman(c.rectangle)}`);else if(c.type==='ELIMINATED_CANDIDATE')out.push(`${patchZoneName(c.clue)} · ${tr('plEliminated')}`);else if(c.type==='NOT_OWNER')out.push(`${cellName(...c.cell)} ≠ ${patchZoneName(c.clue)}`)}return out.join(' · ')}
+function patchDeductionPrimaryCell(d){let c=(d?.conclusions||[]).find(x=>x.type==='OWNER');if(c)return c.cell.slice();c=(d?.conclusions||[]).find(x=>x.type==='SELECTED_RECT');if(c)return (c.rectangle.cells?.[0]||[c.rectangle.r0,c.rectangle.c0]).slice();return d?.focusCells?.[0]?.slice?.()||null}
+function patchContradictionReason(w){if(!DETAILED_HINT_LANGS.has(lang()))return tr('contradictionFound');let k={NO_CANDIDATE_FOR_CLUE:'plContrNoCandidate',NO_COVER_FOR_CELL:'plContrNoCover',SELECTED_OVERLAP:'plContrOverlap',OWNER_CONFLICT:'plContrOwner',OTHER_CLUE_INSIDE:'patchTwo',AREA_OVERFLOW:'plContrArea',WRONG_AREA:'patchSize',WRONG_SHAPE:'patchShape',SHAPE_IMPOSSIBLE:'plContrShape',COVERAGE_DEFICIT:'plContrCapacity',NO_LOCAL_COMPLETION:'plContrLocal'}[w?.kind]||'plContrNoCandidate';return tr(k)}
+function patchDeductionOrientation(d){let x=d?.explanationData||{},cell=(x.cell||x.unsupportedCell||d?.focusCells?.[0]);if(!DETAILED_HINT_LANGS.has(lang()))return `${tr('visibleOnly')}${cell?' '+cellName(...cell):''}`;if(d.rule==='CLUE_SINGLETON'||d.rule==='AREA_COMPLETION'||d.rule==='RECTANGULAR_CLOSURE')return patchFormat('plOrientClue',{zone:patchZoneName(d.focusClues?.[0])});if(d.rule==='CELL_SINGLETON')return patchFormat('plOrientCell',{cell:cellName(...(x.cell||d.focusCells[0]))});if(d.rule==='COMMON_COVERAGE')return patchFormat('plOrientCommon',{zone:patchZoneName(d.focusClues?.[0])});if(d.rule==='CELL_LOCKED_TO_CLUE')return patchFormat('plOrientLocked',{cell:cellName(...x.cell)});if(d.rule==='COVERAGE_LOCKED_SET')return patchFormat('plOrientSet',{zones:patchZonesName(x.group)});if(d.rule==='NO_SUPPORT_CLUE')return patchFormat('plOrientNoSupportClue',{zone:patchZoneName(x.clue),other:patchZoneName(x.blockedClue)});if(d.rule==='NO_SUPPORT_CELL')return patchFormat('plOrientNoSupportCell',{zone:patchZoneName(x.clue),cell:cellName(...x.unsupportedCell)});if(d.rule==='LOCAL_DOMAIN_SUPPORT')return patchFormat('plOrientLocal',{zones:patchZonesName(x.group)});if(d.rule==='ASSUMPTION_CONTRADICTION')return patchFormat('plOrientContradiction',{zone:patchZoneName(x.assumption?.clue)});if(d.rule==='COMMON_CONSEQUENCE')return patchFormat('plOrientCommonConsequence',{zone:patchZoneName(x.branchClue)});return tr('visibleOnly')}
+function patchDeductionExplanation(d){let x=d?.explanationData||{},conclusion=patchDeductionConclusionText(d),zone=patchZoneName(d?.focusClues?.[0]);if(!DETAILED_HINT_LANGS.has(lang())){let cell=patchDeductionPrimaryCell(d),g=cell?genericLocalizedHint('patches',cell,d.rank,d.focusClues?.[0]):{why:tr('directReason'),move:conclusion};return `${patchRuleHumanTitle(d)}. ${g.why} ${conclusion||g.move||''}`}
+  if(d.rule==='CLUE_SINGLETON'){let base=patchFormat('plExplainClueSingleton',{zone,conclusion});if(x.constraints?.area&&x.areaDimensions?.length){let fmt=a=>a.map(z=>z[0]+'×'+z[1]).join(', '),kept=x.shapeDimensions?.length?fmt(x.shapeDimensions):fmt(x.areaDimensions);return patchFormat('plGeometry',{area:x.constraints.area,all:fmt(x.areaDimensions),kept})+' '+base}return base;}if(d.rule==='CELL_SINGLETON')return patchFormat('plExplainCellSingleton',{conclusion});if(d.rule==='RECTANGULAR_CLOSURE')return patchFormat('plExplainRectClosure',{zone,conclusion});if(d.rule==='AREA_COMPLETION')return patchFormat('plExplainAreaCompletion',{zone,area:x.area,conclusion});if(d.rule==='COMMON_COVERAGE')return patchFormat('plExplainCommon',{zone,conclusion});if(d.rule==='CELL_LOCKED_TO_CLUE')return patchFormat('plExplainLocked',{cell:cellName(...x.cell),zone:patchZoneName(x.clue),conclusion});if(d.rule==='COVERAGE_LOCKED_SET')return patchFormat('plExplainSet',{required:x.requiredMinimum,available:x.unionSize,conclusion});if(d.rule==='NO_SUPPORT_CLUE')return patchFormat('plExplainNoSupportClue',{zone:patchZoneName(x.clue),other:patchZoneName(x.blockedClue),conclusion});if(d.rule==='NO_SUPPORT_CELL')return patchFormat('plExplainNoSupportCell',{zone:patchZoneName(x.clue),cell:cellName(...x.unsupportedCell),conclusion});if(d.rule==='LOCAL_DOMAIN_SUPPORT')return patchFormat('plExplainLocal',{conclusion});if(d.rule==='ASSUMPTION_CONTRADICTION')return patchFormat('plExplainContradiction',{zone:patchZoneName(x.assumption?.clue),reason:patchContradictionReason(x.witness),conclusion});if(d.rule==='COMMON_CONSEQUENCE')return patchFormat('plExplainCommonConsequence',{zone:patchZoneName(x.branchClue),conclusion});return conclusion}
+function patchDeductionReasoning(d,automatic=[]){return {schema:2,source:'patches-inference-engine',game:'patches',id:d.id||null,signature:d.signature||null,rule:d.rule,ruleCost:d.ruleCost,technique:patchLegacyTechniqueForDeduction(d),rank:d.rank,techniqueLevel:d.techniqueLevel,premises:JSON.parse(JSON.stringify(d.premises||[])),dependencies:[...(d.dependencies||[])],focusCells:(d.focusCells||[]).map(x=>[...x]),focusClues:[...(d.focusClues||[])],focusRectangles:JSON.parse(JSON.stringify(d.focusRectangles||[])),conclusions:JSON.parse(JSON.stringify(d.conclusions||[])),automatic:JSON.parse(JSON.stringify(automatic||[])),explanationData:JSON.parse(JSON.stringify(d.explanationData||{}))}}
+function patchFocusDeduction(d,reveal=false){clearHintFocus();let board=$('#pboard')||document.querySelector('.board');if(!board||!current||!d)return;let focus=[...(d.focusCells||[])],targets=[];for(const c of d.conclusions||[]){if(c.type==='OWNER')targets.push(c.cell);else if(c.type==='SELECTED_RECT')targets.push(...(c.rectangle.cells||[]));else if(c.type==='ELIMINATED_CANDIDATE'){let rr=(d.focusRectangles||[]).find(x=>(x.key||PatchesLogic.helpers.rectKey(x))===c.rectangleKey);if(rr)targets.push(...(rr.cells||PatchesLogic.helpers.rectCells(rr)))}}let targetKeys=new Set(targets.map(x=>x.join(','))),seen=new Set();for(const cell of focus.concat(reveal?targets:[])){let k=cell.join(',');if(seen.has(k))continue;seen.add(k);let el=board.children[cell[0]*current.n+cell[1]];if(el)el.classList.add(reveal&&targetKeys.has(k)?'hint-focus':'hint-context')}}
+function patchSyncEngineToVisible(c,engine){c.patchLogicEvidence=engine.exportEvidence();c.patchSelectedRects=c.patchSelectedRects||{};for(const f of c.patchLogicEvidence.owners||[])c.paint[f.cell[0]][f.cell[1]]=f.clue;for(const f of c.patchLogicEvidence.selected||[]){let cand=engine.candidate(Number(f.clue),f.rectangleKey);if(!cand)continue;c.patchSelectedRects[f.clue]={r0:cand.r0,r1:cand.r1,c0:cand.c0,c1:cand.c1};for(const [r,col] of cand.cells)c.paint[r][col]=Number(f.clue)}}
+function patchApplyDeductionToState(c,d,engine=null){engine=engine||patchesLogicSession(c);let applied=engine.applyDeduction(d);if(!applied?.deduction)return null;patchSyncEngineToVisible(c,engine);return {...applied,engine}}
+function patchApplyDeductionToCurrent(d){if(!current||current.game!=='patches')return null;return patchApplyDeductionToState(current,d)}
+function patchCurrentLogicResult(){let engine=patchesLogicSession(),result=engine.nextDeduction();return {...result,engine}}
+function patchLogicContradictionText(w){if(!w)return '';let prefix=w.clue!=null?`${patchZoneName(w.clue)} : `:'';return `${prefix}${patchContradictionReason(w)}.`}
+function patchCoachHandleDeduction(d){let boardKey=historySnapshotKey(),sig=d.signature||d.id,flow=current.hintFlow,isSame=flow?.kind==='patches-proof'&&flow.boardKey===boardKey&&flow.signature===sig;if(!isSame){current.hintFlow={kind:'patches-proof',boardKey,signature:sig,stage:1,deduction:JSON.parse(JSON.stringify(d))};coachUsage(1,patchLegacyTechniqueForDeduction(d));patchFocusDeduction(d,false);showHintNotice(`<span class="coach-progress">1/2</span><b>${tr('where')} :</b> ${patchDeductionOrientation(d)}`);saveCurrent();return}let proof=flow.deduction||d,before=historySnapshotKey();coachUsage(2,patchLegacyTechniqueForDeduction(proof));coachUsage(3,patchLegacyTechniqueForDeduction(proof));markHintUsed();updateScoreFlags();patchFocusDeduction(proof,true);let application=patchApplyDeductionToCurrent(proof);if(!application){current.hintFlow=null;showHintNotice(tr('hintError'));return}drawP();historyRecord({type:'COACH_APPLY',reasoning:patchDeductionReasoning(application.deduction,application.automatic),coachStage:2,coachFlowVersion:4},before);current.hintFlow=null;showHintNotice(`<span class="coach-progress">2/2</span><b>${patchRuleHumanTitle(proof)}</b><br>${patchDeductionExplanation(proof)}`);maybeAutoFinish();saveCurrent();haptic(12)}
+
 function cloneGrid(x){return Array.isArray(x)?x.map(r=>Array.isArray(r)?[...r]:r):x}
 function puzzleSnapshot(){
   if(!current)return null;
   if(current.game==='queens')return {game:'queens',state:cloneGrid(current.state)};
   if(current.game==='tango')return {game:'tango',state:cloneGrid(current.state),tangoPendingCell:current.tangoPendingCell?[...current.tangoPendingCell]:null,tangoDerivedRelations:JSON.parse(JSON.stringify(current.tangoDerivedRelations||[]))};
   if(current.game==='sudoku')return {game:'sudoku',state:cloneGrid(current.state)};
-  if(current.game==='patches')return {game:'patches',paint:cloneGrid(current.paint)};
+  if(current.game==='patches')return {game:'patches',paint:cloneGrid(current.paint),patchSelectedRects:JSON.parse(JSON.stringify(current.patchSelectedRects||{})),patchLogicEvidence:JSON.parse(JSON.stringify(current.patchLogicEvidence||patchEmptyEvidence()))};
   return {game:current.game}
 }
 function historySnapshotKey(s=puzzleSnapshot()){return JSON.stringify(s)}
@@ -2202,7 +2213,7 @@ function withAuditSnapshot(beforeKey,fn){
   if(!current||!beforeKey)return null;let s;try{s=JSON.parse(beforeKey)}catch(_){return null}
   if(!s||s.game!==current.game)return null;
   let snap=current,clone={...current};
-  if(s.state)clone.state=cloneGrid(s.state);if(s.paint)clone.paint=cloneGrid(s.paint);
+  if(s.state)clone.state=cloneGrid(s.state);if(s.paint)clone.paint=cloneGrid(s.paint);if('patchSelectedRects' in s)clone.patchSelectedRects=JSON.parse(JSON.stringify(s.patchSelectedRects||{}));if('patchLogicEvidence' in s)clone.patchLogicEvidence=JSON.parse(JSON.stringify(s.patchLogicEvidence||patchEmptyEvidence()));
   if('tangoPendingCell' in s)clone.tangoPendingCell=s.tangoPendingCell?[...s.tangoPendingCell]:null;if('tangoDerivedRelations' in s)clone.tangoDerivedRelations=JSON.parse(JSON.stringify(s.tangoDerivedRelations||[]));
   current=clone;try{return fn(clone)}finally{current=snap}
 }
@@ -2270,26 +2281,17 @@ function justifySudokuAt(r,c,v){
   return proofResult('unjustified',null,null,[r,c],null)
 }
 function justifyPatchCellAt(r,c,id){
-  let cands=patchRectCandidates(id);if(cands.length===1&&cands[0].some(x=>x[0]===r&&x[1]===c))return proofResult('justified','P_SINGLE_RECTANGLE',0,[r,c],null);
-  if(cands.length){let common=cands.every(rect=>rect.some(x=>x[0]===r&&x[1]===c));if(common)return proofResult('justified','P_MANDATORY_CELL',0,[r,c],null)}
-  let ids=patchPossibleIdsAt(r,c);if(!ids.includes(id))return proofResult('unjustified',null,null,[r,c],null);
-  let alt=ids.filter(x=>x!==id),chosen1=withTempCurrent(x=>{x.paint[r][c]=id},()=>patchStateContradiction());
-  if(alt.length&&!chosen1&&alt.every(x=>withTempCurrent(y=>{y.paint[r][c]=x},()=>patchStateContradiction())))return proofResult('justified','P_CONTRADICTION_R1',1,[r,c],null);
-  let chosen2=withTempCurrent(x=>{x.paint[r][c]=id},()=>patchRank2WitnessAfterAssumption());
-  if(alt.length&&!chosen2&&alt.every(x=>withTempCurrent(y=>{y.paint[r][c]=x},()=>patchStateContradiction()||!!patchRank2WitnessAfterAssumption())))return proofResult('justified','P_CONTRADICTION_R2',2,[r,c],null);
-  return proofResult('unjustified',null,null,[r,c],null)
+  if(!patchesLogicAvailable())return proofResult('unknown',null,null,[r,c],'engine-unavailable');
+  let p=patchesLogicSession().proveOwner([r,c],Number(id));
+  if(p.status==='proven'){let d=p.deduction||null,x=proofResult('justified',patchLegacyTechniqueForDeduction(d),d?.rank??p.fact?.rank??0,[r,c],{logicalStatus:'proven',deduction:d?patchDeductionReasoning(d):null});x.logicalStatus='proven';return x}
+  let x=proofResult('unjustified',null,null,[r,c],{logicalStatus:p.status,contradiction:p.contradiction||null});x.logicalStatus=p.status;return x
 }
 function patchRectangleJustification(action){
-  if(action.type!=='PATCH_RECTANGLE'||action.region==null)return null;
-  let additions=(action.changes||[]).filter(x=>x.from==null&&x.to===action.region),removals=(action.changes||[]).filter(x=>x.from===action.region&&x.to==null);
-  if(!additions.length||removals.length)return null;
-  let id=Number(action.region),cands=patchRectCandidates(id),afterPaint=cloneGrid(current.paint);
-  for(let ch of action.changes||[])afterPaint[ch.row][ch.column]=ch.to;
-  let afterCells=[];for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(afterPaint[r][c]===id)afterCells.push(`${r},${c}`);
-  let exact=rect=>{let a=rect.map(x=>`${x[0]},${x[1]}`).sort(),b=[...afterCells].sort();return a.length===b.length&&a.every((x,i)=>x===b[i])};
-  if(cands.length===1&&exact(cands[0]))return proofResult('justified','P_SINGLE_RECTANGLE',0,additions.map(x=>[x.row,x.column]),null);
-  let proofs=additions.map(ch=>justifyPatchCellAt(ch.row,ch.column,id));if(proofs.length&&proofs.every(x=>x.status==='justified')){let best=proofs.sort((a,b)=>(b.rank||0)-(a.rank||0))[0];return proofResult('justified',best.technique,best.rank,additions.map(x=>[x.row,x.column]),null)}
-  return proofResult('unjustified',null,null,additions.map(x=>[x.row,x.column]),null)
+  if(action.type!=='PATCH_RECTANGLE'||action.region==null||!action.rectangle)return null;
+  if(!patchesLogicAvailable())return proofResult('unknown',null,null,null,'engine-unavailable');
+  let id=Number(action.region),p=patchesLogicSession().proveRectangle(id,action.rectangle),target=PatchesLogic.helpers.rectCells(action.rectangle);
+  if(p.status==='proven'){let d=p.deduction||null,x=proofResult('justified',patchLegacyTechniqueForDeduction(d),d?.rank??p.fact?.rank??0,target,{logicalStatus:'proven',deduction:d?patchDeductionReasoning(d):null});x.logicalStatus='proven';return x}
+  let x=proofResult('unjustified',null,null,target,{logicalStatus:p.status,contradiction:p.contradiction||null});x.logicalStatus=p.status;return x
 }
 function firstKnownLogicalMoveFromSnapshot(beforeKey,deadline=Date.now()+250){
   return withAuditSnapshot(beforeKey,()=>{
@@ -2297,7 +2299,7 @@ function firstKnownLogicalMoveFromSnapshot(beforeKey,deadline=Date.now()+250){
     if(g==='queens'){let q=queenLogicSession(),r=q.nextDeduction();return r.deduction?queenDeductionReasoning(r.deduction):null}
     else if(g==='tango'){let t=tangoLogicSession(),r=t.nextDeduction();return r.deduction?tangoDeductionReasoning(r.deduction):null}
     else if(g==='sudoku')h=findSudokuLogicalHint()||findSudokuRank1Hint()||findSudokuRank2Hint();
-    else if(g==='patches')h=findPatchLogicalHint()||findPatchRank1Hint()||findPatchRank2Hint();
+    else if(g==='patches'){let p=patchesLogicSession(),r=p.nextDeduction();return r.deduction?patchDeductionReasoning(r.deduction):null}
     return h&&!h.timeout?structuredReasoning(g,h):null
   })
 }
@@ -2509,8 +2511,7 @@ function explorationContradiction(){
     if(sudokuImmediateContradiction())return {bad:true,kind:'logic',html:sudokuContradictionDetail()};
     let w=sudokuRank2WitnessAfterAssumption();if(w)return {bad:true,kind:'logic',html:w.detail}
   }else if(current.game==='patches'){
-    if(patchStateContradiction())return {bad:true,kind:'logic',html:patchContradictionDetail()};
-    let w=patchRank2WitnessAfterAssumption();if(w)return {bad:true,kind:'logic',html:w.detail}
+    try{let w=patchesLogicSession().diagnoseBasic();if(w)return {bad:true,kind:'logic',html:patchLogicContradictionText(w)}}catch(_){return {bad:true,kind:'logic',html:tr('hintError')}}
   }
   return {bad:false,kind:'none',html:tr('noContradiction')}
 }
@@ -2588,7 +2589,7 @@ function restorePuzzleSnapshot(s){
   if(s.game==='queens'){current.state=cloneGrid(s.state);drawQ()}
   else if(s.game==='tango'){current.state=cloneGrid(s.state);current.tangoPendingCell=s.tangoPendingCell?[...s.tangoPendingCell]:null;current.tangoDerivedRelations=JSON.parse(JSON.stringify(s.tangoDerivedRelations||[]));drawT()}
   else if(s.game==='sudoku'){current.state=cloneGrid(s.state);drawS()}
-  else if(s.game==='patches'){current.paint=cloneGrid(s.paint);drawP()}
+  else if(s.game==='patches'){current.paint=cloneGrid(s.paint);current.patchSelectedRects=JSON.parse(JSON.stringify(s.patchSelectedRects||{}));current.patchLogicEvidence=JSON.parse(JSON.stringify(s.patchLogicEvidence||patchEmptyEvidence()));drawP()}
   status('',true);updateScoreFlags();return true
 }
 function undoMoves(count=1){
@@ -2664,10 +2665,10 @@ function walkthroughVisibleClone(c,root){
   if(c.game==='queens')return {game:'queens',diff:c.diff,n:c.n,reg:cloneGrid(c.reg),state:cloneGrid(root.state||c.state),completed:false};
   if(c.game==='tango')return {game:'tango',diff:c.diff,n:6,state:cloneGrid(root.state||c.state),givens:new Set(c.givens||[]),edges:(c.edges||[]).map(x=>[...x]),tangoDerivedRelations:JSON.parse(JSON.stringify(root.tangoDerivedRelations||[])),tangoPendingCell:null,completed:false};
   if(c.game==='sudoku')return {game:'sudoku',diff:c.diff,n:6,state:cloneGrid(root.state||c.state),empty:new Set(c.empty||[]),sel:null,completed:false};
-  if(c.game==='patches')return {game:'patches',diff:c.diff,n:c.n,ids:[...(c.ids||[])],clues:JSON.parse(JSON.stringify(c.clues||{})),pal:[...(c.pal||[])],paint:cloneGrid(root.paint||c.paint),active:c.ids?.[0]??0,completed:false};
+  if(c.game==='patches')return {game:'patches',diff:c.diff,n:c.n,ids:[...(c.ids||[])],clues:JSON.parse(JSON.stringify(c.clues||{})),pal:[...(c.pal||[])],paint:cloneGrid(root.paint||c.paint),patchSelectedRects:JSON.parse(JSON.stringify(root.patchSelectedRects||{})),patchLogicEvidence:JSON.parse(JSON.stringify(root.patchLogicEvidence||patchEmptyEvidence())),active:c.ids?.[0]??0,completed:false};
   return null
 }
-function walkthroughSnapshot(c){if(c.game==='patches')return {paint:cloneGrid(c.paint)};if(c.game==='tango')return {state:cloneGrid(c.state),tangoDerivedRelations:JSON.parse(JSON.stringify(c.tangoDerivedRelations||[]))};return {state:cloneGrid(c.state)}}
+function walkthroughSnapshot(c){if(c.game==='patches')return {paint:cloneGrid(c.paint),patchSelectedRects:JSON.parse(JSON.stringify(c.patchSelectedRects||{})),patchLogicEvidence:JSON.parse(JSON.stringify(c.patchLogicEvidence||patchEmptyEvidence()))};if(c.game==='tango')return {state:cloneGrid(c.state),tangoDerivedRelations:JSON.parse(JSON.stringify(c.tangoDerivedRelations||[]))};return {state:cloneGrid(c.state)}}
 function withWalkthroughCurrent(fn){let saved=current;current=walkthroughSession?.work||saved;try{return fn(current)}finally{current=saved}}
 function walkthroughComplete(){return withWalkthroughCurrent(()=>{
   if(current.game==='queens')return queenLogicalComplete();
@@ -2689,29 +2690,11 @@ function walkthroughComplete(){return withWalkthroughCurrent(()=>{
   }
   return false
 })}
-function walkthroughPatchCompletionCount(limit=1){
-  let n=current.n,ids=current.ids,positions=ids.map(id=>current.clues[id].pos),opts={};
-  for(let id of ids){
-    let own=[];for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.paint[r][c]===id)own.push(r*n+c);
-    opts[id]=possiblePatchRects(n,current.clues[id],positions).filter(rect=>{
-      let set=new Set(rect);if(own.some(k=>!set.has(k)))return false;
-      for(let i of rect){let r=Math.floor(i/n),c=i%n,p=current.paint[r][c];if(p!=null&&p!==id)return false}return true
-    });if(!opts[id].length)return 0
-  }
-  let count=0,covered=new Set();function bt(done){if(count>=limit)return;if(done.size===ids.length){if(covered.size===n*n)count++;return}
-    let best=null,bestOpts=null;for(let id of ids)if(!done.has(id)){let avail=opts[id].filter(rect=>rect.every(i=>!covered.has(i)));if(!avail.length)return;if(!bestOpts||avail.length<bestOpts.length){best=id;bestOpts=avail;if(avail.length===1)break}}
-    done.add(best);for(let rect of bestOpts){rect.forEach(i=>covered.add(i));bt(done);rect.forEach(i=>covered.delete(i));if(count>=limit)break}done.delete(best)
-  }bt(new Set());return count
-}
 function walkthroughExhaustiveHint(){return withWalkthroughCurrent(()=>{
   let fr=lang()==='fr';
   if(current.game==='sudoku')for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(current.state[r][c]===0&&current.empty.has(r*6+c)){
     let vals=sudokuCandidatesAt(r,c),counts=[];for(let v of vals){let grid=cloneGrid(current.state);grid[r][c]=v;counts.push([v,countMiniSudoku(grid,1)])}let good=counts.filter(x=>x[1]>0);
     if(good.length===1&&counts.length>1){let v=good[0][0];return {r,c,v,rank:3,walkthroughExhaustive:true,walkthroughWhy:fr?`En testant toutes les complétions compatibles avec les règles visibles, tous les autres candidats conduisent à une impasse. ${v} est donc imposé en ${cellName(r,c)}.`:`Testing all completions compatible with the visible rules shows that every other candidate leads to a dead end. ${v} is therefore forced at ${cellName(r,c)}.`}}
-  }
-  if(current.game==='patches')for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(current.paint[r][c]==null){
-    let vals=patchPossibleIdsAt(r,c),counts=[];for(let id of vals){let old=current.paint[r][c];current.paint[r][c]=id;let n=walkthroughPatchCompletionCount(1);current.paint[r][c]=old;counts.push([id,n])}let good=counts.filter(x=>x[1]>0);
-    if(good.length===1&&counts.length>=1){let id=good[0][0];return {r,c,id,rank:3,walkthroughExhaustive:true,walkthroughWhy:fr?`En testant tous les découpages complets compatibles avec les indices visibles, toutes les autres zones deviennent impossibles pour ${cellName(r,c)}. Cette case doit donc appartenir à la zone ${id+1}.`:`Testing all complete partitions compatible with the visible clues rules out every other region for ${cellName(r,c)}. This cell must therefore belong to region ${id+1}.`}}
   }
   return null
 })}
@@ -2720,7 +2703,7 @@ function walkthroughFindHint(){return withWalkthroughCurrent(()=>{
   if(current.game==='queens')return null;
   if(current.game==='tango')return null;
   if(current.game==='sudoku')return findSudokuLogicalHint()||findSudokuRank1Hint()||findSudokuRank2Hint()||walkthroughExhaustiveHint();
-  if(current.game==='patches')return findPatchLogicalHint()||findPatchRank1Hint()||findPatchRank2Hint()||walkthroughExhaustiveHint();
+  if(current.game==='patches')return null;
   return null
 })}
 function walkthroughWhyText(h){return h.walkthroughWhy|| (h.rank===3?rank3Why(h):h.rank===2?rank2Why(h):h.rank===1?rank1Why(h):h.why)}
@@ -2769,8 +2752,26 @@ function walkthroughGenerateTangoNext(){
   if(walkthroughComplete()){s.done=true;s.total=s.moves.length;s.metrics=s.tangoLogic.metrics()}
   return true
 }
+function walkthroughGeneratePatchesNext(){
+  let s=walkthroughSession;if(!s||s.base.game!=='patches'||s.done||s.stalled)return false;
+  if(!s.patchLogic)s.patchLogic=patchesLogicSession(s.work,s.work.paint,s.work.patchSelectedRects,s.work.patchLogicEvidence);
+  if(walkthroughComplete()){s.done=true;s.total=s.moves.length;return false}
+  let result=s.patchLogic.nextDeduction();
+  if(result.contradiction){s.stalled=true;s.logicContradiction=result.contradiction;return false}
+  if(!result.deduction){s.stalled=true;return false}
+  let beforeSnapshot=walkthroughSnapshot(s.work),applied=s.patchLogic.applyDeduction(result.deduction),d=applied.deduction;if(!d){s.stalled=true;return false}
+  if(applied.contradiction){s.stalled=true;s.logicContradiction=applied.contradiction;return false}
+  patchSyncEngineToVisible(s.work,s.patchLogic);
+  let reasoning=patchDeductionReasoning(d,applied.automatic),info={
+    rule:d.rule,technique:patchLegacyTechniqueForDeduction(d),rank:d.rank,techniqueLevel:d.techniqueLevel,target:patchDeductionPrimaryCell(d),deduction:reasoning,
+    where:patchDeductionOrientation(d),why:patchDeductionExplanation(d),move:patchDeductionConclusionText(d),automatic:JSON.parse(JSON.stringify(applied.automatic||[])),metrics:s.patchLogic.metrics(),beforeSnapshot
+  };
+  info.snapshot=walkthroughSnapshot(s.work);s.moves.push(info);
+  if(walkthroughComplete()){s.done=true;s.total=s.moves.length;s.metrics=s.patchLogic.metrics()}
+  return true
+}
 function walkthroughGenerateNext(){
-  let s=walkthroughSession;if(!s||s.done||s.stalled)return false;if(s.base.game==='queens')return walkthroughGenerateQueensNext();if(s.base.game==='tango')return walkthroughGenerateTangoNext();
+  let s=walkthroughSession;if(!s||s.done||s.stalled)return false;if(s.base.game==='queens')return walkthroughGenerateQueensNext();if(s.base.game==='tango')return walkthroughGenerateTangoNext();if(s.base.game==='patches')return walkthroughGeneratePatchesNext();
   if(walkthroughComplete()){s.done=true;s.total=s.moves.length;return false}
   let h=walkthroughFindHint();
   if(!h||h.timeout){s.stalled=true;s.timeout=!!h?.timeout;return false}
@@ -2795,8 +2796,9 @@ function walkthroughBoardHtml(snapshot,target=null,deduction=null){
   }else if(c.game==='sudoku'){
     for(let r=0;r<6;r++)for(let col=0;col<6;col++){let v=snapshot.state[r][col],fixed=initial.state[r][col]!==0,cls='cell walkthrough-cell '+(fixed?'fixed ':'')+(col===2?'boxR ':'')+((r===1||r===3)?'boxB ':'')+(targetKey===`${r},${col}`?'walkthrough-target':'');cells.push(`<div class="${cls}">${v||''}</div>`)}
   }else{
-    let clueAt=new Map(c.ids.map(id=>[c.clues[id].pos.join(','),id]));
-    for(let r=0;r<n;r++)for(let col=0;col<n;col++){let id=snapshot.paint[r][col],clue=clueAt.get(r+','+col),style=id!=null?`background:${c.pal[id%c.pal.length]}`:'',cls='cell patch-cell walkthrough-cell'+(clue!=null?' clue':'')+(targetKey===`${r},${col}`?' walkthrough-target':''),body=clue!=null?clueHTML(c.clues[clue]):'';cells.push(`<div class="${cls}" style="${style}">${body}</div>`)}
+    let clueAt=new Map(c.ids.map(id=>[c.clues[id].pos.join(','),id])),context=new Set((deduction?.focusCells||[]).map(x=>x.join(','))),conclusions=new Set();
+    for(const x of deduction?.conclusions||[]){if(x.type==='OWNER')conclusions.add(x.cell.join(','));else if(x.type==='SELECTED_RECT')for(const cc of x.rectangle?.cells||[])conclusions.add(cc.join(','))}
+    for(let r=0;r<n;r++)for(let col=0;col<n;col++){let k=`${r},${col}`,id=snapshot.paint[r][col],clue=clueAt.get(k),style=id!=null?`background:${c.pal[id%c.pal.length]}`:'',cls='cell patch-cell walkthrough-cell'+(clue!=null?' clue':'')+(context.has(k)?' walkthrough-context':'')+(conclusions.has(k)||targetKey===k?' walkthrough-target':''),body=clue!=null?clueHTML(c.clues[clue]):'';cells.push(`<div class="${cls}" style="${style}">${body}</div>`)}
   }
   return `<div class="walkthrough-board-wrap"><div class="board ${c.game==='sudoku'?'sudoku ':''}walkthrough-board" style="grid-template-columns:repeat(${n},minmax(0,1fr));grid-template-rows:repeat(${n},minmax(0,1fr))">${cells.join('')}</div></div>`
 }
@@ -2805,12 +2807,13 @@ function walkthroughExplanationHtml(index){
   let m=s.moves[index-1];
   if(s.base.game==='queens'&&m?.deduction){let d=m.deduction;return `<div class="walkthrough-explanation"><div class="walkthrough-tech"><b>${queenRuleHumanTitle(d)}</b><span>R${d.rank}</span></div><p><b>${tr('where')} :</b> ${queenDeductionOrientation(d)}</p><p><b>${tr('walkthroughWhy')}</b><br>${queenDeductionExplanation(d)}</p></div>`}
   if(s.base.game==='tango'&&m?.deduction){let d=m.deduction;return `<div class="walkthrough-explanation"><div class="walkthrough-tech"><b>${tangoRuleHumanTitle(d)}</b><span>R${d.rank}</span></div><p><b>${tr('where')} :</b> ${tangoDeductionOrientation(d)}</p><p><b>${tr('walkthroughWhy')}</b><br>${tangoDeductionExplanation(d)}</p></div>`}
+  if(s.base.game==='patches'&&m?.deduction){let d=m.deduction;return `<div class="walkthrough-explanation"><div class="walkthrough-tech"><b>${patchRuleHumanTitle(d)}</b><span>R${d.rank} · T${d.techniqueLevel}</span></div><p><b>${tr('where')} :</b> ${patchDeductionOrientation(d)}</p><p><b>${tr('walkthroughWhy')}</b><br>${patchDeductionExplanation(d)}</p>${m.move?`<p class="walkthrough-move"><b>${tr('hintMove')} :</b> ${m.move}</p>`:''}</div>`}
   let tech=m.technique?techniqueTitle(m.technique):techniqueTerm('contradiction'),rank=m.exhaustive?'R+':`R${m.rank}`;
   return `<div class="walkthrough-explanation"><div class="walkthrough-tech"><b>${tech}</b><span>${rank}</span></div><p><b>${tr('where')} :</b> ${m.where}</p><p><b>${tr('walkthroughWhy')}</b><br>${m.why||''}</p><p class="walkthrough-move"><b>${tr('hintMove')} :</b> ${m.move}</p></div>`
 }
 function renderWalkthrough(){
   let s=walkthroughSession;if(!s)return;let i=s.index,snap=i===0?s.initial:s.moves[i-1].snapshot,target=walkthroughTarget(i),deduction=i>0?s.moves[i-1]?.deduction:null;
-  let stateNote=s.done&&i===s.moves.length?`<div class="walkthrough-complete">✓ ${tr('walkthroughComplete')}</div>`:s.stalled&&i===s.moves.length?`<div class="walkthrough-stalled">⚠ ${s.logicContradiction?(s.base.game==='queens'?queenLogicContradictionText(s.logicContradiction):s.base.game==='tango'?tangoLogicContradictionText(s.logicContradiction):tr('walkthroughStalled')):tr('walkthroughStalled')}</div>`:'';
+  let stateNote=s.done&&i===s.moves.length?`<div class="walkthrough-complete">✓ ${tr('walkthroughComplete')}</div>`:s.stalled&&i===s.moves.length?`<div class="walkthrough-stalled">⚠ ${s.logicContradiction?(s.base.game==='queens'?queenLogicContradictionText(s.logicContradiction):s.base.game==='tango'?tangoLogicContradictionText(s.logicContradiction):s.base.game==='patches'?patchLogicContradictionText(s.logicContradiction):tr('walkthroughStalled')):tr('walkthroughStalled')}</div>`:'';
   let total=s.done?s.moves.length:'…',progress=`${i}/${total}`;document.body.classList.add('tutor-active');
   app.innerHTML=`<section class="panel walkthrough-panel"><div class="stats-head walkthrough-head"><div><h1>${tr('walkthrough')}</h1><p>${gameLabel(s.base.game)} · ${DIFF[s.base.diff]}</p></div><button class="btn" id="walkthroughClose">${tr('walkthroughClose')}</button></div>${walkthroughBoardHtml(snap,target,deduction)}<div class="walkthrough-actions walkthrough-actions-top"><button class="btn" id="walkthroughPrev" ${i===0?'disabled':''}>← ${tr('walkthroughPrevious')}</button><button class="btn walkthrough-step-counter" id="walkthroughRestart" ${i===0?'disabled':''} title="${tr('walkthroughRestart')}">${tr('walkthroughStep')} ${progress} · ↺</button><button class="btn primary" id="walkthroughNext" ${(s.done||s.stalled)&&i===s.moves.length?'disabled':''}>${tr('walkthroughNext')} →</button></div><div class="walkthrough-scroll"><p class="walkthrough-help-note">💡 ${tr('walkthroughCountsAsHelp')}</p>${walkthroughExplanationHtml(i)}${stateNote}</div></section>`;
   $('#walkthroughClose').onclick=closeWalkthrough;$('#walkthroughPrev').onclick=()=>{if(s.index>0){s.index--;renderWalkthrough()}};$('#walkthroughRestart').onclick=()=>{s.index=0;renderWalkthrough()};$('#walkthroughNext').onclick=()=>{if(s.index<s.moves.length)s.index++;else if(walkthroughGenerateNext())s.index++;renderWalkthrough()};app.querySelectorAll('button').forEach(pressFeedback)
@@ -2819,7 +2822,7 @@ function openWalkthrough(){
   if(!current||current.training)return false;let root=walkthroughRootSnapshot(),work=walkthroughVisibleClone(current,root);if(!work)return false;
   let elapsed=timerSeconds(),wasPaused=paused;stopTimer(true);current.walkthroughUsed=true;markHintUsed();updateScoreFlags();saveCurrent();
   walkthroughSession={schema:2,base:work,work,initial:walkthroughSnapshot(work),moves:[],index:0,done:false,stalled:false,elapsed,wasPaused};
-  if(work.game==='queens'){walkthroughSession.queenLogic=queenLogicSession(work,work.state);work.state=cloneGrid(walkthroughSession.queenLogic.state);walkthroughSession.initial=walkthroughSnapshot(work)}else if(work.game==='tango'){walkthroughSession.tangoLogic=tangoLogicSession(work,work.state,work.tangoDerivedRelations||[]);walkthroughSession.initial=walkthroughSnapshot(work)}
+  if(work.game==='queens'){walkthroughSession.queenLogic=queenLogicSession(work,work.state);work.state=cloneGrid(walkthroughSession.queenLogic.state);walkthroughSession.initial=walkthroughSnapshot(work)}else if(work.game==='tango'){walkthroughSession.tangoLogic=tangoLogicSession(work,work.state,work.tangoDerivedRelations||[]);walkthroughSession.initial=walkthroughSnapshot(work)}else if(work.game==='patches'){walkthroughSession.patchLogic=patchesLogicSession(work,work.paint,work.patchSelectedRects,work.patchLogicEvidence);walkthroughSession.initial=walkthroughSnapshot(work)}
   renderWalkthrough();return true
 }
 function closeWalkthrough(){
@@ -2853,6 +2856,7 @@ function resetCurrent(){
     current.sel=null;drawS();
   }else if(current.game==='patches'){
     current.paint=Array.from({length:current.n},()=>Array(current.n).fill(null));
+    current.patchSelectedRects={};current.patchLogicEvidence=patchEmptyEvidence();
     current.active=current.ids[0];drawP();
   }
   let wasCompleted=!!current.completed;
@@ -2892,7 +2896,7 @@ function ensurePrecomputeWorker(){
   if(precomputeWorker)return precomputeWorker;
   if(typeof Worker==='undefined')return null;
   try{
-    let w=new Worker('./precompute-worker.js?v=2.21.10');
+    let w=new Worker('./precompute-worker.js?v=2.21.12');
     w.onmessage=e=>{
       let m=e.data||{};precomputeBusy=false;
       if(m.ok&&m.day===precomputeDay&&m.candidate){
@@ -3075,31 +3079,6 @@ function findSudokuLogicalHint(){
   return null
 }
 
-function patchRectCandidates(id){
-  let n=current.n,cl=current.clues[id],cr=cl.pos[0],cc=cl.pos[1],out=[];
-  for(let r1=0;r1<n;r1++)for(let r2=r1;r2<n;r2++)for(let c1=0;c1<n;c1++)for(let c2=c1;c2<n;c2++){
-    if(!(r1<=cr&&cr<=r2&&c1<=cc&&cc<=c2))continue;
-    let h=r2-r1+1,w=c2-c1+1,area=h*w,shape=h===w?'carré':h>w?'vertical':'horizontal';
-    if((cl.mode==='size'||cl.mode==='both')&&area!==cl.size)continue;
-    if((cl.mode==='shape'||cl.mode==='both')&&shape!==cl.shape)continue;
-    let cells=[],bad=false;
-    for(let r=r1;r<=r2;r++)for(let c=c1;c<=c2;c++){for(let other of current.ids){if(other!==id){let p=current.clues[other].pos;if(p[0]===r&&p[1]===c)bad=true}}if(current.paint[r][c]!=null&&current.paint[r][c]!==id)bad=true;cells.push([r,c])}
-    if(bad)continue;
-    let painted=[];for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.paint[r][c]===id)painted.push([r,c]);
-    if(painted.some(([r,c])=>r<r1||r>r2||c<c1||c>c2))continue;
-    out.push(cells)
-  }
-  return out
-}
-function findPatchLogicalHint(){
-  for(let id of current.ids){let cands=patchRectCandidates(id);if(!cands.length)continue;
-    if(cands.length===1){for(let [r,c] of cands[0])if(current.paint[r][c]!==id)return {r,c,id,technique:'P_SINGLE_RECTANGLE',why:lang()==='fr'?`il ne reste qu’un seul rectangle compatible avec l’indice de la zone ${id+1}.`:`only one rectangle remains compatible with region ${id+1}'s clue.`}}
-    let common=new Set(cands[0].map(x=>keyCell(...x)));for(let k of [...common])if(!cands.every(cs=>cs.some(x=>keyCell(...x)===k)))common.delete(k);
-    for(let k of common){let [r,c]=k.split(',').map(Number);if(current.paint[r][c]!==id){return {r,c,id,technique:'P_MANDATORY_CELL',why:lang()==='fr'?`cette case appartient à tous les rectangles encore compatibles avec l’indice de la zone ${id+1}.`:`this cell belongs to every rectangle still compatible with region ${id+1}'s clue.`}}}
-  }
-  return null
-}
-
 // ===== Rank-1 inference: simulate one candidate, then reject it if the
 // resulting visible state already contains a contradiction or leaves any
 // required next placement with no legal candidate. No hidden solution is used.
@@ -3238,47 +3217,6 @@ function findSudokuRank1Hint(){
         consequence:lines,
         deadend:lang()==='fr'?`tous les candidats sauf ${good[0]} créent immédiatement une impossibilité.`:`every candidate except ${good[0]} immediately creates an impossibility.`,
         conclusion:lang()==='fr'?`${cellName(r,c)} doit donc contenir ${good[0]}.`:`${cellName(r,c)} must therefore contain ${good[0]}.`,
-        why:null}
-    }
-  }return null
-}
-
-// PATCHES
-function patchStateContradiction(){
-  let all={};for(let id of current.ids){all[id]=patchRectCandidates(id);if(!all[id].length)return true}
-  // Every already-painted cell must be supported by at least one remaining rectangle for its region.
-  for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(current.paint[r][c]!=null){
-    let id=current.paint[r][c];if(!all[id].some(rect=>rect.some(x=>x[0]===r&&x[1]===c)))return true
-  }
-  // Every unpainted non-clue cell must remain coverable by at least one region.
-  for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(current.paint[r][c]==null){
-    let covered=false;for(let id of current.ids)if(all[id].some(rect=>rect.some(x=>x[0]===r&&x[1]===c))){covered=true;break}
-    if(!covered)return true
-  }
-  return false
-}
-function patchPossibleIdsAt(r,c){
-  let out=[];for(let id of current.ids){let cands=patchRectCandidates(id);if(cands.some(rect=>rect.some(x=>x[0]===r&&x[1]===c)))out.push(id)}return out
-}
-
-function patchContradictionDetail(){
-  let all={};for(let id of current.ids){all[id]=patchRectCandidates(id);if(!all[id].length)return lang()==='fr'?`la zone ${id+1} n'aurait plus aucun rectangle possible.`:`region ${id+1} would have no possible rectangle left.`}
-  for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(current.paint[r][c]!=null){let id=current.paint[r][c];if(!all[id].some(rect=>rect.some(x=>x[0]===r&&x[1]===c)))return lang()==='fr'?`${cellName(r,c)}, déjà attribuée à la zone ${id+1}, ne pourrait plus appartenir à aucun rectangle valide de cette zone.`:`${cellName(r,c)}, assigned to region ${id+1}, would no longer fit any valid rectangle for that region.`}
-  for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(current.paint[r][c]==null){let covered=false;for(let id of current.ids)if(all[id].some(rect=>rect.some(x=>x[0]===r&&x[1]===c))){covered=true;break}if(!covered)return lang()==='fr'?`${cellName(r,c)} ne pourrait plus être couverte par aucune zone.`:`${cellName(r,c)} could no longer be covered by any region.`}
-  return lang()==='fr'?'le découpage en rectangles deviendrait impossible.':'the rectangle partition would become impossible.';
-}
-function findPatchRank1Hint(){
-  for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(current.paint[r][c]==null){
-    let ids=patchPossibleIdsAt(r,c);if(ids.length<2)continue;
-    let good=[],bad=[],details={};
-    for(let id of ids){let contradiction=withTempCurrent(x=>{x.paint[r][c]=id},()=>patchStateContradiction());(contradiction?bad:good).push(id);if(contradiction)details[id]=withTempCurrent(x=>{x.paint[r][c]=id},()=>patchContradictionDetail())}
-    if(good.length===1&&bad.length){
-      let lines=bad.map(id=>`• ${lang()==='fr'?'zone':'region'} ${id+1} : ${details[id]}`).join('<br>');
-      return {r,c,id:good[0],rank:1,
-        hypothesis:lang()==='fr'?`${cellName(r,c)} pourrait a priori appartenir aux zones ${ids.map(x=>x+1).join(', ')}. Testons les alternatives.`:`${cellName(r,c)} could initially belong to regions ${ids.map(x=>x+1).join(', ')}. Test the alternatives.`,
-        consequence:lines,
-        deadend:lang()==='fr'?`toutes les zones sauf la zone ${good[0]+1} rendent le pavage impossible.`:`every region except region ${good[0]+1} makes the partition impossible.`,
-        conclusion:lang()==='fr'?`${cellName(r,c)} doit donc appartenir à la zone ${good[0]+1}.`:`${cellName(r,c)} must therefore belong to region ${good[0]+1}.`,
         why:null}
     }
   }return null
@@ -3603,43 +3541,6 @@ function findQueenRank2Hint(deadline=Infinity){
   return null
 }
 
-// PATCHES rank 2
-function patchRank2WitnessAfterAssumption(){
-  for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(current.paint[r][c]==null){
-    let ids=patchPossibleIdsAt(r,c),viable=[];
-    for(let id of ids){
-      let bad=withTempCurrent(x=>{x.paint[r][c]=id},()=>patchStateContradiction());
-      if(!bad)viable.push(id)
-    }
-    if(!viable.length)return {r,c,detail:lang()==='fr'
-      ?`${cellName(r,c)} ne peut plus appartenir à aucune zone sans rendre le pavage impossible.`
-      :`${cellName(r,c)} can no longer belong to any region without making the partition impossible.`}
-  }
-  return null
-}
-function findPatchRank2Hint(){
-  for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(current.paint[r][c]==null){
-    let ids=patchPossibleIdsAt(r,c);if(ids.length<2)continue;
-    let surviving=ids.filter(id=>!withTempCurrent(x=>{x.paint[r][c]=id},()=>patchStateContradiction()));
-    if(surviving.length<2)continue;
-    let bad=[],witness={};
-    for(let id of surviving){
-      let w=withTempCurrent(x=>{x.paint[r][c]=id},()=>patchRank2WitnessAfterAssumption());
-      if(w){bad.push(id);witness[id]=w}
-    }
-    let good=surviving.filter(id=>!bad.includes(id));
-    if(good.length===1&&bad.length){
-      let id=good[0],rej=bad[0],w=witness[rej];
-      return {r,c,id,rank:2,
-        hypothesis:lang()==='fr'?`supposons que ${cellName(r,c)} appartienne à la zone ${rej+1}.`:`suppose ${cellName(r,c)} belongs to region ${rej+1}.`,
-        consequence:lang()==='fr'?`on recalcule alors les rectangles et les affectations encore possibles.`:`we then recompute the remaining rectangles and cell assignments.`,
-        deadend:w.detail,
-        conclusion:lang()==='fr'?`la zone ${rej+1} est impossible ici ; ${cellName(r,c)} doit appartenir à la zone ${id+1}.`:`region ${rej+1} is impossible here; ${cellName(r,c)} must belong to region ${id+1}.`,
-        why:null}
-    }
-  }
-  return null
-}
 function coachLookText(kind,[r,c],message={}){
   let row=`${tr('rowLabel')} ${r+1}`,col=`${tr('columnLabel')} ${c+1}`;
   if(kind==='queens'&&current?.reg?.[r])return `${tr('zone')} ${current.reg[r][c]+1} · ${row} · ${col}`;
@@ -3838,7 +3739,7 @@ easy:{n:5,reg:[[0,0,1,1,1],[0,0,1,2,2],[3,3,3,2,2],[3,4,4,4,5],[3,4,5,5,5]]},
 medium:{n:6,reg:[[0,0,1,1,1,2],[0,3,3,1,2,2],[0,3,4,4,4,2],[5,3,4,6,6,6],[5,5,7,7,6,8],[5,7,7,8,8,8]]},
 hard:{n:7,reg:[[0,0,1,1,1,2,2],[0,3,3,1,2,2,4],[0,3,5,5,5,4,4],[6,3,5,7,7,7,4],[6,6,5,8,7,9,9],[6,10,10,8,8,9,11],[10,10,8,8,11,11,11]]}};
 function patchShape(cells){let rs=cells.map(x=>x[0]),cs=cells.map(x=>x[1]),h=Math.max(...rs)-Math.min(...rs)+1,w=Math.max(...cs)-Math.min(...cs)+1,rect=h*w===cells.length;if(!rect)return 'libre';if(h===w)return 'carré';return h>w?'vertical':'horizontal'}
-function patches(diff){let def=patchDefs[diff],reg=transformGrid(def.reg,Math.floor(Math.random()*8)),n=reg.length,ids=[...new Set(reg.flat())],cellsBy={};ids.forEach(id=>cellsBy[id]=[]);for(let r=0;r<n;r++)for(let c=0;c<n;c++)cellsBy[reg[r][c]].push([r,c]);let clues={};ids.forEach(id=>{let cells=cellsBy[id],p=cells[Math.floor(cells.length/2)],mode=diff==='easy'?'both':diff==='medium'?(Math.random()<.5?'size':'shape'):(Math.random()<.45?'shape':Math.random()<.8?'size':'none');clues[id]={pos:p,size:cells.length,shape:patchShape(cells),mode}});const pal=['#f3c6a8','#b9d9c1','#c6d4ed','#e2c3df','#f0dc9d','#c7e0e3','#d5ceb8','#d4e3b4','#edbfc1','#c8c4e8','#e5d0a4','#b7d7d1'];current={game:'patches',diff,n,reg,ids,cellsBy,clues,pal,active:ids[0],paint:Array.from({length:n},()=>Array(n).fill(null)),completed:false};renderPatches(current)}
+function patches(diff){let def=patchDefs[diff],reg=transformGrid(def.reg,Math.floor(Math.random()*8)),n=reg.length,ids=[...new Set(reg.flat())],cellsBy={};ids.forEach(id=>cellsBy[id]=[]);for(let r=0;r<n;r++)for(let c=0;c<n;c++)cellsBy[reg[r][c]].push([r,c]);let clues={};ids.forEach(id=>{let cells=cellsBy[id],p=cells[Math.floor(cells.length/2)],mode=diff==='easy'?'both':diff==='medium'?(Math.random()<.5?'size':'shape'):(Math.random()<.45?'shape':Math.random()<.8?'size':'none');clues[id]={pos:p,size:cells.length,shape:patchShape(cells),mode}});const pal=['#f3c6a8','#b9d9c1','#c6d4ed','#e2c3df','#f0dc9d','#c7e0e3','#d5ceb8','#d4e3b4','#edbfc1','#c8c4e8','#e5d0a4','#b7d7d1'];current={game:'patches',diff,n,reg,ids,cellsBy,clues,pal,active:ids[0],paint:Array.from({length:n},()=>Array(n).fill(null)),patchSelectedRects:{},patchLogicEvidence:patchEmptyEvidence(),completed:false};renderPatches(current)}
 let patchPaintFrame=0,patchDragFrame=0,patchDragPending=null;
 function patchClueIdAt(r,c){
   if(!current?.clues||!current?.ids)return null;
@@ -3941,9 +3842,11 @@ function commitPatchRectangle(anchor,end,fallbackId,lockedId=null){
   let rectKeys=new Set(info.rect.cells.map(([r,c])=>r+','+c));
   let overwrite=info.rect.cells.some(([r,c])=>current.paint[r][c]!=null&&current.paint[r][c]!==id);
   if(hadOld||overwrite)markBacktrack();
+  current.patchLogicEvidence=patchEmptyEvidence();current.patchSelectedRects=current.patchSelectedRects||{};
   for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(current.paint[r][c]===id&&!rectKeys.has(r+','+c))current.paint[r][c]=null;
   for(let [r,c] of info.rect.cells)current.paint[r][c]=id;
-  current.active=id;drawP();historyRecord({type:'PATCH_RECTANGLE',region:id},before);saveCurrent();updateScoreFlags();maybeAutoFinish();haptic(8);
+  current.patchSelectedRects[id]={r0:info.rect.r0,r1:info.rect.r1,c0:info.rect.c0,c1:info.rect.c1};
+  current.active=id;drawP();historyRecord({type:'PATCH_RECTANGLE',region:id,rectangle:{r0:info.rect.r0,r1:info.rect.r1,c0:info.rect.c0,c1:info.rect.c1}},before);saveCurrent();updateScoreFlags();maybeAutoFinish();haptic(8);
   let b=$('#pboard');if(b&&!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){
     for(let [r,c] of info.rect.cells){let d=patchCellEl(r,c);d?.classList.add('patch-commit')}
     setTimeout(()=>{for(let [r,c] of info.rect.cells)patchCellEl(r,c)?.classList.remove('patch-commit')},180)
@@ -3954,6 +3857,7 @@ function removePatchRectangle(id){
   let before=historySnapshotKey(),changed=false;
   for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(current.paint[r][c]===id){current.paint[r][c]=null;changed=true}
   if(!changed)return false;
+  current.patchLogicEvidence=patchEmptyEvidence();current.patchSelectedRects=current.patchSelectedRects||{};delete current.patchSelectedRects[id];
   markBacktrack();current.active=id;drawP();historyRecord({type:'PATCH_REMOVE',region:id},before);saveCurrent();updateScoreFlags();haptic(7);return true
 }
 function schedulePatchAfterPaint(){
@@ -3966,6 +3870,7 @@ function schedulePatchAfterPaint(){
   })
 }
 function renderPatches(c){
+  c.patchSelectedRects=c.patchSelectedRects||{};c.patchLogicEvidence=c.patchLogicEvidence||patchEmptyEvidence();
   shell(gameLabel('patches'),`${c.n}×${c.n} · ${tr('generated')}`,c.diff,
     `<div class="patch-palette" id="patchPalette" role="toolbar" aria-label="${tr('regionSelection')}"></div><div class="board-wrap patch-board-wrap"><div class="board" id="pboard" style="grid-template-columns:repeat(${c.n},minmax(0,1fr));grid-template-rows:repeat(${c.n},minmax(0,1fr))"></div></div><div class="legend">${tr('patchesLegend')}</div>`,
     gameRules('patches'));
@@ -4017,7 +3922,7 @@ function renderPatches(c){
   b.onpointercancel=e=>finishDrag(e,true);
   drawP();
   $('#checkBtn').onclick=checkP;$('#hintBtn').onclick=hintP;
-  $('#solutionBtn').onclick=()=>{if(paused)return;clearPatchPreview();current.paint=current.reg.map(r=>[...r]);drawP();finish(tr('solutionShown'),'revealed')}
+  $('#solutionBtn').onclick=()=>{if(paused)return;clearPatchPreview();current.paint=current.reg.map(r=>[...r]);current.patchSelectedRects={};for(const id of current.ids){let cells=current.cellsBy?.[id]||[],rs=cells.map(x=>x[0]),cs=cells.map(x=>x[1]);if(cells.length)current.patchSelectedRects[id]={r0:Math.min(...rs),r1:Math.max(...rs),c0:Math.min(...cs),c1:Math.max(...cs)}}current.patchLogicEvidence=patchEmptyEvidence();drawP();finish(tr('solutionShown'),'revealed')}
 }
 function clueHTML(cl){
   let parts=[];
@@ -4034,18 +3939,13 @@ function drawP(){
   updateScoreFlags()
 }
 function checkP(){let n=current.n,all=current.paint.every(row=>row.every(v=>v!==null));if(!all){status(tr('patchAll'),false);return}let cluePositions=new Map(current.ids.map(id=>[current.clues[id].pos.join(','),id]));for(let id of current.ids){let cells=[];for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.paint[r][c]===id)cells.push([r,c]);if(!cells.length){status(tr('patchEach'),false);return}let own=current.clues[id].pos;if(!cells.some(([r,c])=>r===own[0]&&c===own[1])){status(tr('patchOwn'),false);return}let other=cells.some(([r,c])=>cluePositions.has(r+','+c)&&cluePositions.get(r+','+c)!==id);if(other){status(tr('patchTwo'),false);return}let seen=new Set([cells[0].join(',')]),q=[cells[0]],set=new Set(cells.map(x=>x.join(',')));while(q.length){let [r,c]=q.pop();for(let [rr,cc] of [[r+1,c],[r-1,c],[r,c+1],[r,c-1]]){let k=rr+','+cc;if(set.has(k)&&!seen.has(k)){seen.add(k);q.push([rr,cc])}}}if(seen.size!==cells.length){status(tr('patchConnected'),false);return}let cl=current.clues[id],sh=patchShape(cells);if(sh==='libre'){status(tr('patchRect'),false);return}if((cl.mode==='both'||cl.mode==='size')&&cells.length!==cl.size){status(tr('patchSize'),false);return}if((cl.mode==='both'||cl.mode==='shape')&&sh!==cl.shape){status(tr('patchShape'),false);return}}finish(`${tr('congrats')} ${gameLabel('patches')}`)}
-function hintP(){if(current?.training)return trainingCoach();if(paused)return;if(showVisibleErrorsBeforeHint())return;if(showExplorationContradictionBeforeHint())return;let h=findPatchLogicalHint()||findPatchRank1Hint()||findPatchRank2Hint();if(!h)return showNoLogicalHint();let move=lang()==='fr'?`Attribue la case ligne ${h.r+1}, colonne ${h.c+1} à la zone ${h.id+1}.`:`Assign row ${h.r+1}, column ${h.c+1} to region ${h.id+1}.`;hintStage('patches',[h.r,h.c],{move,where:lang()==='fr'?`Le coup est déduit uniquement des indices et cases déjà peintes.`:`The move is deduced only from the clues and cells already painted.`,why:h.rank===2?rank2Why(h):h.rank===1?rank1Why(h):h.why,reveal:tr('patchRevealed'),rank:h.rank||0,value:h.id,reasoning:structuredReasoning('patches',h)},()=>{current.paint[h.r][h.c]=h.id;drawP();maybeAutoFinish()})}
-// ===== v1.2 generators: generated puzzles + uniqueness checks =====
-function countQueensGenerated(reg,limit=2){const n=reg.length;let count=0,usedC=new Set(),usedR=new Set();function bt(r,prev){if(count>=limit)return;if(r===n){count++;return}for(let c=0;c<n;c++){let z=reg[r][c];if(usedC.has(c)||usedR.has(z))continue;if(r>0&&Math.abs(c-prev)===1)continue;usedC.add(c);usedR.add(z);bt(r+1,c);usedC.delete(c);usedR.delete(z);if(count>=limit)return}}bt(0,-99);return count}
-function randomQueenSolution(n){for(let t=0;t<3000;t++){let p=shuffle(Array.from({length:n},(_,i)=>i));if(p.every((c,r)=>r===0||Math.abs(c-p[r-1])!==1))return p}return null}
-function queenRegionsFromSolution(sol,singleCount){const n=sol.length,singleRows=new Set(shuffle(Array.from({length:n},(_,i)=>i)).slice(0,singleCount)),reg=Array.from({length:n},()=>Array(n).fill(-1));for(let r=0;r<n;r++)reg[r][sol[r]]=r;let left=n*n-n;while(left){let options=[];for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(reg[r][c]===-1){let ids=[];for(let [rr,cc] of [[r+1,c],[r-1,c],[r,c+1],[r,c-1]])if(rr>=0&&rr<n&&cc>=0&&cc<n&&reg[rr][cc]>=0&&!singleRows.has(reg[rr][cc])&&!ids.includes(reg[rr][cc]))ids.push(reg[rr][cc]);if(ids.length)options.push([r,c,ids])}if(!options.length)return null;let [r,c,ids]=options[Math.floor(Math.random()*options.length)],sizes=Array(n).fill(0);for(let row of reg)for(let x of row)if(x>=0)sizes[x]++;ids.sort((a,b)=>sizes[a]-sizes[b]);let pool=ids.slice(0,Math.min(2,ids.length)),id=pool[Math.floor(Math.random()*pool.length)];reg[r][c]=id;left--}return reg}
-
-function queenRegionConnectedAfterMove(reg,id,rr,cc){
-  let cells=[];for(let r=0;r<reg.length;r++)for(let c=0;c<reg.length;c++)if(reg[r][c]===id&&!(r===rr&&c===cc))cells.push([r,c]);
-  if(!cells.length)return false;
-  let set=new Set(cells.map(x=>x.join(','))),seen=new Set([cells[0].join(',')]),q=[cells[0]];
-  while(q.length){let [r,c]=q.pop();for(let [r2,c2] of [[r+1,c],[r-1,c],[r,c+1],[r,c-1]]){let k=r2+','+c2;if(set.has(k)&&!seen.has(k)){seen.add(k);q.push([r2,c2])}}}
-  return seen.size===cells.length
+function hintP(){
+  if(current?.training)return trainingCoach();if(paused)return;if(showVisibleErrorsBeforeHint())return;if(showExplorationContradictionBeforeHint())return;
+  if(!patchesLogicAvailable()){showHintNotice(tr('hintError'));return}
+  let result;try{result=patchCurrentLogicResult()}catch(_){showHintNotice(tr('hintError'));return}
+  if(result.contradiction){current.hintFlow=null;clearHintFocus();showHintNotice(`<b>⚠ ${tr('errorDetected')}</b><br>${patchLogicContradictionText(result.contradiction)}`);return}
+  if(!result.deduction){current.hintFlow=null;clearHintFocus();showHintNotice(tr('plNoDeduction'));return}
+  patchCoachHandleDeduction(result.deduction)
 }
 function reduceQueenSingletons(reg,sol,maxSingles){
   reg=reg.map(r=>[...r]);let n=reg.length;
@@ -4245,7 +4145,7 @@ function rectShape(h,w){return h===w?'carré':h>w?'vertical':'horizontal'}
 function possiblePatchRects(n,clue,allCluePos){let out=[];for(let r0=0;r0<n;r0++)for(let r1=r0;r1<n;r1++)for(let c0=0;c0<n;c0++)for(let c1=c0;c1<n;c1++){if(clue.pos[0]<r0||clue.pos[0]>r1||clue.pos[1]<c0||clue.pos[1]>c1)continue;let h=r1-r0+1,w=c1-c0+1,area=h*w,shape=rectShape(h,w);if((clue.mode==='both'||clue.mode==='size')&&area!==clue.size)continue;if((clue.mode==='both'||clue.mode==='shape')&&shape!==clue.shape)continue;let containsOther=false;for(let p of allCluePos)if(p!==clue.pos&&p[0]>=r0&&p[0]<=r1&&p[1]>=c0&&p[1]<=c1){containsOther=true;break}if(!containsOther){let cells=[];for(let r=r0;r<=r1;r++)for(let c=c0;c<=c1;c++)cells.push(r*n+c);out.push(cells)}}return out}
 function countPatchSolutions(n,ids,clues,limit=2){let positions=ids.map(id=>clues[id].pos),opts={};for(let id of ids){opts[id]=possiblePatchRects(n,clues[id],positions);if(!opts[id].length)return 0}let count=0,covered=new Set();function bt(done){if(count>=limit)return;if(done.size===ids.length){if(covered.size===n*n)count++;return}let best=null,bestOpts=null;for(let id of ids)if(!done.has(id)){let avail=opts[id].filter(cells=>cells.every(x=>!covered.has(x)));if(!avail.length)return;if(!best||avail.length<bestOpts.length){best=id;bestOpts=avail;if(avail.length===1)break}}done.add(best);for(let cells of bestOpts){cells.forEach(x=>covered.add(x));bt(done);cells.forEach(x=>covered.delete(x));if(count>=limit)break}done.delete(best)}bt(new Set());return count}
 function generatePatchesPuzzle(diff){let n={easy:5,medium:6,hard:7}[diff],range={easy:[6,8],medium:[8,10],hard:[10,12]}[diff];for(let attempt=0;attempt<160;attempt++){let til=makeRectTiling(n,range);if(!til)continue;let ids=til.rects.map(x=>x.id),clues={};for(let rect of til.rects){let cells=[];for(let r=rect.r;r<rect.r+rect.h;r++)for(let c=rect.c;c<rect.c+rect.w;c++)cells.push([r,c]);let pos=cells[Math.floor(Math.random()*cells.length)];clues[rect.id]={pos,size:rect.h*rect.w,shape:rectShape(rect.h,rect.w),mode:'both'}}if(countPatchSolutions(n,ids,clues,2)!==1)continue;let order=shuffle(ids),choices=diff==='easy'?['size','shape']:diff==='medium'?['size','shape','none']:['none','shape','size'];for(let id of order){let old=clues[id].mode;for(let mode of shuffle(choices)){clues[id].mode=mode;if(countPatchSolutions(n,ids,clues,2)===1)break;clues[id].mode=old}}if(countPatchSolutions(n,ids,clues,2)===1){let cellsBy={};for(let id of ids)cellsBy[id]=[];for(let r=0;r<n;r++)for(let c=0;c<n;c++)cellsBy[til.reg[r][c]].push([r,c]);return {n,reg:til.reg,ids,cellsBy,clues}}}throw new Error('Patches generation failed')}
-function patches(diff){let g=generatePatchesPuzzle(diff);const pal=['#f3c6a8','#b9d9c1','#c6d4ed','#e2c3df','#f0dc9d','#c7e0e3','#d5ceb8','#d4e3b4','#edbfc1','#c8c4e8','#e5d0a4','#b7d7d1'];current={game:'patches',diff,n:g.n,reg:g.reg,ids:g.ids,cellsBy:g.cellsBy,clues:g.clues,pal,active:g.ids[0],paint:Array.from({length:g.n},()=>Array(g.n).fill(null)),generated:true,unique:true,completed:false};renderPatches(current)}
+function patches(diff){let g=generatePatchesPuzzle(diff);const pal=['#f3c6a8','#b9d9c1','#c6d4ed','#e2c3df','#f0dc9d','#c7e0e3','#d5ceb8','#d4e3b4','#edbfc1','#c8c4e8','#e5d0a4','#b7d7d1'];current={game:'patches',diff,n:g.n,reg:g.reg,ids:g.ids,cellsBy:g.cellsBy,clues:g.clues,pal,active:g.ids[0],paint:Array.from({length:g.n},()=>Array(g.n).fill(null)),patchSelectedRects:{},patchLogicEvidence:patchEmptyEvidence(),generated:true,unique:true,completed:false};renderPatches(current)}
 
 function keyboardInput(e){if(!current||paused||current.completed)return;if(current.game==='sudoku'&&current.sel){let n=Number(e.key);if(n>=1&&n<=6){let [r,c]=current.sel;if(current.empty.has(r*6+c)){let prev=current.state[r][c];if(prev!==0&&prev!==n)markBacktrack();current.state[r][c]=n;haptic(6);drawS();saveCurrent();updateScoreFlags();maybeAutoFinish();e.preventDefault()}}else if(e.key==='Backspace'||e.key==='Delete'||e.key==='0'){let [r,c]=current.sel;if(current.empty.has(r*6+c)){if(current.state[r][c]!==0)markBacktrack();current.state[r][c]=0;drawS();saveCurrent();updateScoreFlags();e.preventDefault()}}}}
 document.addEventListener('keydown',keyboardInput);
@@ -4431,4 +4331,4 @@ function patchesCandidate(diff){let g=generatePatchesPuzzle(diff);g.rating=analy
 function queens(diff){let dailyRequest=!!current?.daily,day=current?.dailyDay||localDay(),g=!dailyRequest?takePrecomputed('queens',diff,day):null;if(!g)g=queenCandidateForDisplay(diff,dailyRequest,day);current={game:'queens',diff,n:g.n,reg:g.reg,sol:g.sol,rating:g.rating,state:Array.from({length:g.n},()=>Array(g.n).fill(0)),generated:true,unique:true,completed:false};renderQueens(current)}
 function tango(diff){let dailyRequest=!!current?.daily,g=!dailyRequest?takePrecomputed('tango',diff):null;if(!g)g=targetPick(collectCandidates(()=>tangoCandidate(diff),6),diff);let state=Array.from({length:6},()=>Array(6).fill(-1));for(let i of g.givens)state[Math.floor(i/6)][i%6]=g.sol[Math.floor(i/6)][i%6];current={game:'tango',diff,n:6,sol:g.sol,givens:g.givens,edges:g.edges,rating:g.rating,state,tangoDerivedRelations:[],generated:true,unique:true,completed:false};renderTango(current)}
 function sudoku(diff){let dailyRequest=!!current?.daily,g=!dailyRequest?takePrecomputed('sudoku',diff):null;if(!g)g=targetPick(collectCandidates(()=>sudokuCandidate(diff),8),diff);let sol=g.sol,empty=g.empty;current={game:'sudoku',diff,n:6,sol,empty,rating:g.rating,state:sol.map((r,ri)=>r.map((v,c)=>empty.has(ri*6+c)?0:v)),sel:null,generated:true,unique:true,completed:false};renderSudoku(current)}
-function patches(diff){let dailyRequest=!!current?.daily,g=!dailyRequest?takePrecomputed('patches',diff):null;if(!g)g=targetPick(collectCandidates(()=>patchesCandidate(diff),diff==='hard'?5:4),diff);const pal=['#f3c6a8','#b9d9c1','#c6d4ed','#e2c3df','#f0dc9d','#c7e0e3','#d5ceb8','#d4e3b4','#edbfc1','#c8c4e8','#e5d0a4','#b7d7d1'];current={game:'patches',diff,n:g.n,reg:g.reg,ids:g.ids,cellsBy:g.cellsBy,clues:g.clues,rating:g.rating,pal,active:g.ids[0],paint:Array.from({length:g.n},()=>Array(g.n).fill(null)),generated:true,unique:true,completed:false};renderPatches(current)}
+function patches(diff){let dailyRequest=!!current?.daily,g=!dailyRequest?takePrecomputed('patches',diff):null;if(!g)g=targetPick(collectCandidates(()=>patchesCandidate(diff),diff==='hard'?5:4),diff);const pal=['#f3c6a8','#b9d9c1','#c6d4ed','#e2c3df','#f0dc9d','#c7e0e3','#d5ceb8','#d4e3b4','#edbfc1','#c8c4e8','#e5d0a4','#b7d7d1'];current={game:'patches',diff,n:g.n,reg:g.reg,ids:g.ids,cellsBy:g.cellsBy,clues:g.clues,rating:g.rating,pal,active:g.ids[0],paint:Array.from({length:g.n},()=>Array(g.n).fill(null)),patchSelectedRects:{},patchLogicEvidence:patchEmptyEvidence(),generated:true,unique:true,completed:false};renderPatches(current)}

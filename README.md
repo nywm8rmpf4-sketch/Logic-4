@@ -1,6 +1,78 @@
-# QUADLUD — v2.21.11
+# QUADLUD — v2.21.12
 
 Application web statique mobile-first regroupant **Couronnes**, **Soleil-Lune**, **Grille 6** et **Rectangles**.
+
+## v2.21.12 — moteur d’inférences Rectangles explicable partagé par le Coach et le Tuteur
+
+Cette version reconstruit **Rectangles** autour d’un moteur d’inférences pur et explicable, commun au Logic Coach, au Tuteur et à l’audit logique des coups. Le moteur raisonne uniquement depuis les indices, l’état visible du joueur et les faits déjà démontrés ; il ne lit pas la solution finale pour fabriquer une justification.
+
+### Architecture et domaines
+- Nouveau fichier pur **`patches-logic.js`**, sans DOM et sans accès à la solution finale cachée.
+- Un indice est normalisé en contraintes indépendantes `area` et `shape` : surface+forme, surface seule, forme seule, ou `?` avec `area=null` et `shape=null`.
+- Chaque indice possède un domaine de rectangles candidats : dans la grille, contenant son propre indice, sans autre indice, compatible avec surface, forme et faits logiques courants.
+- Les formes restent strictement celles des règles : carré `height == width`, vertical `height > width`, horizontal `width > height`. Ainsi `6 ▭` accepte 1×6 et 2×3, et `6 ▯` accepte 6×1 et 3×2.
+- Le cœur est générique pour les grilles carrées **5×5 à 10×10**. Le générateur existant reste volontairement inchangé et continue d’exposer Easy=5×5, Medium=6×6, Hard=7×7.
+- Les faits structurés incluent `SELECTED_RECT`, `OWNER`, `NOT_OWNER`, candidats actifs et candidats éliminés. Un `OWNER(cell, clue)` peut donc être démontré avant que le rectangle complet soit connu.
+- Les déductions conservent règle, rang, niveau de technique, prémisses, dépendances, cellules/indices/rectangles de focus, conclusions et données d’explication.
+
+### Fermeture logique — coût 0 / T0
+- `RECTANGLE_DOMAIN` : filtrage mécanique du domaine avec raisons d’élimination conservées.
+- `CLUE_SINGLETON` et `CELL_SINGLETON`.
+- `RECTANGLE_PROPAGATION` et `OWNERSHIP_PROPAGATION`.
+- `RECTANGULAR_CLOSURE` : les `OWNER` d’une même zone imposent toute leur boîte englobante.
+- `AREA_COMPLETION` lorsque la surface connue est exactement celle de la boîte englobante.
+- Les conséquences coût 0 sont fermées jusqu’au point fixe sans augmenter artificiellement le rang.
+
+### Inférences directes — coût +1
+- `COMMON_COVERAGE` (T1) : une case présente dans tous les rectangles encore possibles d’un indice devient `OWNER`.
+- `CELL_LOCKED_TO_CLUE` (T1) : si toutes les couvertures possibles d’une case appartiennent au même indice, cette case devient `OWNER` de cet indice.
+- `COVERAGE_LOCKED_SET` (T2) : réserve un ensemble de cases lorsque la somme des aires minimales des domaines atteint exactement la taille de leur union, y compris sans surfaces imprimées.
+- `NO_SUPPORT_CLUE` et `NO_SUPPORT_CELL` (T2) : éliminent un candidat qui supprimerait tout support à un autre indice ou laisserait une case sans couverture.
+- `LOCAL_DOMAIN_SUPPORT` (T2) : filet local borné, utilisé seulement après les techniques plus simples.
+
+### Hypothèses — coût +2 / T3
+- `ASSUMPTION_CONTRADICTION` applique réellement une hypothèse dans une branche, ferme les conséquences et n’élimine le candidat que si une contradiction structurée est atteinte.
+- `COMMON_CONSEQUENCE` retient un fait commun à toutes les alternatives testées lorsque cette conséquence est réellement démontrée dans chaque branche.
+- Les contradictions reconnues incluent notamment absence de candidat pour un indice, absence de couverture d’une case, chevauchement sélectionné, conflit de propriétaire, autre indice inclus, débordement de surface, forme impossible, déficit de couverture et absence de complétion locale.
+
+### Rang, technique et métriques
+- `rank(conclusion) = max(rank(premises)) + ruleCost` ; le rang dépend de la preuve, jamais du nombre de passages d’une boucle.
+- `techniqueLevel` T0–T3 reste indépendant du rang.
+- Le sélecteur pédagogique privilégie rang minimal, niveau minimal, règle la plus simple et preuve locale.
+- Métriques internes exposées : `maxRank`, `maxTechniqueLevel`, `countCommonCoverage`, `countCellLocked`, `countCoverageLockedSet`, `countNoSupport`, `countLocalDomain`, `countContradiction` et compteur de conséquences communes.
+- Les recherches avancées sont volontairement **bornées** (petits groupes, nombre de candidats et profondeur d’hypothèse). La correction des déductions produites est préservée, mais ces bornes peuvent rendre le moteur incomplet sur certains puzzles complexes : le Tuteur peut alors s’arrêter plutôt que recourir à une solution cachée.
+
+### Logic Coach Rectangles
+- Le Coach travaille sur l’état réel courant du joueur et reconstruit les domaines depuis les zones visibles et les preuves persistées.
+- Deux appuis : d’abord **où regarder**, puis **explication + conséquence** issue de la déduction structurée.
+- Les faits logiques qui n’impliquent pas immédiatement une case peinte (par exemple une élimination de candidat) sont persistés avec rang/provenance afin que Coach, Undo et Redo restent cohérents.
+- L’audit distingue `proven`, `incorrect`, `contradictory` et `not-yet-proven` : un rectangle correspondant à la solution finale mais non encore démontré reste `not-yet-proven`.
+- Les erreurs immédiates restent distinguées : autre indice inclus, mauvaise surface, mauvaise forme, chevauchement et contradictions de couverture.
+
+### Tuteur Rectangles
+- Le Tuteur utilise le **même `PatchesLogic.Session`** que le Coach ; le fallback historique Rectangles fondé sur les complétions exhaustives a été retiré.
+- Chaque étape conserve l’état avant, la preuve principale, la fermeture coût 0, les faits logiques, l’état après et les métriques.
+- Navigation précédente/suivante restaure exactement les snapshots pédagogiques sans modifier la partie réelle.
+- Une étape peut sélectionner un rectangle, attribuer des cases, éliminer des candidats ou expliquer une contradiction, mais jamais rejouer silencieusement la solution finale.
+
+### Undo/Redo, i18n et mobile
+- Les snapshots Rectangles incluent désormais les rectangles sélectionnés et les preuves logiques persistées en plus de `paint` ; Undo/Redo et changement de branche restaurent ou invalident ces faits correctement.
+- **30 langues conservées.** Les explications détaillées FR/EN sont rendues depuis les preuves ; les autres langues conservent les gabarits localisés génériques existants, toujours pilotés par la même déduction structurée.
+- Le nouveau moteur est ajouté au précache du service worker pour préserver le fonctionnement hors ligne.
+- Aucune difficulté Expert n’est ajoutée à Rectangles et le générateur n’est pas modifié.
+
+### Validation v2.21.12
+- Six suites moteur Node réellement exécutées : domaines, fermeture coût 0, règles directes, règles avancées/rangs/persistance, contradictions et résolution complète — **toutes OK**.
+- Tests explicites : surface seule, forme seule, surface+forme, `?`, carré/vertical/horizontal, cas `6 ▭`/`6 ▯`, bords/autre indice, 5×5 et 10×10, cas positifs et négatifs des singletons, ownership, fermeture rectangulaire, saturation N=2/N=3, NO_SUPPORT, LOCAL_DOMAIN_SUPPORT, hypothèse et conséquence commune.
+- Tests de rang : R0 initial et singletons coût 0, OWNER R1 après règle +1, propagation/singleton restant R1, nouvelle règle +1 donnant R2, hypothèse coût +2 depuis R0 donnant R2.
+- Deux fixtures Rectangles existantes sont résolues complètement depuis une grille vide uniquement par déductions structurées ; partition finale validée sans chevauchement ni case libre.
+- Test statique d’intégration : même moteur Coach/Tuteur, ancien moteur d’indices Rectangles retiré, fallback exhaustif Tuteur Rectangles absent, 30 langues conservées, moteur sans DOM ni solution finale.
+- **Chromium réel** : parcours Rectangles FR/EN, Coach deux appuis, erreurs surface/forme, `not-yet-proven`, Undo/Redo/branche, reset, Tuteur complet par preuves et génération 5×5/6×6/7×7 — **OK**.
+- **Viewport tactile Chromium 390×844** : grille synthétique 10×10, Coach et Tuteur, grille contenue dans la largeur et bouton de navigation Tuteur visible sans scroll obligatoire — **OK**.
+- Régression Chromium réelle sur **Couronnes, Soleil-Lune et Grille 6** : démarrage, Coach et Tuteur sans erreur console/page — **OK**.
+- Syntaxe de `app.js`, des trois moteurs logiques, du service worker et du worker vérifiée par Node ; manifeste et build-info parsés comme JSON — **OK**.
+- **Safari/iPhone réel non exécuté** : le contrôle mobile est un navigateur Chromium avec viewport/tactile simulé, pas un E2E Safari/iOS matériel.
+- **Installation/offline PWA réelle non exécutée** dans cet environnement ; le précache est vérifié statiquement.
 
 ## v2.21.11 — moteur d’inférences Soleil/Lune explicable partagé par le Coach et le Tuteur
 
