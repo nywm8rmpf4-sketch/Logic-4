@@ -1,6 +1,41 @@
-# QUADLUD — v2.21.12
+# QUADLUD — v2.21.13
 
 Application web statique mobile-first regroupant **Couronnes**, **Soleil-Lune**, **Grille 6** et **Rectangles**.
+
+## v2.21.13 — Rectangles : manipulation directe et interface tactile
+
+Cette version affine l’interface de **Rectangles** sans modifier son moteur logique ni son générateur. L’objectif est de rapprocher le geste de jeu d’une manipulation directe de rectangles, avec une grille plus lisible et plus prioritaire sur mobile.
+
+### Interaction
+- Suppression de la palette « Zone 1 / Zone 2… » : la zone est déterminée automatiquement par l’unique indice contenu dans le rectangle.
+- **Drag élastique** : le rectangle suit le pointeur en temps réel et peut grandir ou rétrécir avant le relâchement.
+- **Tap sur un rectangle = suppression** ; un tap sur une case vide ne crée rien.
+- **Drag sur un rectangle existant = redimensionnement** : le coin le plus proche du point de départ devient le coin mobile et le coin opposé reste fixe.
+- Seuil en pixels pour distinguer tap et drag, avec **hystérésis de franchissement des cases** afin de stabiliser les gestes sur les grilles denses, notamment 10×10.
+- Un `pointercancel` annule la preview sans modifier la partie.
+
+### Prévisualisation et lisibilité
+- Badge flottant pendant le drag : `hauteur × largeur · aire`.
+- Preview **verte** lorsqu’elle respecte les contraintes explicites de l’indice, **orange** pour une surface/forme incorrecte mais encore enregistrable afin que le Coach puisse expliquer l’erreur, et **rouge** lorsqu’elle est structurellement impossible (aucun/deux indices ou chevauchement).
+- Pour une surface incorrecte, le badge affiche aussi l’aire attendue (`aire / attendu`).
+- Lors d’un chevauchement, les seules cases réellement conflictuelles sont accentuées.
+- Pendant un redimensionnement, l’ancien rectangle est atténué sans être modifié avant le relâchement.
+- Les glyphes Unicode `□ / ▯ / ▭` sont remplacés par de vrais pictogrammes CSS carré/vertical/horizontal, indépendants de la police.
+- Les cases-indices n’ont plus de fond beige ; les indices apparaissent comme de petits badges au-dessus d’une grille uniforme.
+- Les lignes internes sont allégées et le périmètre des rectangles est plus marqué, avec coins visuellement adoucis.
+
+### Mobile / iPhone
+- Sur écran étroit, la **grille passe avant la barre d’actions** afin de rester l’élément dominant.
+- La première rangée d’actions sous la grille est `Annuler / Refaire / Logic Coach / Tuteur`.
+- `Règles` reste directement accessible ; les règles détaillées permanentes sous la grille sont retirées pour Rectangles.
+- Les autres jeux conservent leur disposition actuelle.
+- Le moteur Rectangles reste générique 5×5–10×10 ; le générateur reste inchangé en 5×5/6×6/7×7.
+
+### Validation v2.21.13
+- Suites moteur Rectangles : **6/6 OK**.
+- Test statique d’intégration UI : **OK** (palette absente, pictogrammes CSS, redimensionnement par coin, hystérésis, preview surface/forme, layout mobile board-first).
+- Smoke Chromium Rectangles : **OK**, y compris drag 2×2, tap vide, tap suppression, redimensionnement 2×2→3×3, hystérésis, avertissements surface/forme, Coach, Undo/Redo, Tuteur, FR/EN et grille synthétique 10×10 sur viewport tactile 390×844.
+- Safari/iPhone physique : **non exécuté** dans cet environnement.
 
 ## v2.21.12 — moteur d’inférences Rectangles explicable partagé par le Coach et le Tuteur
 

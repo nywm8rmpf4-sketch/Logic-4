@@ -1,135 +1,103 @@
 # QUADLUD — PROJECT_STATE
 
-**Version :** 2.21.12  
+**Version :** 2.21.13  
 **Date :** 2026-08-16  
-**Dernière étape validée :** étape 9/9 — validation globale et préparation de la source officielle  
+**Dernière étape validée :** étape 4/4 — validation globale et préparation de la source officielle  
 **Prochain jalon roadmap :** v2.22 — Accessibilité
 
 ## État synthétique
 
-v2.21.12 reconstruit le Logic Coach et le mode Tuteur de **Rectangles** autour d'un moteur d'inférences explicables pur, partagé et indépendant du DOM et de la solution finale cachée.
+v2.21.13 améliore l’interface **Rectangles** autour d’une manipulation directe inspirée des usages observés sur des jeux de rectangles tactiles : la palette de zones est supprimée, le rectangle est déterminé par l’unique indice qu’il contient, le drag est élastique et le redimensionnement agit sur un coin avec le coin opposé fixe.
 
-Le moteur repose sur les **domaines de rectangles candidats** de chaque indice, et non sur la seule surface de l'indice. Les quatre types d'indices sont normalisés par deux contraintes indépendantes :
+Cette évolution est **UI uniquement** : `patches-logic.js`, les moteurs Queens/Soleil-Lune et les fonctions algorithmiques du générateur Rectangles n’ont pas été modifiés.
 
-- surface + forme ;
-- surface seule ;
-- forme seule ;
-- `?` = `area=null`, `shape=null`.
+## Architecture logique conservée
 
-Les formes conservent strictement les règles du jeu :
+Le moteur de preuves de v2.21.12 reste la source commune du Logic Coach, du Tuteur et de l’audit Rectangles :
 
-- carré : `height == width` ;
-- vertical : `height > width` ;
-- horizontal : `width > height`.
-
-Le cœur logique accepte les grilles carrées de **5×5 à 10×10**. Le générateur actuel n'a pas été étendu : Easy/Medium/Hard restent respectivement 5×5, 6×6 et 7×7.
-
-## Architecture principale
-
-### Nouveau cœur logique
-
-`patches-logic.js` fournit une session pure `PatchesLogic.Session` avec :
-
-- domaines candidats par indice ;
+- domaines de rectangles candidats ;
 - faits `OWNER`, `NOT_OWNER`, `SELECTED_RECT` ;
-- candidats actifs et éliminés avec provenance ;
-- déductions structurées avec règle, coût, rang, `techniqueLevel`, prémisses, dépendances, focus, conclusions et `explanationData` ;
-- fermeture coût 0 jusqu'au point fixe ;
-- contradictions structurées ;
-- recherche pédagogique de la prochaine déduction ;
-- sérialisation/restauration des preuves logiques pour Undo/Redo ;
-- métriques de raisonnement.
+- déductions structurées avec rang et `techniqueLevel` ;
+- fermeture coût 0 ;
+- règles T1/T2/T3 ;
+- persistance logique compatible Undo/Redo ;
+- aucune justification fabriquée depuis la solution finale.
 
-### Règles coût 0 / T0
+Le moteur reste générique pour les grilles carrées **5×5 à 10×10**. Le générateur reste Easy=5×5, Medium=6×6, Hard=7×7.
 
-- `RECTANGLE_DOMAIN`
-- `CLUE_SINGLETON`
-- `CELL_SINGLETON`
-- `RECTANGLE_PROPAGATION`
-- `OWNERSHIP_PROPAGATION`
-- `RECTANGULAR_CLOSURE`
-- `AREA_COMPLETION`
+## Interaction Rectangles v2.21.13
 
-Les conséquences coût 0 gardent le rang de leurs prémisses.
+### Suppression de la palette
 
-### Règles coût +1
+La barre `Zone 1 / Zone 2 / ...` n’est plus rendue. Lors d’un nouveau drag, la zone est inférée uniquement lorsque le rectangle courant contient exactement un indice.
 
-T1 :
+### Tap / drag
 
-- `COMMON_COVERAGE`
-- `CELL_LOCKED_TO_CLUE`
+- tap sur case vide : aucune action ;
+- tap sur rectangle : suppression du rectangle entier ;
+- drag depuis une case vide : création d’un rectangle ;
+- drag depuis un rectangle existant : redimensionnement ;
+- le coin le plus proche du point de départ est le coin mobile ;
+- le coin opposé est l’ancre fixe ;
+- un offset conserve la forme initiale au début du redimensionnement, même si le doigt n’est pas exactement sur le coin ;
+- `pointercancel` annule la preview sans modifier `paint` ni l’historique.
 
-T2 :
+Un seuil distinct pointeur fin / pointeur tactile distingue le tap du drag.
 
-- `COVERAGE_LOCKED_SET`
-- `NO_SUPPORT_CLUE`
-- `NO_SUPPORT_CELL`
-- `LOCAL_DOMAIN_SUPPORT`
+### Hystérésis
 
-`COVERAGE_LOCKED_SET` utilise `minArea` issu des domaines courants et fonctionne donc également lorsque la surface n'est pas imprimée.
+`patchPointToCellHysteresis()` impose une pénétration minimale dans la case voisine avant de changer le snapping. L’objectif est de limiter les oscillations sur les petites cellules, notamment en 10×10 sur téléphone.
 
-### Règles coût +2 / T3
+### Preview
 
-- `ASSUMPTION_CONTRADICTION`
-- `COMMON_CONSEQUENCE`
+Le drag affiche un badge :
 
-Les hypothèses sont propagées dans des branches réelles. Elles ne sont recherchées qu'après épuisement des techniques directes.
+`hauteur × largeur · aire`
 
-### Rang et niveau de technique
+États :
 
-Le rang suit :
+- vert : surface/forme explicites respectées ;
+- orange : mauvaise surface et/ou mauvaise forme ; le coup reste enregistrable afin que l’Error Coach puisse expliquer l’erreur ;
+- rouge : aucun indice, plusieurs indices, mauvais indice pendant un resize ou chevauchement avec une autre zone ; le coup est rejeté.
 
-`rank(conclusion) = max(rank(premises)) + ruleCost`
+En cas de mauvaise surface, l’aire attendue est ajoutée au badge. En cas de chevauchement, les cases réellement conflictuelles sont accentuées.
 
-`rank` et `techniqueLevel` sont indépendants. Une fermeture coût 0 ne fait pas monter artificiellement le rang.
+Pendant un resize, l’ancien rectangle est seulement atténué visuellement : l’état réel n’est modifié qu’au `pointerup` réussi.
 
-### Contradictions prises en charge
+## Refonte visuelle
 
-- `NO_CANDIDATE_FOR_CLUE`
-- `NO_COVER_FOR_CELL`
-- `SELECTED_OVERLAP`
-- `OWNER_CONFLICT`
-- `OTHER_CLUE_INSIDE`
-- `AREA_OVERFLOW`
-- `SHAPE_IMPOSSIBLE`
-- `COVERAGE_DEFICIT`
-- `NO_LOCAL_COMPLETION`
+- glyphes Unicode de forme remplacés par pictogrammes CSS `square`, `vertical`, `horizontal` ;
+- plus de fond beige sur la case-indice ;
+- badges d’indice blancs et compacts ;
+- grille interne plus légère ;
+- périmètre des rectangles plus marqué ;
+- coins extérieurs visuellement arrondis ;
+- animation de commit conservée, désactivée avec `prefers-reduced-motion`.
 
-## Logic Coach Rectangles
+## Mobile / iPhone
 
-- travaille sur l'état réel courant du joueur ;
-- n'utilise pas la solution finale comme preuve ;
-- premier appui : orientation / zone à observer ;
-- deuxième appui : explication structurée + conséquence ;
-- les surbrillances proviennent des `focusCells`, `focusClues` et rectangles de la preuve ;
-- l'audit distingue `proven`, `incorrect`, `contradictory` et `not-yet-proven` ;
-- un rectangle correspondant à la solution mais non démontré reste `not-yet-proven` ;
-- les preuves sans effet visible immédiat sont persistées avec rang/provenance afin de rester cohérentes après Undo/Redo.
+Sur largeur <= 520 px, le panneau Rectangles passe en layout `flex` ordonné :
 
-## Tuteur Rectangles
+1. en-tête ;
+2. grille ;
+3. courte légende gestuelle ;
+4. barre d’actions ;
+5. messages/Coach/Exploration.
 
-- utilise le même `PatchesLogic.Session` que le Coach ;
-- l'ancien fallback Rectangles fondé sur les complétions exhaustives finales a été supprimé ;
-- chaque étape contient l'état avant, la déduction, la fermeture coût 0, l'état après et les métriques ;
-- navigation arrière/avant par snapshots déterministes ;
-- la partie réelle du joueur n'est pas modifiée par la navigation Tuteur ;
-- une résolution ne peut avancer que par preuves structurées ; si les recherches avancées bornées ne trouvent plus de preuve, le Tuteur s'arrête plutôt que de rejouer la solution finale.
+La première rangée d’actions est :
 
-## Undo/Redo
+- Annuler ;
+- Refaire ;
+- Logic Coach ;
+- Tuteur.
 
-Les snapshots Rectangles incluent désormais :
+Le bouton **Règles** reste visible. Les règles détaillées permanentes sous la grille sont masquées pour Rectangles ; elles restent accessibles par le bouton Règles.
 
-- `paint` ;
-- rectangles sélectionnés ;
-- preuves logiques persistées (OWNER/NOT_OWNER/sélections/éliminations et provenance).
+Les autres jeux gardent leur layout actuel.
 
-Undo, Redo et changement de branche ont été testés. Un nouveau coup après Undo invalide le Redo et les faits logiques dérivés incompatibles.
+## Générateur
 
-## Générateur et difficultés
-
-Aucune modification algorithmique volontaire du générateur Rectangles.
-
-Comparaison source-à-source avec v2.21.11 : les fonctions suivantes sont strictement inchangées :
+Comparaison entre `app.js` v2.21.12 avant modification et v2.21.13 : fonctions strictement inchangées :
 
 - `makeRectTiling`
 - `possiblePatchRects`
@@ -138,68 +106,32 @@ Comparaison source-à-source avec v2.21.11 : les fonctions suivantes sont strict
 - `analyzePatches`
 - `patchesCandidate`
 
-Easy/Medium/Hard restent 5×5/6×6/7×7. Aucun Expert Rectangles n'a été ajouté.
-
-## Internationalisation et mobile
-
-- 30 langues conservées ;
-- moteur logique sans texte français/anglais ;
-- explications détaillées FR/EN rendues par la couche UI depuis la preuve ;
-- autres langues : gabarits localisés génériques existants, toujours pilotés par une preuve structurée ;
-- moteur Rectangles ajouté au précache du service worker ;
-- test mobile réel dans Chromium avec viewport tactile 390×844 et grille synthétique 10×10.
-
-## Contrôle de complexité
-
-Les techniques combinatoires avancées sont volontairement bornées : petits groupes, nombre maximal de candidats et profondeur limitée des hypothèses/conséquences communes.
-
-**Conséquence connue :** les déductions produites restent logiquement correctes, mais le moteur peut être incomplet sur certains puzzles complexes, particulièrement 10×10. Dans ce cas il peut ne pas trouver de prochaine preuve alors qu'une preuve plus coûteuse existe. Il ne bascule pas sur la solution finale.
-
-## Métriques internes exposées
-
-- `maxRank`
-- `maxTechniqueLevel`
-- `deductionsByRule`
-- `countCommonCoverage`
-- `countCellLocked`
-- `countCoverageLockedSet`
-- `countNoSupport`
-- `countLocalDomain`
-- `countContradiction`
-- compteur de `COMMON_CONSEQUENCE`
-
-Ces métriques ne modifient pas automatiquement les difficultés.
-
-## Fichiers créés
-
-- `patches-logic.js`
-- `tests/patches-logic-domain.test.js`
-- `tests/patches-logic-closure.test.js`
-- `tests/patches-logic-direct.test.js`
-- `tests/patches-logic-advanced.test.js`
-- `tests/patches-logic-contradictions.test.js`
-- `tests/patches-logic-solve.test.js`
-- `tests/patches-ui-integration.test.js`
-- `tests/patches-browser-smoke.py`
-- `tests/global-browser-regression.py`
-- `PROJECT_STATE.md`
+Aucun niveau Expert Rectangles ajouté.
 
 ## Fichiers modifiés
 
 - `app.js`
+- `styles.css`
+- `tests/patches-ui-integration.test.js`
+- `tests/patches-browser-smoke.py`
+- `README.md`
+- `ROADMAP.md`
+- `PROJECT_STATE.md`
 - `index.html`
 - `sw.js`
 - `precompute-worker.js`
 - `manifest.webmanifest`
 - `build-info.json`
-- `README.md`
-- `ROADMAP.md`
 
-Fichiers vérifiés mais inchangés : `queens-logic.js`, `tango-logic.js`, `styles.css`, `LICENSE`, icônes.
+## Fichiers logiques vérifiés mais non modifiés
+
+- `patches-logic.js`
+- `queens-logic.js`
+- `tango-logic.js`
 
 ## Tests réellement exécutés et réussis
 
-### Node — moteur Rectangles
+### Moteur Rectangles — Node
 
 - `node tests/patches-logic-domain.test.js` — OK
 - `node tests/patches-logic-closure.test.js` — OK
@@ -208,78 +140,77 @@ Fichiers vérifiés mais inchangés : `queens-logic.js`, `tango-logic.js`, `styl
 - `node tests/patches-logic-contradictions.test.js` — OK
 - `node tests/patches-logic-solve.test.js` — OK
 
-Couverture notamment : surface seule, forme seule, surface+forme, `?`, trois formes, `6 ▭`, `6 ▯`, 5×5, 10×10, singletons, OWNER/NOT_OWNER, propagation, fermeture rectangulaire, AREA_COMPLETION, règles T1/T2/T3, cas négatifs, rangs, persistance des preuves, contradictions et résolutions complètes par preuves.
-
 ### Intégration statique
 
 - `node tests/patches-ui-integration.test.js` — OK
 
-Vérifie notamment : chargement du moteur avant `app.js`, même moteur Coach/Tuteur, absence du fallback exhaustif Rectangles, persistance logique, retrait des anciens moteurs d'indices Rectangles parallèles, tailles du générateur inchangées, absence d'Expert Rectangles, 30 langues, moteur sans DOM/solution finale, copyright conservé.
+Vérifie notamment : moteur commun Coach/Tuteur toujours présent, absence du fallback final, 30 langues, palette UI absente, pictogrammes CSS, fonction d’hystérésis, resize par coin, preview surface/forme et layout mobile board-first.
 
-### Chromium réel — Rectangles
+### Chromium — Rectangles
 
 - `python tests/patches-browser-smoke.py` — OK
 
-Couvre : FR/EN, Coach deux appuis, application des preuves, Undo/Redo, nouvelle branche, reset, rectangle correct dans la solution mais `not-yet-proven`, erreurs forme/surface, Tuteur avec preuves structurées, navigation arrière/avant, résolution complète d'une fixture, génération Easy/Medium/Hard 5/6/7, viewport tactile 390×844 et grille synthétique 10×10.
+Le test existant Coach/Tuteur/Undo/Redo a été conservé et complété avec :
 
-### Chromium réel — non-régression autres jeux
+- absence de palette ;
+- pictogramme de forme CSS ;
+- absence de fond beige de case-indice ;
+- drag 2×2 avec badge `2 × 2 · 4` ;
+- tap vide sans effet ;
+- tap sur rectangle = suppression ;
+- hystérésis : 5 % dans la case voisine ne change pas encore le snap, 30 % le change ;
+- redimensionnement 2×2 → 3×3 avec coin opposé fixe ;
+- preview orange d’une mauvaise forme ;
+- preview orange d’une mauvaise surface avec aire attendue ;
+- conservation des erreurs `P_SHAPE` / `P_SIZE` pour le Coach ;
+- FR/EN ;
+- génération 5×5/6×6/7×7 ;
+- viewport tactile 390×844 avec grille synthétique 10×10 ;
+- grille rendue avant la barre d’actions mobile ;
+- bouton Règles visible ;
+- Coach et Tuteur fonctionnels.
+
+### Non-régression autres jeux
 
 - `python tests/global-browser-regression.py` — OK
 
-Couronnes, Soleil-Lune et Grille 6 : rendu, ouverture du Coach, ouverture/avance du Tuteur, aucune erreur console/page dans ces parcours.
+Couronnes, Soleil-Lune et Grille 6 : rendu, Coach, Tuteur, aucune erreur page/console dans les scénarios couverts.
 
-### Structure / syntaxe / cohérence
+### Structure / syntaxe
 
-- `node -c` : `app.js`, `patches-logic.js`, `queens-logic.js`, `tango-logic.js`, `sw.js`, `precompute-worker.js` — OK
-- parsing JSON : `manifest.webmanifest`, `build-info.json` — OK
-- comparaison source-à-source du générateur Rectangles avec v2.21.11 — fonctions algorithmiques listées ci-dessus inchangées
-- cohérence des URLs versionnées des assets/worker : v2.21.12
-- présence de `patches-logic.js?v=2.21.12` dans le précache service worker
+- `node -c app.js` — OK
+- `node -c patches-logic.js` — OK
+- `node -c queens-logic.js` — OK
+- `node -c tango-logic.js` — OK
+- `node -c sw.js` — OK
+- `node -c precompute-worker.js` — OK
+- parsing `manifest.webmanifest` — OK
+- parsing `build-info.json` — OK
 
-## Tests exécutés et échoués pendant le développement
+## Échecs rencontrés pendant l’implémentation
 
-Tous les problèmes détectés ont été corrigés puis les suites concernées ont été réexécutées avec succès. Principaux incidents de développement :
+1. Premier smoke navigateur après remplacement du bloc UI : `updatePatchCellVisual` avait été supprimée avec l’ancien bloc. Fonction restaurée, syntaxe puis tests relancés.
+2. Le smoke mobile tentait d’ouvrir le Tuteur alors que la fenêtre flottante du Coach était encore ouverte et interceptait le clic. Le scénario de test a été corrigé pour fermer explicitement la fenêtre, conformément au vrai geste utilisateur.
+3. Le test statique attendait encore les glyphes Unicode `▯ / ▭` ; il a été mis à jour pour valider les nouveaux pictogrammes CSS.
 
-- faux `OWNER_CONFLICT` lors d'une dérivation mécanique de `NOT_OWNER` — corrigé ;
-- deux fixtures de tests négatifs/saturation mal construites — corrigées ;
-- classement `SHAPE_IMPOSSIBLE` insuffisamment précis pour une combinaison surface+forme impossible — corrigé ;
-- premier scénario navigateur Undo/Redo contournait l'initialisation normale de l'historique — banc de test corrigé, application non fautive ;
-- URL active du worker restée cache-bustée en v2.21.10 — corrigée en v2.21.12.
-
-Aucun échec bloquant connu ne subsiste dans les tests exécutés.
+Aucun de ces échecs ne subsiste dans la passe finale.
 
 ## Tests non exécutés
 
-- Safari réel / iPhone physique : non exécuté ;
-- E2E PWA d'installation puis fonctionnement réellement hors ligne via service worker : non exécuté dans cet environnement ; précache vérifié statiquement ;
-- campagne exhaustive sur tous les puzzles 10×10 possibles : non exécutée et non réaliste ; moteur avancé volontairement borné.
+- Safari réel sur iPhone physique ;
+- tests multi-touch matériel ;
+- installation PWA puis fonctionnement hors ligne sur appareil réel ;
+- audit formel VoiceOver/accessibilité (prévu au jalon v2.22).
 
-## Risques résiduels connus
+## Risques résiduels
 
-1. Les bornes des techniques T2/T3 peuvent rendre le moteur incomplet sur certains puzzles complexes ; correction logique préservée, complétude non garantie.
-2. L'UI/générateur actuel ne propose que 5×5–7×7 malgré le support moteur 5×5–10×10 ; 10×10 a été validé sur fixture synthétique, pas comme difficulté générée.
-3. Les explications les plus détaillées sont FR/EN ; les 28 autres langues utilisent le fallback pédagogique localisé générique existant.
-4. Safari/iOS matériel et offline PWA réel restent à valider sur environnement cible.
-
-## Décisions d'architecture importantes
-
-- un seul moteur de preuves pour Coach, Tuteur et audit Rectangles ;
-- pas d'explication sans `Deduction` structurée ;
-- `OWNER` est un fait de premier ordre, indépendant d'un rectangle déjà sélectionné ;
-- `?` n'a aucune branche solveur spéciale : absence de contrainte de surface et de forme ;
-- fermeture coût 0 au point fixe ;
-- rang fondé sur les prémisses, techniqueLevel indépendant ;
-- faits logiques persistés dans l'historique lorsque nécessaire ;
-- aucune lecture de la solution finale dans le moteur logique ;
-- pas de fallback exhaustif final pour le Tuteur Rectangles ;
-- algorithmes avancés bornés et préférence stricte aux règles simples ;
-- générateur et difficultés conservés.
+- Le seuil et l’hystérésis tactiles sont validés sous Chromium, mais leur sensation exacte doit encore être confirmée sur Safari/iPhone physique.
+- Le redimensionnement choisit le coin géométriquement le plus proche du point de contact ; lorsque le contact est exactement au centre d’un rectangle pair, le choix peut être visuellement équivalent mais dépend du premier coin minimal rencontré.
+- Les erreurs surface/forme restent volontairement enregistrables afin de préserver l’Error Coach ; seules les erreurs structurelles (indice absent/multiple, chevauchement) bloquent le commit.
 
 ## Prochaine étape
 
-**v2.22 — Accessibilité**, conformément à `ROADMAP.md`.
-
----
+Roadmap inchangée : **v2.22 — Accessibilité**.
 
 Copyright © 2026 Serge Benoliel  
 All rights reserved.

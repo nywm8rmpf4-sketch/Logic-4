@@ -5,7 +5,7 @@
  */
 'use strict';
 const $=s=>document.querySelector(s), app=$('#app'), toast=$('#toast'), timerEl=$('#timer');
-const VERSION='2.21.12', SAVE_KEY='logic4-save-v1';
+const VERSION='2.21.13', SAVE_KEY='logic4-save-v1';
 let current=null, tick=null, startedAt=0, elapsedBase=0, paused=false;
 const I18N={
 fr:{
@@ -1081,7 +1081,7 @@ function returnBeforeLastError(){
 }
 function captureRejectedPatchError(info){
   if(!current||current.game!=='patches'||!info)return null;
-  let rule=info.clues?.length>1?'P_TWO_CLUES':info.clues?.length===0?'P_CLUE':patchRectOverlapsOther(info.rect,info.id)?'P_OVERLAP':'P_CLUE';
+  let rule=info.reason==='MULTIPLE_CLUES'?'P_TWO_CLUES':info.reason==='OVERLAP'?'P_OVERLAP':'P_CLUE';
   let e={schema:1,source:'visible-state',game:'patches',rule,at:Date.now(),canReturn:false,cells:info.rect?.cells||[],target:info.rect?.cells?.[0]||null,region:info.id};
   current.lastError=e;errorUsage('rejected');clearErrorFocus();refreshErrorCoach();return e
 }
@@ -2896,7 +2896,7 @@ function ensurePrecomputeWorker(){
   if(precomputeWorker)return precomputeWorker;
   if(typeof Worker==='undefined')return null;
   try{
-    let w=new Worker('./precompute-worker.js?v=2.21.12');
+    let w=new Worker('./precompute-worker.js?v=2.21.13');
     w.onmessage=e=>{
       let m=e.data||{};precomputeBusy=false;
       if(m.ok&&m.day===precomputeDay&&m.candidate){
@@ -3741,6 +3741,7 @@ hard:{n:7,reg:[[0,0,1,1,1,2,2],[0,3,3,1,2,2,4],[0,3,5,5,5,4,4],[6,3,5,7,7,7,4],[
 function patchShape(cells){let rs=cells.map(x=>x[0]),cs=cells.map(x=>x[1]),h=Math.max(...rs)-Math.min(...rs)+1,w=Math.max(...cs)-Math.min(...cs)+1,rect=h*w===cells.length;if(!rect)return 'libre';if(h===w)return 'carré';return h>w?'vertical':'horizontal'}
 function patches(diff){let def=patchDefs[diff],reg=transformGrid(def.reg,Math.floor(Math.random()*8)),n=reg.length,ids=[...new Set(reg.flat())],cellsBy={};ids.forEach(id=>cellsBy[id]=[]);for(let r=0;r<n;r++)for(let c=0;c<n;c++)cellsBy[reg[r][c]].push([r,c]);let clues={};ids.forEach(id=>{let cells=cellsBy[id],p=cells[Math.floor(cells.length/2)],mode=diff==='easy'?'both':diff==='medium'?(Math.random()<.5?'size':'shape'):(Math.random()<.45?'shape':Math.random()<.8?'size':'none');clues[id]={pos:p,size:cells.length,shape:patchShape(cells),mode}});const pal=['#f3c6a8','#b9d9c1','#c6d4ed','#e2c3df','#f0dc9d','#c7e0e3','#d5ceb8','#d4e3b4','#edbfc1','#c8c4e8','#e5d0a4','#b7d7d1'];current={game:'patches',diff,n,reg,ids,cellsBy,clues,pal,active:ids[0],paint:Array.from({length:n},()=>Array(n).fill(null)),patchSelectedRects:{},patchLogicEvidence:patchEmptyEvidence(),completed:false};renderPatches(current)}
 let patchPaintFrame=0,patchDragFrame=0,patchDragPending=null;
+const PATCH_DRAG_THRESHOLD_FINE=5,PATCH_DRAG_THRESHOLD_COARSE=9,PATCH_HYSTERESIS=.18;
 function patchClueIdAt(r,c){
   if(!current?.clues||!current?.ids)return null;
   for(let id of current.ids){let pos=current.clues[id]?.pos;if(pos&&pos[0]===r&&pos[1]===c)return id}
@@ -3750,7 +3751,7 @@ function patchCellEl(r,c){let b=$('#pboard');return b?.children?.[r*current.n+c]
 function patchRect(a,b){
   let r0=Math.min(a[0],b[0]),r1=Math.max(a[0],b[0]),c0=Math.min(a[1],b[1]),c1=Math.max(a[1],b[1]),cells=[];
   for(let r=r0;r<=r1;r++)for(let c=c0;c<=c1;c++)cells.push([r,c]);
-  return {r0,r1,c0,c1,cells}
+  return {r0,r1,c0,c1,h:r1-r0+1,w:c1-c0+1,area:(r1-r0+1)*(c1-c0+1),cells}
 }
 function patchRectClues(rect){
   let out=[];
@@ -3769,11 +3770,20 @@ function patchPointToCell(x,y,b=$('#pboard')){
   let r=Math.max(0,Math.min(n-1,Math.floor((yy-q.top)/q.height*n)));
   return [r,c]
 }
+function patchPointToCellHysteresis(x,y,previous,b=$('#pboard'),margin=PATCH_HYSTERESIS){
+  let raw=patchPointToCell(x,y,b);if(!raw||!previous||!b||!current)return raw;
+  let q=b.getBoundingClientRect(),n=current.n,cw=q.width/n,ch=q.height/n;
+  let ux=(Math.max(q.left,Math.min(x,q.right-0.01))-q.left)/cw,uy=(Math.max(q.top,Math.min(y,q.bottom-0.01))-q.top)/ch;
+  let r=raw[0],c=raw[1],pr=previous[0],pc=previous[1];
+  if(Math.abs(c-pc)===1){if(c>pc&&ux<pc+1+margin)c=pc;else if(c<pc&&ux>pc-margin)c=pc}
+  if(Math.abs(r-pr)===1){if(r>pr&&uy<pr+1+margin)r=pr;else if(r<pr&&uy>pr-margin)r=pr}
+  return [Math.max(0,Math.min(n-1,r)),Math.max(0,Math.min(n-1,c))]
+}
 function updatePatchCellVisual(r,c){
   if(!current||current.game!=='patches'||r<0||c<0||r>=current.n||c>=current.n)return;
   let d=patchCellEl(r,c);if(!d)return;
-  let id=current.paint[r][c],clueId=d.dataset.clueId===''||d.dataset.clueId==null?null:+d.dataset.clueId;
-  let fill=id==null?(clueId==null?'#fff':'#f7f1e5'):current.pal[id%current.pal.length];
+  let id=current.paint[r][c];
+  let fill=id==null?'#fff':current.pal[id%current.pal.length];
   d.style.setProperty('--patch-fill',fill);
   d.classList.toggle('paint',id!=null);
   d.classList.remove('patch-edge-t','patch-edge-r','patch-edge-b','patch-edge-l');
@@ -3784,36 +3794,65 @@ function updatePatchCellVisual(r,c){
     if(c===0||current.paint[r][c-1]!==id)d.classList.add('patch-edge-l')
   }
 }
-function drawPatchPalette(){
-  let pp=$('#patchPalette');if(!pp)return;
-  pp.querySelectorAll('.patch-chip').forEach(x=>{
-    let active=+x.dataset.id===current.active;
-    x.classList.toggle('active',active);
-    x.setAttribute('aria-pressed',active?'true':'false')
-  })
+function patchRectForRegion(id){
+  let known=current.patchSelectedRects?.[id];if(known)return {r0:known.r0,r1:known.r1,c0:known.c0,c1:known.c1};
+  let cells=[];for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(current.paint[r][c]===id)cells.push([r,c]);
+  if(!cells.length)return null;let rs=cells.map(x=>x[0]),cs=cells.map(x=>x[1]);return {r0:Math.min(...rs),r1:Math.max(...rs),c0:Math.min(...cs),c1:Math.max(...cs)}
+}
+function patchResizeStart(id,x,y,b=$('#pboard')){
+  let rect=patchRectForRegion(id);if(!rect||!b)return null;
+  let q=b.getBoundingClientRect(),cw=q.width/current.n,ch=q.height/current.n;
+  let corners=[
+    {end:[rect.r0,rect.c0],anchor:[rect.r1,rect.c1]},
+    {end:[rect.r0,rect.c1],anchor:[rect.r1,rect.c0]},
+    {end:[rect.r1,rect.c0],anchor:[rect.r0,rect.c1]},
+    {end:[rect.r1,rect.c1],anchor:[rect.r0,rect.c0]}
+  ];
+  for(let k of corners){k.x=q.left+(k.end[1]+.5)*cw;k.y=q.top+(k.end[0]+.5)*ch;k.d=(k.x-x)**2+(k.y-y)**2}
+  let moving=corners.sort((a,b)=>a.d-b.d)[0];
+  return {anchor:moving.anchor,end:moving.end,offsetX:moving.x-x,offsetY:moving.y-y}
+}
+function patchShapeForRect(rect){return rect.h===rect.w?'carré':rect.h>rect.w?'vertical':'horizontal'}
+function patchPreviewInfo(anchor,end,lockedId=null){
+  let rect=patchRect(anchor,end),clues=patchRectClues(rect),id=lockedId!=null?lockedId:(clues.length===1?clues[0]:null);
+  let clueOK=clues.length===1&&(lockedId==null||clues[0]===lockedId);
+  let overlap=clueOK&&patchRectOverlapsOther(rect,id),cl=id!=null?current.clues[id]:null;
+  let areaOK=true,shapeOK=true;
+  if(clueOK&&cl){
+    if(cl.mode==='both'||cl.mode==='size')areaOK=rect.area===cl.size;
+    if(cl.mode==='both'||cl.mode==='shape')shapeOK=patchShapeForRect(rect)===cl.shape
+  }
+  let reason=clues.length===0?'NO_CLUE':clues.length>1?'MULTIPLE_CLUES':lockedId!=null&&clues[0]!==lockedId?'WRONG_CLUE':overlap?'OVERLAP':!areaOK?'WRONG_AREA':!shapeOK?'WRONG_SHAPE':'VALID';
+  let commitAllowed=clueOK&&!overlap,valid=commitAllowed&&areaOK&&shapeOK,warning=commitAllowed&&!valid;
+  return {rect,clues,id,cl,clueOK,overlap,areaOK,shapeOK,commitAllowed,valid,warning,reason,lockedId}
+}
+function patchDragBadge(info){
+  let badge=$('#patchDragBadge');if(!badge||!info)return;
+  let n=current.n,r=info.rect,above=r.r0>0;
+  badge.textContent=`${r.h} × ${r.w} · ${r.area}${!info.areaOK&&info.cl?.size!=null?` / ${info.cl.size}`:''} ${info.valid?'✓':info.warning?'!':'×'}`;
+  badge.className='patch-drag-badge '+(info.valid?'valid':info.warning?'warning':'invalid')+(above?' above':' below');
+  badge.style.left=`${((r.c0+r.c1+1)/(2*n))*100}%`;
+  badge.style.top=above?`${(r.r0/n)*100}%`:`${((r.r1+1)/n)*100}%`;
+  badge.hidden=false
 }
 function clearPatchPreview(){
   let b=$('#pboard');if(!b)return;
-  b.classList.remove('patch-rect-dragging','patch-preview-invalid');
-  for(let d of b.children){
-    d.classList.remove('patch-preview','patch-preview-t','patch-preview-r','patch-preview-b','patch-preview-l','patch-preview-invalid-cell');
+  b.classList.remove('patch-rect-dragging','patch-preview-invalid','patch-preview-warning','patch-preview-overlap-mode');
+  for(let d of b.querySelectorAll('.patch-cell')){
+    d.classList.remove('patch-preview','patch-preview-t','patch-preview-r','patch-preview-b','patch-preview-l','patch-preview-invalid-cell','patch-preview-overlap','patch-preview-clue-active','patch-preview-clue-conflict','patch-resize-source');
     d.style.removeProperty('--patch-preview-fill')
   }
+  let badge=$('#patchDragBadge');if(badge)badge.hidden=true
 }
-function patchPreviewInfo(anchor,end,fallbackId,lockedId=null){
-  let rect=patchRect(anchor,end),clues=patchRectClues(rect);
-  let id=lockedId!=null?lockedId:(clues.length===1?clues[0]:fallbackId);
-  let clueOK=clues.length===1&&(lockedId==null||clues[0]===lockedId);
-  let valid=clueOK&&!patchRectOverlapsOther(rect,id);
-  return {rect,clues,id,valid,lockedId}
-}
-function renderPatchPreview(anchor,end,fallbackId,lockedId=null){
+function renderPatchPreview(anchor,end,lockedId=null){
   let b=$('#pboard');if(!b)return null;
   clearPatchPreview();
-  let info=patchPreviewInfo(anchor,end,fallbackId,lockedId),color=current.pal[info.id%current.pal.length];
+  let info=patchPreviewInfo(anchor,end,lockedId),color=info.id==null?'#d7d7d2':current.pal[info.id%current.pal.length];
   b.classList.add('patch-rect-dragging');
-  if(!info.valid)b.classList.add('patch-preview-invalid');
-  if(info.clues.length===1&&current.active!==info.id){current.active=info.id;drawPatchPalette()}
+  if(info.warning)b.classList.add('patch-preview-warning');
+  if(!info.commitAllowed)b.classList.add('patch-preview-invalid');
+  if(info.reason==='OVERLAP')b.classList.add('patch-preview-overlap-mode');
+  if(lockedId!=null)for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(current.paint[r][c]===lockedId)patchCellEl(r,c)?.classList.add('patch-resize-source');
   for(let [r,c] of info.rect.cells){
     let d=patchCellEl(r,c);if(!d)continue;
     d.classList.add('patch-preview');d.style.setProperty('--patch-preview-fill',color);
@@ -3821,23 +3860,28 @@ function renderPatchPreview(anchor,end,fallbackId,lockedId=null){
     if(r===info.rect.r1)d.classList.add('patch-preview-b');
     if(c===info.rect.c0)d.classList.add('patch-preview-l');
     if(c===info.rect.c1)d.classList.add('patch-preview-r');
-    if(!info.valid)d.classList.add('patch-preview-invalid-cell')
+    if(!info.commitAllowed)d.classList.add('patch-preview-invalid-cell');
+    if(info.reason==='OVERLAP'&&current.paint[r][c]!=null&&current.paint[r][c]!==info.id)d.classList.add('patch-preview-overlap')
   }
-  return info
+  for(let clueId of info.clues){let pos=current.clues[clueId]?.pos,d=pos?patchCellEl(pos[0],pos[1]):null;if(d)d.classList.add(info.clues.length===1&&clueId===info.id?'patch-preview-clue-active':'patch-preview-clue-conflict')}
+  patchDragBadge(info);return info
 }
-function schedulePatchDragPreview(anchor,end,fallbackId,lockedId=null){
-  patchDragPending={anchor:[...anchor],end:[...end],fallbackId,lockedId};
+function schedulePatchDragPreview(anchor,end,lockedId=null){
+  patchDragPending={anchor:[...anchor],end:[...end],lockedId};
   if(patchDragFrame)return;
   patchDragFrame=requestAnimationFrame(()=>{
     patchDragFrame=0;
     let p=patchDragPending;patchDragPending=null;
-    if(p)renderPatchPreview(p.anchor,p.end,p.fallbackId,p.lockedId)
+    if(p)renderPatchPreview(p.anchor,p.end,p.lockedId)
   })
 }
-function commitPatchRectangle(anchor,end,fallbackId,lockedId=null){
-  let before=historySnapshotKey(),info=patchPreviewInfo(anchor,end,fallbackId,lockedId);
+function commitPatchRectangle(anchor,end,legacyId=null,lockedId=null){
+  // legacyId is intentionally accepted for compatibility with existing tests/callers;
+  // ownership is now always inferred from the single clue, or locked while resizing.
+  if(lockedId==null&&legacyId!=null&&patchClueIdAt(anchor[0],anchor[1])===legacyId)lockedId=null;
+  let before=historySnapshotKey(),info=patchPreviewInfo(anchor,end,lockedId);
   clearPatchPreview();
-  if(!info.valid){captureRejectedPatchError(info);haptic(18);return false}
+  if(!info.commitAllowed){captureRejectedPatchError(info);haptic(18);return false}
   let id=info.id,hadOld=current.paint.some(row=>row.some(v=>v===id));
   let rectKeys=new Set(info.rect.cells.map(([r,c])=>r+','+c));
   let overwrite=info.rect.cells.some(([r,c])=>current.paint[r][c]!=null&&current.paint[r][c]!==id);
@@ -3846,7 +3890,7 @@ function commitPatchRectangle(anchor,end,fallbackId,lockedId=null){
   for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(current.paint[r][c]===id&&!rectKeys.has(r+','+c))current.paint[r][c]=null;
   for(let [r,c] of info.rect.cells)current.paint[r][c]=id;
   current.patchSelectedRects[id]={r0:info.rect.r0,r1:info.rect.r1,c0:info.rect.c0,c1:info.rect.c1};
-  current.active=id;drawP();historyRecord({type:'PATCH_RECTANGLE',region:id,rectangle:{r0:info.rect.r0,r1:info.rect.r1,c0:info.rect.c0,c1:info.rect.c1}},before);saveCurrent();updateScoreFlags();maybeAutoFinish();haptic(8);
+  current.active=id;drawP();historyRecord({type:'PATCH_RECTANGLE',region:id,rectangle:{r0:info.rect.r0,r1:info.rect.r1,c0:info.rect.c0,c1:info.rect.c1}},before);saveCurrent();updateScoreFlags();maybeAutoFinish();haptic(info.warning?12:8);
   let b=$('#pboard');if(b&&!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){
     for(let [r,c] of info.rect.cells){let d=patchCellEl(r,c);d?.classList.add('patch-commit')}
     setTimeout(()=>{for(let [r,c] of info.rect.cells)patchCellEl(r,c)?.classList.remove('patch-commit')},180)
@@ -3872,17 +3916,9 @@ function schedulePatchAfterPaint(){
 function renderPatches(c){
   c.patchSelectedRects=c.patchSelectedRects||{};c.patchLogicEvidence=c.patchLogicEvidence||patchEmptyEvidence();
   shell(gameLabel('patches'),`${c.n}×${c.n} · ${tr('generated')}`,c.diff,
-    `<div class="patch-palette" id="patchPalette" role="toolbar" aria-label="${tr('regionSelection')}"></div><div class="board-wrap patch-board-wrap"><div class="board" id="pboard" style="grid-template-columns:repeat(${c.n},minmax(0,1fr));grid-template-rows:repeat(${c.n},minmax(0,1fr))"></div></div><div class="legend">${tr('patchesLegend')}</div>`,
+    `<div class="board-wrap patch-board-wrap"><div class="board" id="pboard" style="grid-template-columns:repeat(${c.n},minmax(0,1fr));grid-template-rows:repeat(${c.n},minmax(0,1fr))"></div><div class="patch-drag-badge" id="patchDragBadge" hidden aria-live="polite"></div></div><div class="legend patch-gesture-legend">↘︎ ${tr('patchesLegend')}</div>`,
     gameRules('patches'));
-  let pp=$('#patchPalette');
-  c.ids.forEach(id=>{
-    let bt=document.createElement('button');
-    bt.className='patch-chip';bt.style.setProperty('--chip-color',c.pal[id%c.pal.length]);
-    bt.style.background=c.pal[id%c.pal.length];bt.dataset.id=id;
-    bt.textContent=`${tr('zone')} ${id+1}`;bt.setAttribute('aria-pressed','false');
-    bt.onclick=touchSave(()=>{current.active=+bt.dataset.id;drawPatchPalette();haptic(5)});
-    pp.appendChild(bt)
-  });
+  app.querySelector('.panel')?.classList.add('patch-game-panel');
   let clueAt=new Map(c.ids.map(id=>[c.clues[id].pos.join(','),id]));
   let b=$('#pboard'),drag=null;
   for(let r=0;r<c.n;r++)for(let col=0;col<c.n;col++){
@@ -3892,31 +3928,30 @@ function renderPatches(c){
     else d.dataset.clueId='';
     d.onpointerdown=e=>{
       if(paused)return;e.preventDefault();
-      let existing=current.paint[r][col],startClue=patchClueIdAt(r,col),fallback=startClue??existing??current.active;
-      if(startClue!=null&&current.active!==startClue){current.active=startClue;drawPatchPalette()}
-      drag={pointerId:e.pointerId,anchor:[r,col],end:[r,col],fallbackId:fallback,lockedId:existing,startExisting:existing,moved:false};
-      try{b.setPointerCapture(e.pointerId)}catch(_){}
-      if(existing==null)renderPatchPreview(drag.anchor,drag.end,drag.fallbackId,drag.lockedId);haptic(5)
+      let existing=current.paint[r][col],resize=existing!=null?patchResizeStart(existing,e.clientX,e.clientY,b):null;
+      drag={pointerId:e.pointerId,startX:e.clientX,startY:e.clientY,lastX:e.clientX,lastY:e.clientY,threshold:coarsePointer()?PATCH_DRAG_THRESHOLD_COARSE:PATCH_DRAG_THRESHOLD_FINE,startExisting:existing,lockedId:existing,moved:false,offsetX:resize?.offsetX||0,offsetY:resize?.offsetY||0,anchor:resize?.anchor||[r,col],end:resize?.end||[r,col]};
+      try{b.setPointerCapture(e.pointerId)}catch(_){}haptic(4)
     };
     b.appendChild(d)
   }
   b.onpointermove=e=>{
-    if(!drag||e.pointerId!==drag.pointerId)return;e.preventDefault();
-    let cell=patchPointToCell(e.clientX,e.clientY,b);if(!cell)return;
-    if(cell[0]===drag.end[0]&&cell[1]===drag.end[1])return;
-    drag.end=cell;drag.moved=drag.moved||cell[0]!==drag.anchor[0]||cell[1]!==drag.anchor[1];
-    schedulePatchDragPreview(drag.anchor,drag.end,drag.fallbackId,drag.lockedId)
+    if(!drag||e.pointerId!==drag.pointerId)return;e.preventDefault();drag.lastX=e.clientX;drag.lastY=e.clientY;
+    if(!drag.moved&&Math.hypot(e.clientX-drag.startX,e.clientY-drag.startY)<drag.threshold)return;
+    drag.moved=true;
+    let px=e.clientX+drag.offsetX,py=e.clientY+drag.offsetY,cell=patchPointToCellHysteresis(px,py,drag.end,b);if(!cell)return;
+    if(cell[0]===drag.end[0]&&cell[1]===drag.end[1]&&$('#patchDragBadge')&&!$('#patchDragBadge').hidden)return;
+    drag.end=cell;schedulePatchDragPreview(drag.anchor,drag.end,drag.lockedId)
   };
   let finishDrag=(e,cancel=false)=>{
     if(!drag||e.pointerId!==drag.pointerId)return;
     try{b.releasePointerCapture(drag.pointerId)}catch(_){}
     let done=drag;drag=null;
     if(cancel){clearPatchPreview();return}
-    let finalCell=patchPointToCell(e.clientX,e.clientY,b);if(finalCell){done.end=finalCell;done.moved=done.moved||finalCell[0]!==done.anchor[0]||finalCell[1]!==done.anchor[1]};
+    if(!done.moved){clearPatchPreview();if(done.startExisting!=null)removePatchRectangle(done.startExisting);return}
+    let finalCell=patchPointToCellHysteresis(e.clientX+done.offsetX,e.clientY+done.offsetY,done.end,b);if(finalCell)done.end=finalCell;
     if(patchDragPending){patchDragPending=null}
     if(patchDragFrame){try{cancelAnimationFrame(patchDragFrame)}catch(_){};patchDragFrame=0}
-    if(!done.moved&&done.startExisting!=null){clearPatchPreview();removePatchRectangle(done.startExisting);return}
-    commitPatchRectangle(done.anchor,done.end,done.fallbackId,done.lockedId)
+    commitPatchRectangle(done.anchor,done.end,null,done.lockedId)
   };
   b.onpointerup=e=>finishDrag(e,false);
   b.onpointercancel=e=>finishDrag(e,true);
@@ -3927,14 +3962,13 @@ function renderPatches(c){
 function clueHTML(cl){
   let parts=[];
   if(cl.mode==='both'||cl.mode==='size')parts.push(`<b>${cl.size}</b>`);
-  if(cl.mode==='both'||cl.mode==='shape')parts.push(`<span>${cl.shape==='carré'?'□':cl.shape==='vertical'?'▯':cl.shape==='horizontal'?'▭':'✣'}</span>`);
-  if(cl.mode==='none')parts.push('<b>?</b>');
-  return `<span class="patch-clue">${parts.join('')}</span>`
+  if(cl.mode==='both'||cl.mode==='shape')parts.push(`<span class="patch-shape-icon ${cl.shape==='carré'?'square':cl.shape==='vertical'?'vertical':'horizontal'}" aria-hidden="true"></span>`);
+  if(cl.mode==='none')parts.push('<b class="patch-question">?</b>');
+  return `<span class="patch-clue${parts.length>1?' combined':''}">${parts.join('')}</span>`
 }
 function drawP(){
   let b=$('#pboard');if(!b||!current||current.game!=='patches')return;
   for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)updatePatchCellVisual(r,c);
-  drawPatchPalette();
   applyIllegalClasses(b,patchIllegalCells(),current.n);
   updateScoreFlags()
 }
