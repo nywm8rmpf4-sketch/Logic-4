@@ -1,6 +1,42 @@
-# QUADLUD — v2.21.14
+# QUADLUD — v2.21.16
 
 Application web statique mobile-first regroupant **Couronnes**, **Soleil-Lune**, **Grille 6** et **Rectangles**.
+
+## v2.21.16 — Rectangles : indices responsives selon la taille des cellules
+
+Patch de lisibilité ciblé de Rectangles, sans modification du moteur logique ni du générateur.
+
+### Lisibilité responsive
+- La taille des indices n’est plus plafonnée par une valeur fixe dépendant du viewport. Elle est calculée depuis la **taille réelle d’une cellule** du plateau.
+- Les nombres, le `?`, les pictogrammes carré/vertical/horizontal, leur épaisseur de trait, le padding et le badge suivent la même échelle bornée.
+- Sur un plateau 5×5 de tablette avec des cellules d’environ 124 px, le nombre atteint **32 px** ; sur une grille 10×10 de type iPhone avec des cellules d’environ 34 px, il reste à **13 px** afin de ne pas déborder.
+- Un `ResizeObserver` recalcule automatiquement l’échelle lorsque le plateau change de taille (rotation, redimensionnement, changement de layout).
+- Le **Tuteur Rectangles** utilise la même adaptation de taille.
+
+### Validation v2.21.16
+- 6 suites moteur Rectangles : **OK**.
+- Test statique d’intégration Rectangles : **OK**.
+- Smoke Chromium Rectangles : **OK**, avec contrôle explicite des tailles sur grand plateau et sur grille synthétique 10×10 mobile.
+- Tuteur Rectangles : variable de taille responsive effectivement calculée — **OK**.
+- Non-régression Chromium Couronnes / Soleil-Lune / Grille 6 : **OK**.
+- Safari/iPhone/iPad physique : **non exécuté** dans cet environnement.
+
+## v2.21.15 — Rectangles : suppression des séparations orange/rouges internes
+
+Patch visuel ciblé de Rectangles, sans modification du moteur logique ni du générateur.
+
+### Correction
+- L’alerte **coup non encore justifié** n’utilise plus un `outline` sur chaque cellule d’une zone.
+- Le signal orange recolore uniquement le **périmètre réel** déjà défini par les classes `patch-edge-*`. Une séparation entre deux cases appartenant au même rectangle reste donc à `0 px`.
+- Lorsqu’une partie Rectangles est terminée, les surbrillances « non justifié » sont retirées afin que le plateau de victoire reste visuellement propre.
+- Le comportement d’erreur rouge introduit en v2.21.14 reste inchangé : teinte légère sans faux quadrillage interne.
+
+### Validation v2.21.15
+- 6 suites moteur Rectangles : **OK**.
+- Test statique d’intégration Rectangles : **OK**.
+- Smoke Chromium Rectangles : **OK**, avec contrôle explicite de l’absence de bord orange/rouge entre deux cellules adjacentes d’un même rectangle et nettoyage après victoire.
+- Non-régression Chromium Couronnes / Soleil-Lune / Grille 6 : **OK**.
+- Safari/iPhone physique : **non exécuté** dans cet environnement.
 
 ## v2.21.14 — Rectangles : tap sur indice et correction des contours d’erreur
 

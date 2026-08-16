@@ -5,7 +5,7 @@
  */
 'use strict';
 const $=s=>document.querySelector(s), app=$('#app'), toast=$('#toast'), timerEl=$('#timer');
-const VERSION='2.21.14', SAVE_KEY='logic4-save-v1';
+const VERSION='2.21.16', SAVE_KEY='logic4-save-v1';
 let current=null, tick=null, startedAt=0, elapsedBase=0, paused=false;
 const I18N={
 fr:{
@@ -2361,6 +2361,9 @@ function unjustifiedCellsOnCurrentPath(){
 function applyUnjustifiedHighlights(){
   let board=document.querySelector('.board');if(!board||!current)return;
   [...board.children].forEach(d=>d.classList.remove('unjustified-piece'));
+  // A completed Rectangles board must remain visually clean: move-audit warnings
+  // are useful while solving, but must not leave orange/red cell outlines after victory.
+  if(current.game==='patches'&&current.completed)return;
   if(!unjustifiedAlertsEnabled())return;
   let n=current.n||6;for(let [r,c] of unjustifiedCellsOnCurrentPath()){let d=board.children[r*n+c];if(d)d.classList.add('unjustified-piece')}
 }
@@ -2816,6 +2819,7 @@ function renderWalkthrough(){
   let stateNote=s.done&&i===s.moves.length?`<div class="walkthrough-complete">✓ ${tr('walkthroughComplete')}</div>`:s.stalled&&i===s.moves.length?`<div class="walkthrough-stalled">⚠ ${s.logicContradiction?(s.base.game==='queens'?queenLogicContradictionText(s.logicContradiction):s.base.game==='tango'?tangoLogicContradictionText(s.logicContradiction):s.base.game==='patches'?patchLogicContradictionText(s.logicContradiction):tr('walkthroughStalled')):tr('walkthroughStalled')}</div>`:'';
   let total=s.done?s.moves.length:'…',progress=`${i}/${total}`;document.body.classList.add('tutor-active');
   app.innerHTML=`<section class="panel walkthrough-panel"><div class="stats-head walkthrough-head"><div><h1>${tr('walkthrough')}</h1><p>${gameLabel(s.base.game)} · ${DIFF[s.base.diff]}</p></div><button class="btn" id="walkthroughClose">${tr('walkthroughClose')}</button></div>${walkthroughBoardHtml(snap,target,deduction)}<div class="walkthrough-actions walkthrough-actions-top"><button class="btn" id="walkthroughPrev" ${i===0?'disabled':''}>← ${tr('walkthroughPrevious')}</button><button class="btn walkthrough-step-counter" id="walkthroughRestart" ${i===0?'disabled':''} title="${tr('walkthroughRestart')}">${tr('walkthroughStep')} ${progress} · ↺</button><button class="btn primary" id="walkthroughNext" ${(s.done||s.stalled)&&i===s.moves.length?'disabled':''}>${tr('walkthroughNext')} →</button></div><div class="walkthrough-scroll"><p class="walkthrough-help-note">💡 ${tr('walkthroughCountsAsHelp')}</p>${walkthroughExplanationHtml(i)}${stateNote}</div></section>`;
+  if(s.base.game==='patches')patchObserveResponsiveClues(app.querySelector('.walkthrough-board'),s.base.n);
   $('#walkthroughClose').onclick=closeWalkthrough;$('#walkthroughPrev').onclick=()=>{if(s.index>0){s.index--;renderWalkthrough()}};$('#walkthroughRestart').onclick=()=>{s.index=0;renderWalkthrough()};$('#walkthroughNext').onclick=()=>{if(s.index<s.moves.length)s.index++;else if(walkthroughGenerateNext())s.index++;renderWalkthrough()};app.querySelectorAll('button').forEach(pressFeedback)
 }
 function openWalkthrough(){
@@ -2896,7 +2900,7 @@ function ensurePrecomputeWorker(){
   if(precomputeWorker)return precomputeWorker;
   if(typeof Worker==='undefined')return null;
   try{
-    let w=new Worker('./precompute-worker.js?v=2.21.14');
+    let w=new Worker('./precompute-worker.js?v=2.21.16');
     w.onmessage=e=>{
       let m=e.data||{};precomputeBusy=false;
       if(m.ok&&m.day===precomputeDay&&m.candidate){
@@ -3740,8 +3744,28 @@ medium:{n:6,reg:[[0,0,1,1,1,2],[0,3,3,1,2,2],[0,3,4,4,4,2],[5,3,4,6,6,6],[5,5,7,
 hard:{n:7,reg:[[0,0,1,1,1,2,2],[0,3,3,1,2,2,4],[0,3,5,5,5,4,4],[6,3,5,7,7,7,4],[6,6,5,8,7,9,9],[6,10,10,8,8,9,11],[10,10,8,8,11,11,11]]}};
 function patchShape(cells){let rs=cells.map(x=>x[0]),cs=cells.map(x=>x[1]),h=Math.max(...rs)-Math.min(...rs)+1,w=Math.max(...cs)-Math.min(...cs)+1,rect=h*w===cells.length;if(!rect)return 'libre';if(h===w)return 'carré';return h>w?'vertical':'horizontal'}
 function patches(diff){let def=patchDefs[diff],reg=transformGrid(def.reg,Math.floor(Math.random()*8)),n=reg.length,ids=[...new Set(reg.flat())],cellsBy={};ids.forEach(id=>cellsBy[id]=[]);for(let r=0;r<n;r++)for(let c=0;c<n;c++)cellsBy[reg[r][c]].push([r,c]);let clues={};ids.forEach(id=>{let cells=cellsBy[id],p=cells[Math.floor(cells.length/2)],mode=diff==='easy'?'both':diff==='medium'?(Math.random()<.5?'size':'shape'):(Math.random()<.45?'shape':Math.random()<.8?'size':'none');clues[id]={pos:p,size:cells.length,shape:patchShape(cells),mode}});const pal=['#f3c6a8','#b9d9c1','#c6d4ed','#e2c3df','#f0dc9d','#c7e0e3','#d5ceb8','#d4e3b4','#edbfc1','#c8c4e8','#e5d0a4','#b7d7d1'];current={game:'patches',diff,n,reg,ids,cellsBy,clues,pal,active:ids[0],paint:Array.from({length:n},()=>Array(n).fill(null)),patchSelectedRects:{},patchLogicEvidence:patchEmptyEvidence(),completed:false};renderPatches(current)}
-let patchPaintFrame=0,patchDragFrame=0,patchDragPending=null;
+let patchPaintFrame=0,patchDragFrame=0,patchDragPending=null,patchClueResizeObserver=null;
 const PATCH_DRAG_THRESHOLD_FINE=5,PATCH_DRAG_THRESHOLD_COARSE=9,PATCH_HYSTERESIS=.18;
+function patchUpdateResponsiveClues(board,n){
+  if(!board||!n)return;
+  let q=board.getBoundingClientRect(),cell=Math.min(q.width,q.height)/Number(n);
+  if(Number.isFinite(cell)&&cell>0)board.style.setProperty('--patch-cell-size',`${cell.toFixed(2)}px`)
+}
+function patchObserveResponsiveClues(board,n){
+  if(patchClueResizeObserver){try{patchClueResizeObserver.disconnect()}catch(_){};patchClueResizeObserver=null}
+  if(!board||!n)return;
+  board.dataset.patchN=String(n);board.classList.add('patch-responsive-clues');patchUpdateResponsiveClues(board,n);
+  if(typeof ResizeObserver==='function'){
+    patchClueResizeObserver=new ResizeObserver(entries=>{for(const entry of entries){let target=entry.target,nn=Number(target.dataset.patchN)||n;if(target.isConnected)patchUpdateResponsiveClues(target,nn)}});
+    patchClueResizeObserver.observe(board)
+  }
+}
+function patchRefreshResponsiveClues(){
+  if(current?.game!=='patches'&&walkthroughSession?.base?.game!=='patches')return;
+  let board=$('#pboard')||app?.querySelector?.('.walkthrough-board.patch-responsive-clues');
+  if(board)patchUpdateResponsiveClues(board,Number(board.dataset.patchN)||current?.n||walkthroughSession?.base?.n)
+}
+if(typeof window!=='undefined')window.addEventListener('resize',patchRefreshResponsiveClues,{passive:true});
 function patchClueIdAt(r,c){
   if(!current?.clues||!current?.ids)return null;
   for(let id of current.ids){let pos=current.clues[id]?.pos;if(pos&&pos[0]===r&&pos[1]===c)return id}
@@ -3935,6 +3959,7 @@ function renderPatches(c){
     else d.dataset.clueId='';
     b.appendChild(d)
   }
+  patchObserveResponsiveClues(b,c.n);
   b.onpointerdown=e=>{
     if(paused||drag)return;e.preventDefault();
     // Resolve the cell from pointer coordinates instead of event.target. This keeps
@@ -4199,7 +4224,7 @@ function patches(diff){let g=generatePatchesPuzzle(diff);const pal=['#f3c6a8','#
 function keyboardInput(e){if(!current||paused||current.completed)return;if(current.game==='sudoku'&&current.sel){let n=Number(e.key);if(n>=1&&n<=6){let [r,c]=current.sel;if(current.empty.has(r*6+c)){let prev=current.state[r][c];if(prev!==0&&prev!==n)markBacktrack();current.state[r][c]=n;haptic(6);drawS();saveCurrent();updateScoreFlags();maybeAutoFinish();e.preventDefault()}}else if(e.key==='Backspace'||e.key==='Delete'||e.key==='0'){let [r,c]=current.sel;if(current.empty.has(r*6+c)){if(current.state[r][c]!==0)markBacktrack();current.state[r][c]=0;drawS();saveCurrent();updateScoreFlags();e.preventDefault()}}}}
 document.addEventListener('keydown',keyboardInput);
 function status(t,ok){let s=$('#status');if(!s)return;s.textContent=t;s.className='status '+(ok?'ok':'bad');if(!ok)playTone('error')}
-function finish(t,outcome='solved'){let total=timerSeconds(),snapshot=current?{...current}:null;stopTimer(false);elapsedBase=total;startedAt=0;paused=true;if(current){statsFinish(current,total,outcome);markDaily(current,outcome,total);current.completed=true}clearSaved();renderTimer();status(`${t} — ${fmt(elapsedBase)}`,true);updatePauseButton();if(outcome==='solved'&&snapshot)requestAnimationFrame(()=>{celebrateBoard();setTimeout(()=>victoryOverlay(snapshot,total),2100)})}
+function finish(t,outcome='solved'){let total=timerSeconds(),snapshot=current?{...current}:null;stopTimer(false);elapsedBase=total;startedAt=0;paused=true;if(current){statsFinish(current,total,outcome);markDaily(current,outcome,total);current.completed=true;if(current.game==='patches')applyUnjustifiedHighlights()}clearSaved();renderTimer();status(`${t} — ${fmt(elapsedBase)}`,true);updatePauseButton();if(outcome==='solved'&&snapshot)requestAnimationFrame(()=>{celebrateBoard();setTimeout(()=>victoryOverlay(snapshot,total),2100)})}
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&current&&!current.completed)saveCurrent()});window.addEventListener('pagehide',()=>{if(current&&!current.completed)saveCurrent()});if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
 applyPrefs();try{window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{if(prefs().theme==='auto')applyPrefs()})}catch(_){}initialView();
 
