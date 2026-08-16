@@ -1,7 +1,63 @@
-# QUADLUD — v2.21.18
+# QUADLUD — v2.22.1
 
 Application web statique mobile-first regroupant **Couronnes**, **Soleil-Lune**, **Grille 6** et **Rectangles**.
 
+
+## v2.22.1 — Grille 6 : explications Coach/Tuteur détaillées
+
+Patch pédagogique de v2.22.0 : le moteur `sudoku-logic.js` et ses règles R0–R7 restent inchangés. La couche de présentation exploite désormais beaucoup plus complètement les prémisses et chaînes de preuve déjà produites par le moteur.
+
+### Explications enrichies
+- **Candidat unique** : le Coach/Tuteur ne se contente plus de lister les candidats éliminés ; il indique pour chaque chiffre rejeté la contrainte visible correspondante (ligne, colonne ou bloc) et la case qui porte déjà ce chiffre.
+- **Position unique ligne/colonne/bloc** : l'explication indique le chiffre manquant, les cases vides à examiner, puis justifie l'exclusion de chaque autre position avant de conclure sur la seule case restante.
+- **Candidat verrouillé, paires/triplets nus et cachés** : les positions/domaines utiles et les éliminations produites sont détaillés explicitement.
+- **Contradictions R5/R7** : l'hypothèse, les déductions déterministes intermédiaires, la contradiction témoin et la conclusion sont présentées dans leur ordre causal.
+- **Conséquence commune R6** : chaque branche et le fait commun démontré sont explicités.
+- Lorsqu'une déduction intermédiaire R3–R7 est nécessaire avant le chiffre final, les étapes de preuve sont présentées successivement au lieu d'être réduites à une simple liste de noms de techniques.
+- Coach et Tuteur utilisent la même fonction de narration et restent fondés uniquement sur l'état visible et les preuves du moteur ; `current.sol` n'intervient pas dans l'explication.
+
+### UX
+- Les raisonnements sont présentés sous forme de listes numérotées lisibles.
+- La fenêtre du Logic Coach devient scrollable lorsque l'explication est longue, afin de rester contenue sur les petits écrans.
+- Les formulations françaises des unités sont améliorées (`la ligne`, `la colonne`, `le bloc 2×3`).
+
+### Validation v2.22.1
+- Nouveau test navigateur `sudoku-explanations-browser.test.py` reproduisant une position unique comme dans le cas signalé : **OK**.
+- Le test vérifie aussi un candidat unique avec justification des cinq exclusions, une contradiction R5 avec chaîne causale, le même texte détaillé dans le Tuteur, l'indépendance vis-à-vis d'une fausse solution cachée et le confinement de la fenêtre Coach sur viewport 390×844.
+- 15 suites Node, 9 suites Chromium, smoke Rectangles et régression globale des quatre jeux : **OK** sur l'état final versionné.
+
+
+## v2.22.0 — Accessibilité
+
+Mise à niveau transverse de l’interface Web, sans modification des règles, solveurs ou générateurs. La cible est une utilisation plus robuste au clavier, au lecteur d’écran, avec zoom/reflow, contrastes renforcés et préférences système de mouvement/couleurs. Cette version améliore l’alignement avec WCAG 2.2 et les pratiques ARIA sans prétendre à une certification de conformité exhaustive.
+
+### Navigation clavier et sémantique
+- Lien d’évitement vers le contenu principal et landmark `main` focalisable.
+- Couronnes, Soleil-Lune, Grille 6 et Rectangles exposent leurs plateaux comme grilles ARIA avec cellules nommées, coordonnées ligne/colonne, états lecture seule/sélection/erreur et un seul point d’entrée Tab par grille.
+- Navigation par flèches, `Home` / `End`, activation `Entrée` / `Espace`; Grille 6 permet ensuite la saisie numérique au clavier depuis la cellule focalisée.
+- Les relations Soleil-Lune, zones Couronnes, indices/zones Rectangles et chiffres donnés sont intégrés aux noms accessibles des cellules.
+- Le Tuteur expose également son plateau comme grille ARIA en lecture seule et ses explications dans une région live.
+- Les états de chargement, notifications et erreurs disposent de régions live adaptées.
+
+### Dialogues, focus et alternatives aux gestes
+- Les modales génériques et l’écran de victoire utilisent `role=dialog`, `aria-modal`, titre associé, confinement de Tab, fermeture `Échap`, mise en inertie du contenu arrière et retour du focus au contrôle d’origine.
+- Focus clavier visible renforcé, y compris dans les plateaux; marges de défilement pour éviter que le focus soit masqué par l’en-tête ou le pavé Grille 6.
+- Rectangles conserve le drag historique mais ajoute une alternative complète sans drag : sélection de deux coins au clavier (`Entrée` deux fois, flèches, `Suppr`, `Échap`) et mode deux-taps pour les utilisateurs pointeur/tactile.
+- Les coups non justifiés ne reposent plus uniquement sur une couleur : contour discontinu en plus de la couleur hors Rectangles; Rectangles conserve son périmètre de zone réel.
+
+### Zoom, reflow et préférences système
+- Suppression du blocage de zoom (`maximum-scale` / `user-scalable=no`).
+- Pinch-zoom autorisé au-dessus des plateaux; le pavé numérique reste manipulable.
+- Correction du pavé Grille 6 sous 360 px : disposition 4 colonnes pour éviter tout débordement à 320 CSS px.
+- Cibles essentielles contrôlées à au moins 24×24 CSS px; contrôles principaux restent généralement à 44 px ou plus.
+- `prefers-reduced-motion`, `prefers-contrast: more` et `forced-colors` pris en charge.
+- Contraste du signal textuel « coup non justifié » renforcé en thème clair.
+
+### Validation v2.22.0
+- `accessibility-static.test.js` : viewport/zoom, landmarks, ARIA, focus, contraste, reduced motion, forced colors et alternative Rectangles — **OK**.
+- `accessibility-browser.test.py` sous Chromium 320×700 : skip link, focus visible, dialogues, quatre grilles, clavier, Tuteur, alternative Rectangles sans drag, `aria-invalid`, reflow, tailles de cibles, reduced motion et forced colors — **OK**.
+- Syntaxe de tous les JS, 15 suites Node et 8 suites Chromium (accessibilité incluse) : **OK** sur l’état versionné final; voir `PROJECT_STATE.md` pour le détail.
+- Safari/iPhone/iPad physique, VoiceOver/TalkBack/NVDA/JAWS réels et audit manuel WCAG exhaustif : **non exécutés** dans cet environnement.
 
 ## v2.21.18 — Grille 6 : moteur d’inférences explicable partagé Coach/Tuteur
 

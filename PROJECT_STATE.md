@@ -1,150 +1,132 @@
 # QUADLUD — PROJECT_STATE
 
-**Version :** 2.21.18  
+**Version :** 2.22.1  
 **Date :** 2026-08-16  
-**Dernière étape validée :** reconstruction Grille 6 — moteur d’inférences explicable partagé Coach/Tuteur, étapes 0 à 9  
-**Prochain jalon roadmap :** v2.22 — Accessibilité
+**Dernière étape validée :** patch pédagogique Grille 6 — explications détaillées Coach/Tuteur  
+**Prochain jalon roadmap :** v2.23 — Confidentialité / portabilité des données
 
 ## État synthétique
 
-v2.21.18 reconstruit le raisonnement pédagogique de **Grille 6** autour du moteur autonome `sudoku-logic.js`. Le moteur travaille uniquement à partir de l’état visible de la grille et de faits/preuves structurés. Il devient la source de vérité commune pour le Logic Coach, le Tuteur, `proveValue()` et le diagnostic des branches Exploration.
+v2.22.1 est un patch de v2.22.0. Il ne modifie aucune règle, aucun générateur et aucun moteur logique. Le moteur `sudoku-logic.js` reste identique à la version validée v2.22.0 ; le changement porte sur l'adaptateur de présentation Grille 6 qui transforme les déductions/preuves structurées en explications pédagogiques beaucoup plus explicites dans le Logic Coach et le Tuteur.
 
-Le solveur exhaustif historique reste séparé et conservé pour les usages techniques de génération, unicité et validation. Il n’est plus utilisé pour produire une étape Tuteur Grille 6.
+Le besoin provient d'un défaut UX observé sur tablette : une explication de type « Position unique dans une ligne — le chiffre 5 n'a qu'une position possible : L2C3 » donnait la bonne conclusion, mais ne montrait pas pourquoi les autres cases étaient impossibles.
 
-## Architecture du moteur Grille 6
+## Modifications principales
 
-### État logique et preuves
-- faits `VALUE(cell,value)` ;
-- faits `NOT_CANDIDATE(cell,value)` ;
-- prémisses, dépendances, unités/cellules focales et chaînes de preuve structurées ;
-- session pure sans DOM, `current` ni `current.sol` ;
-- reconstruction déterministe depuis `current.state` après restauration ;
-- `clone()` / `snapshot()` ;
-- `diagnose()` ;
-- `nextDeduction()` / `applyDeduction()` ;
-- `nextValueStep()` ;
-- `proveValue()` ;
-- `solveLogically()` ;
-- `metrics()`.
+### Candidat unique
+Pour un `NAKED_SINGLE`, la narration :
+- part de la case cible ;
+- examine les chiffres 1 à 6 ;
+- indique pour chaque candidat rejeté la contrainte visible qui l'exclut ;
+- cite la case contenant déjà ce chiffre lorsque l'élimination vient de R0 ;
+- conclut seulement après les cinq exclusions.
 
-### Règles implémentées
-- R0 — propagation des valeurs visibles en ligne, colonne et bloc 2×3 ;
-- R1 — Naked Single ;
-- R2a/R2b/R2c — Hidden Single ligne / colonne / bloc ;
-- R3 — candidat verrouillé bloc→ligne/colonne et ligne/colonne→bloc ;
-- R4 — paires/triplets nus et cachés ;
-- R5 — contradiction niveau 1 ;
-- R6 — conséquence commune de branches ;
-- R7 — contradiction imbriquée niveau 2 ;
-- C1 — doublon ; C2 — zéro candidat ; C3 — chiffre sans position ; C4 — valeur incompatible.
+### Position unique
+Pour `HIDDEN_SINGLE_ROW`, `HIDDEN_SINGLE_COLUMN` et `HIDDEN_SINGLE_BOX`, la narration :
+- rappelle quel chiffre manque dans l'unité ;
+- liste les cases vides réellement à examiner ;
+- explique l'exclusion de chacune des positions concurrentes ;
+- cite la ligne/colonne/bloc et la case témoin pour les exclusions visibles ;
+- conclut sur la seule position restante.
 
-### Bornes du raisonnement avancé
-- fermeture déterministe : 32 déductions par branche ;
-- R5 : 72 hypothèses ;
-- R6 : 12 cellules, toutes les valeurs candidates (jusqu’à 6) ;
-- R7 : 24 hypothèses primaires, 12 cellules secondaires, 3 candidats secondaires au plus, 240 évaluations secondaires, profondeur maximale 2 ;
-- recherche d’un `VALUE` : 64 déductions logiques intermédiaires au plus.
+Exemple de fixture testée : avant le coup, le 5 de la ligne 2 peut être examiné en L2C3, L2C4 et L2C6. L2C4 est exclue car la colonne 4 contient déjà 5 en L3C4 ; L2C6 est exclue car la colonne 6 contient déjà 5 en L5C6 ; le moteur conclut donc L2C3 = 5.
 
-Ces bornes peuvent conduire à `blocked` / `not-yet-proven`. Elles ne permettent jamais d’inventer une conclusion.
+### Techniques intermédiaires et avancées
+- `LOCKED_CANDIDATE` : positions encore possibles, alignement commun et éliminations produites ;
+- paires/triplets nus : domaines exacts puis candidats retirés ailleurs ;
+- paires/triplets cachés : positions des valeurs, cellules réservées puis éliminations ;
+- R5 : hypothèse, déductions déterministes successives, contradiction témoin, rejet de l'hypothèse et conclusion ;
+- R6 : branches candidates et fait commun démontré ;
+- R7 : hypothèse primaire, propagation, hypothèses secondaires, contradictions de chaque branche puis rejet de l'hypothèse primaire.
 
-## Intégration Logic Coach
-- `hintS()` utilise `SudokuLogic` depuis l’état réel visible ;
-- aucune utilisation de `current.sol` pour choisir ou justifier l’indice ;
-- parcours conservé en 3 affichages : où regarder → technique + justification → chiffre ;
-- une séquence complète révèle au maximum un chiffre ;
-- après le coup, la prochaine demande repart du nouvel état ;
-- les éliminations R3–R7 restent internes à la preuve jusqu’à l’unique conclusion `VALUE`.
+Lorsqu'un `nextValueStep()` applique plusieurs déductions d'élimination avant le chiffre final, chaque déduction est désormais affichée comme une étape logique distincte et la déduction finale est elle aussi expliquée.
 
-## Intégration Tuteur
-- le Tuteur utilise le même `SudokuLogic` ;
-- une étape ajoute au maximum un chiffre ;
-- une nouvelle session est créée depuis l’état visible du Tuteur à chaque étape ;
-- aucune session logique Sudoku n’est persistée dans `walkthroughSession` ;
-- le Tuteur reste non destructif pour la partie du joueur ;
-- le fallback exhaustif Grille 6 est neutralisé pour le parcours pédagogique ;
-- après Undo/Redo, le Tuteur démarre depuis l’état courant restauré.
+### Source des explications
+- aucune lecture de `current.sol` ;
+- aucune fabrication à partir de la solution finale ;
+- exclusions visibles reconstruites depuis l'état courant et cohérentes avec les faits R0 ;
+- si une élimination vient d'une déduction intermédiaire, la règle support est identifiée ;
+- si la cause détaillée ne peut pas être reformulée plus précisément, le texte reste factuel (« candidat déjà éliminé par un fait logique démontré ») au lieu d'inventer une justification.
 
-## Audit des coups / Exploration
-`proveValue(cell,value)` distingue :
-- `proven` ;
-- `incorrect` ;
-- `not-yet-proven` ;
-- `contradictory`.
+### UX
+- listes numérotées `.sudoku-proof-steps` ;
+- blocs de preuve successifs `.sudoku-proof-block` ;
+- zone texte du Coach scrollable et bornée en hauteur sur petits écrans ;
+- Tuteur réutilise exactement la même narration ;
+- amélioration grammaticale française des unités : `la ligne`, `la colonne`, `le bloc 2×3`.
 
-Un coup compatible mais non démontré n’est pas assimilé à faux. Un coup `incorrect` ne peut pas être promu en hypothèse. Le prochain coup logique de l’audit et le diagnostic de branche Exploration utilisent également `SudokuLogic`.
+Les 28 langues hors FR/EN conservent la représentation symbolique/localisée existante ; aucune traduction non relue n'a été inventée pour ce patch.
 
-## Undo/Redo et persistance
-- saisie tactile et saisie clavier Grille 6 enregistrées dans le même historique ;
-- Undo 1/N et Redo 1/N ;
-- changement de branche après Undo ;
-- invalidation du Redo sur une nouvelle branche ;
-- Coach/Tuteur recalculés après restauration ;
-- sauvegarde `logic4-*` inchangée ;
-- aucune structure de session logique persistée ; candidats et preuves reconstruits depuis la grille.
+## Architecture
+- `sudoku-logic.js` : **inchangé** ; il reste la source de vérité des déductions et preuves ;
+- `app.js` : enrichissement de la couche `sudokuValueStepExplanation()` et helpers de narration ;
+- Coach et Tuteur restent consommateurs du même objet de preuve ;
+- aucune session logique supplémentaire n'est persistée ;
+- Undo/Redo, génération, solveur de complétion, persistance et audit des coups ne changent pas.
 
-## Internationalisation / mobile
-- nouvelles techniques Grille 6 nommées dans les 30 langues ;
-- FR/EN : explications détaillées en prose ;
-- autres langues : intitulés localisés + preuve symbolique neutre, sans fallback anglais ;
-- RTL arabe contrôlé ;
-- viewport Chromium 390×844 : grille, pavé, Coach et Tuteur sans débordement horizontal.
+## Fichiers fonctionnels modifiés depuis v2.22.0
+- `app.js` ;
+- `styles.css` ;
+- `index.html` (version assets) ;
+- `sw.js` (cache/version) ;
+- `precompute-worker.js` (version assets) ;
+- `manifest.webmanifest` (version) ;
+- `build-info.json`.
 
-## Tests de puzzles complets
-Résultats enregistrés dans `tests/sudoku-complete-puzzles-results.json` :
-
-- easy, seed `10101` : 16 cases vides, unicité = 1, 16 étapes, 16 `NAKED_SINGLE`, technique maximale T1, résolu ;
-- medium, seed `20202` : 22 cases vides, unicité = 1, 22 étapes, 22 `NAKED_SINGLE`, technique maximale T1, résolu ;
-- hard, seed `123456789` : 25 cases vides, unicité = 1, 25 étapes, 21 `NAKED_SINGLE` + 4 `HIDDEN_SINGLE_ROW`, technique maximale T2, résolu ;
-- contradictoire : 0 étape, contradiction C1 détectée.
-
-Pour ces trois seeds générés : 0 hypothèse avancée, profondeur 0, 0 budget atteint. Le résultat logique correspond à `current.sol`, utilisé uniquement comme oracle QA après résolution et jamais comme entrée du moteur.
+## Documentation / tests
+- `README.md` ;
+- `ROADMAP.md` ;
+- `PROJECT_STATE.md` ;
+- nouveau `tests/sudoku-explanations-browser.test.py`.
 
 ## Tests réellement exécutés et réussis
 
 ### Syntaxe
-- `node --check` sur `app.js`, `queens-logic.js`, `tango-logic.js`, `patches-logic.js`, `sudoku-logic.js`, `precompute-worker.js`, `sw.js` et les tests JS — OK.
+`node --check` sur `app.js`, les quatre moteurs logiques, `precompute-worker.js` et `sw.js` : **OK**.
 
-### Grille 6 — Node
-- `sudoku-logic-core.test.js` — OK ;
-- `sudoku-logic-direct.test.js` — OK ;
-- `sudoku-logic-intermediate.test.js` — OK ;
-- `sudoku-logic-advanced.test.js` — OK ;
-- `sudoku-logic-prove-value.test.js` — OK ;
-- `sudoku-logic-value-step.test.js` — OK ;
-- `sudoku-logic-solve.test.js` — OK.
+### Node — 15 suites
+- `accessibility-static.test.js` — OK ;
+- 7 suites Rectangles (`advanced`, `closure`, `contradictions`, `direct`, `domain`, `solve`, UI integration) — OK ;
+- 7 suites Grille 6 (`advanced`, `core`, `direct`, `intermediate`, `proveValue`, `solveLogically`, `nextValueStep`) — OK.
 
-### Grille 6 — Chromium
-- `sudoku-coach-browser.test.py` — OK ;
-- `sudoku-tutor-browser.test.py` — OK ;
+### Chromium — 9 suites
+- `accessibility-browser.test.py` — OK ;
 - `sudoku-audit-browser.test.py` — OK ;
+- `sudoku-coach-browser.test.py` — OK ;
+- `sudoku-complete-puzzles-browser.test.py` — OK ;
+- `sudoku-explanations-browser.test.py` — OK ;
 - `sudoku-state-i18n-browser.test.py` — OK ;
-- `sudoku-complete-puzzles-browser.test.py` — OK.
-
-### Non-régression
-- 6 suites moteur Rectangles — OK ;
-- `patches-ui-integration.test.js` — OK ;
+- `sudoku-tutor-browser.test.py` — OK ;
 - `patches-browser-smoke.py` — OK ;
 - `global-browser-regression.py` — OK.
 
-## Tests non exécutés
+Le nouveau test dédié valide notamment :
+- position unique ligne avec deux exclusions explicitement justifiées par les cellules témoins ;
+- même narration dans Coach et Tuteur ;
+- candidat unique avec justification des cinq candidats rejetés ;
+- R5 avec plusieurs déductions causales avant contradiction ;
+- indépendance vis-à-vis d'une `current.sol` volontairement fausse ;
+- confinement de la fenêtre Coach sur viewport 390×844.
+
+## Tests non exécutés / limites
 - Safari réel sur iPhone/iPad physique ;
-- gestes tactiles/multi-touch sur matériel réel ;
-- relecture linguistique native des 28 traductions hors FR/EN ;
-- persistance `localStorage` entre deux navigations HTTP réelles : l’environnement Playwright bloquait `localhost`/`file://`; le test exécuté couvre sérialisation → nouveau contexte JavaScript → `resumeSaved()` avec un stockage compatible injecté.
+- gestes tactiles sur matériel réel ;
+- VoiceOver/TalkBack/NVDA/JAWS réels ;
+- relecture linguistique native hors FR/EN.
 
-## Problèmes / risques connus
-- `TRAINING_ADVANCED_FIXTURES.S_CONTRADICTION_R2` est historiquement déclaré `unique:true`, mais un recomptage autonome trouve 6 solutions. Cette fixture n’est pas utilisée comme test de résolution complète v2.21.18 et reste une dette QA.
-- R5–R7 sont volontairement bornés pour garantir une exécution prévisible, notamment sur mobile ; certaines grilles compatibles peuvent donc rester bloquées au niveau logique disponible.
-- Les anciens helpers Sudoku subsistent pour certains parcours Apprendre/S’entraîner historiques ; ils ne sont plus la source de vérité du Coach, du Tuteur, de l’audit normal ou du diagnostic Exploration.
+## Problèmes / risques connus hérités
+- `TRAINING_ADVANCED_FIXTURES.S_CONTRADICTION_R2` reste historiquement déclaré `unique:true` alors qu'un recomptage autonome trouve 6 solutions ; dette QA inchangée.
+- Les raisonnements avancés Grille 6 R5–R7 restent volontairement bornés.
+- Une explication avancée peut être longue ; la fenêtre Coach est donc scrollable au lieu de masquer ou tronquer arbitrairement la chaîne de preuve.
 
-## Décisions d’architecture importantes
-- `sudoku-logic.js` reste autonome, au même niveau que `queens-logic.js`, `tango-logic.js` et `patches-logic.js` ; aucun framework logique générique artificiel n’a été introduit.
-- Solveur de complétion/génération et moteur pédagogique restent séparés.
-- Une étape pédagogique visible correspond à un seul placement de chiffre ; les éliminations intermédiaires restent dans la preuve.
-- Les sessions logiques sont reconstructibles et ne sont pas stockées dans l’historique/persistance.
+## Décisions importantes
+- patch livré sous **2.22.1** sans avancer ni réordonner la roadmap ;
+- v2.23 reste le prochain jalon ;
+- le moteur d'inférence n'a pas été modifié, afin de ne pas coupler la pédagogie textuelle aux règles ;
+- aucune explication n'est autorisée à utiliser la solution finale cachée.
 
 ## Prochaine étape
-**v2.22 — Accessibilité**, conformément à `ROADMAP.md`.
+**v2.23 — Confidentialité / portabilité des données**, conformément à `ROADMAP.md`.
 
 ## Propriété intellectuelle
 Copyright © 2026 Serge Benoliel  

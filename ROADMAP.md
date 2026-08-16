@@ -37,8 +37,9 @@ Le Logic Coach doit enseigner progressivement le raisonnement réel à partir de
   - **v2.21.16** — patch Rectangles : indices responsives selon la taille réelle des cellules — ✅ terminé
   - **v2.21.17** — patch Tuteur Rectangles : un rectangle visible par étape — ✅ terminé
   - **v2.21.18** — moteur d’inférences Grille 6 explicable partagé Coach/Tuteur — ✅ terminé
-- **v2.22** — Accessibilité — prochain jalon
-- **v2.23** — Confidentialité / portabilité des données
+- **v2.22** — Accessibilité — ✅ terminé (livré en v2.22.0)
+  - **v2.22.1** — patch Grille 6 : explications Coach/Tuteur détaillées à partir des preuves — ✅ terminé
+- **v2.23** — Confidentialité / portabilité des données — prochain jalon
 - **v2.24** — Préparation iOS
 - **v3.0** — Version Web de référence QUADLUD Logic Coach
 - **v3.1** — iOS / TestFlight

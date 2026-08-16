@@ -37,10 +37,10 @@ self.setInterval=()=>0;
 self.clearInterval=__noop;
 
 // Load the pure Queens proof engine before the authoritative application code.
-importScripts('./queens-logic.js?v=2.21.18');
-importScripts('./tango-logic.js?v=2.21.18');
+importScripts('./queens-logic.js?v=2.22.1');
+importScripts('./tango-logic.js?v=2.22.1');
 // Use the exact same versioned generator implementation as the UI.
-importScripts('./app.js?v=2.21.18');
+importScripts('./app.js?v=2.22.1');
 
 function __queenBackgroundCandidate(diff,forbidden){
   let blocked=new Set(forbidden||[]);
