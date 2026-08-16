@@ -1,6 +1,27 @@
-# QUADLUD — v2.21.13
+# QUADLUD — v2.21.14
 
 Application web statique mobile-first regroupant **Couronnes**, **Soleil-Lune**, **Grille 6** et **Rectangles**.
+
+## v2.21.14 — Rectangles : tap sur indice et correction des contours d’erreur
+
+Patch ciblé de l’interface Rectangles, sans modification du moteur logique ni du générateur.
+
+### Interaction
+- Un **tap sur une case-indice non couverte** crée désormais une zone initiale 1×1 sur cette case.
+- Cette zone initiale est un **seed** : elle n’est pas enregistrée comme rectangle final sélectionné tant que le joueur ne l’a pas redimensionnée. Cela évite de signaler immédiatement une erreur de surface/forme sur un simple point de départ.
+- Un second tap sur cette zone 1×1 la supprime, comme pour tout rectangle existant.
+- Le `pointerdown` Rectangles est désormais géré au niveau du plateau et la case est résolue depuis les coordonnées du pointeur. Le tap/drag fonctionne ainsi même lorsque le contact tombe directement sur le nombre, le `?` ou le pictogramme de forme de l’indice.
+
+### Affichage des erreurs
+- Les cellules Rectangles invalides ne reçoivent plus le `box-shadow` rouge générique appliqué cellule par cellule.
+- Le feedback d’erreur conserve une **teinte rouge légère**, mais seules les vraies frontières de la zone sont tracées : plus de lignes rouges internes parasites entre les cases d’un même rectangle.
+
+### Validation v2.21.14
+- 6 suites moteur Rectangles : **OK**.
+- Test statique d’intégration Rectangles : **OK**.
+- Smoke Chromium Rectangles : **OK**, incluant tap directement sur le pictogramme d’indice, création/suppression du seed 1×1 et absence de contour rouge interne sur une zone invalide.
+- Non-régression Chromium Couronnes / Soleil-Lune / Grille 6 : **OK**.
+- Safari/iPhone physique : **non exécuté** dans cet environnement.
 
 ## v2.21.13 — Rectangles : manipulation directe et interface tactile
 

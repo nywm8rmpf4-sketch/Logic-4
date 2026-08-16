@@ -1070,3 +1070,19 @@ body.tutor-active .walkthrough-actions-top{margin:4px 0 7px}
 
 /* Rectangles keeps detailed rules behind the dedicated Rules button. */
 .patch-game-panel>.rules{display:none}
+
+
+/* v2.21.14 — Rectangles : erreurs sans fausses frontières internes */
+#pboard .patch-cell.illegal{
+  background:color-mix(in srgb,var(--patch-fill,#fff) 76%,#efb7b7 24%)!important;
+  box-shadow:none!important;
+  color:#7f1b1b;
+}
+#pboard .patch-cell.illegal::after{
+  border-color:rgba(30,32,29,.86)!important;
+}
+:root[data-theme="dark"] #pboard .patch-cell.illegal{
+  background:color-mix(in srgb,var(--patch-fill,#262927) 70%,#7f3434 30%)!important;
+  box-shadow:none!important;
+  color:#fff1f1;
+}

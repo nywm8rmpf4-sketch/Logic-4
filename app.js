@@ -5,7 +5,7 @@
  */
 'use strict';
 const $=s=>document.querySelector(s), app=$('#app'), toast=$('#toast'), timerEl=$('#timer');
-const VERSION='2.21.13', SAVE_KEY='logic4-save-v1';
+const VERSION='2.21.14', SAVE_KEY='logic4-save-v1';
 let current=null, tick=null, startedAt=0, elapsedBase=0, paused=false;
 const I18N={
 fr:{
@@ -2896,7 +2896,7 @@ function ensurePrecomputeWorker(){
   if(precomputeWorker)return precomputeWorker;
   if(typeof Worker==='undefined')return null;
   try{
-    let w=new Worker('./precompute-worker.js?v=2.21.13');
+    let w=new Worker('./precompute-worker.js?v=2.21.14');
     w.onmessage=e=>{
       let m=e.data||{};precomputeBusy=false;
       if(m.ok&&m.day===precomputeDay&&m.candidate){
@@ -3897,6 +3897,13 @@ function commitPatchRectangle(anchor,end,legacyId=null,lockedId=null){
   }
   return true
 }
+function seedPatchClueCell(id,r,c){
+  if(id==null||current.paint[r][c]!=null)return false;
+  let before=historySnapshotKey();
+  current.patchLogicEvidence=patchEmptyEvidence();current.patchSelectedRects=current.patchSelectedRects||{};delete current.patchSelectedRects[id];
+  current.paint[r][c]=id;current.active=id;drawP();
+  historyRecord({type:'PATCH_SEED',region:id,cell:[r,c]},before);saveCurrent();updateScoreFlags();maybeAutoFinish();haptic(6);return true
+}
 function removePatchRectangle(id){
   let before=historySnapshotKey(),changed=false;
   for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(current.paint[r][c]===id){current.paint[r][c]=null;changed=true}
@@ -3926,14 +3933,17 @@ function renderPatches(c){
     let clueId=clueAt.get(r+','+col);
     if(clueId!=null){d.classList.add('clue');d.dataset.clueId=clueId;d.innerHTML=clueHTML(c.clues[clueId])}
     else d.dataset.clueId='';
-    d.onpointerdown=e=>{
-      if(paused)return;e.preventDefault();
-      let existing=current.paint[r][col],resize=existing!=null?patchResizeStart(existing,e.clientX,e.clientY,b):null;
-      drag={pointerId:e.pointerId,startX:e.clientX,startY:e.clientY,lastX:e.clientX,lastY:e.clientY,threshold:coarsePointer()?PATCH_DRAG_THRESHOLD_COARSE:PATCH_DRAG_THRESHOLD_FINE,startExisting:existing,lockedId:existing,moved:false,offsetX:resize?.offsetX||0,offsetY:resize?.offsetY||0,anchor:resize?.anchor||[r,col],end:resize?.end||[r,col]};
-      try{b.setPointerCapture(e.pointerId)}catch(_){}haptic(4)
-    };
     b.appendChild(d)
   }
+  b.onpointerdown=e=>{
+    if(paused||drag)return;e.preventDefault();
+    // Resolve the cell from pointer coordinates instead of event.target. This keeps
+    // taps/drags reliable when the pointer lands on the visual clue badge itself.
+    let start=patchPointToCell(e.clientX,e.clientY,b);if(!start)return;
+    let r=start[0],col=start[1],existing=current.paint[r][col],resize=existing!=null?patchResizeStart(existing,e.clientX,e.clientY,b):null;
+    drag={pointerId:e.pointerId,startX:e.clientX,startY:e.clientY,lastX:e.clientX,lastY:e.clientY,threshold:coarsePointer()?PATCH_DRAG_THRESHOLD_COARSE:PATCH_DRAG_THRESHOLD_FINE,startExisting:existing,lockedId:existing,moved:false,offsetX:resize?.offsetX||0,offsetY:resize?.offsetY||0,anchor:resize?.anchor||start,end:resize?.end||start};
+    try{b.setPointerCapture(e.pointerId)}catch(_){}haptic(4)
+  };
   b.onpointermove=e=>{
     if(!drag||e.pointerId!==drag.pointerId)return;e.preventDefault();drag.lastX=e.clientX;drag.lastY=e.clientY;
     if(!drag.moved&&Math.hypot(e.clientX-drag.startX,e.clientY-drag.startY)<drag.threshold)return;
@@ -3947,7 +3957,12 @@ function renderPatches(c){
     try{b.releasePointerCapture(drag.pointerId)}catch(_){}
     let done=drag;drag=null;
     if(cancel){clearPatchPreview();return}
-    if(!done.moved){clearPatchPreview();if(done.startExisting!=null)removePatchRectangle(done.startExisting);return}
+    if(!done.moved){
+      clearPatchPreview();
+      if(done.startExisting!=null)removePatchRectangle(done.startExisting);
+      else {let clueId=patchClueIdAt(done.anchor[0],done.anchor[1]);if(clueId!=null)seedPatchClueCell(clueId,done.anchor[0],done.anchor[1])}
+      return
+    }
     let finalCell=patchPointToCellHysteresis(e.clientX+done.offsetX,e.clientY+done.offsetY,done.end,b);if(finalCell)done.end=finalCell;
     if(patchDragPending){patchDragPending=null}
     if(patchDragFrame){try{cancelAnimationFrame(patchDragFrame)}catch(_){};patchDragFrame=0}

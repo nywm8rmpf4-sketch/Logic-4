@@ -32,6 +32,7 @@ Le Logic Coach doit enseigner progressivement le raisonnement réel à partir de
   - **v2.21.11** — moteur d’inférences Soleil/Lune explicable partagé Coach/Tuteur — ✅ terminé
   - **v2.21.12** — moteur d’inférences Rectangles explicable partagé Coach/Tuteur — ✅ terminé
   - **v2.21.13** — patch UX Rectangles : manipulation directe, preview et mobile — ✅ terminé
+  - **v2.21.14** — patch Rectangles : tap sur indice + correction des contours d’erreur — ✅ terminé
 - **v2.22** — Accessibilité — prochain jalon
 - **v2.23** — Confidentialité / portabilité des données
 - **v2.24** — Préparation iOS
