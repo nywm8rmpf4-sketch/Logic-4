@@ -5,7 +5,7 @@
  */
 'use strict';
 const $=s=>document.querySelector(s), app=$('#app'), toast=$('#toast'), timerEl=$('#timer');
-const VERSION='2.21.16', SAVE_KEY='logic4-save-v1';
+const VERSION='2.21.17', SAVE_KEY='logic4-save-v1';
 let current=null, tick=null, startedAt=0, elapsedBase=0, paused=false;
 const I18N={
 fr:{
@@ -2154,6 +2154,7 @@ function patchDeductionExplanation(d){let x=d?.explanationData||{},conclusion=pa
 function patchDeductionReasoning(d,automatic=[]){return {schema:2,source:'patches-inference-engine',game:'patches',id:d.id||null,signature:d.signature||null,rule:d.rule,ruleCost:d.ruleCost,technique:patchLegacyTechniqueForDeduction(d),rank:d.rank,techniqueLevel:d.techniqueLevel,premises:JSON.parse(JSON.stringify(d.premises||[])),dependencies:[...(d.dependencies||[])],focusCells:(d.focusCells||[]).map(x=>[...x]),focusClues:[...(d.focusClues||[])],focusRectangles:JSON.parse(JSON.stringify(d.focusRectangles||[])),conclusions:JSON.parse(JSON.stringify(d.conclusions||[])),automatic:JSON.parse(JSON.stringify(automatic||[])),explanationData:JSON.parse(JSON.stringify(d.explanationData||{}))}}
 function patchFocusDeduction(d,reveal=false){clearHintFocus();let board=$('#pboard')||document.querySelector('.board');if(!board||!current||!d)return;let focus=[...(d.focusCells||[])],targets=[];for(const c of d.conclusions||[]){if(c.type==='OWNER')targets.push(c.cell);else if(c.type==='SELECTED_RECT')targets.push(...(c.rectangle.cells||[]));else if(c.type==='ELIMINATED_CANDIDATE'){let rr=(d.focusRectangles||[]).find(x=>(x.key||PatchesLogic.helpers.rectKey(x))===c.rectangleKey);if(rr)targets.push(...(rr.cells||PatchesLogic.helpers.rectCells(rr)))}}let targetKeys=new Set(targets.map(x=>x.join(','))),seen=new Set();for(const cell of focus.concat(reveal?targets:[])){let k=cell.join(',');if(seen.has(k))continue;seen.add(k);let el=board.children[cell[0]*current.n+cell[1]];if(el)el.classList.add(reveal&&targetKeys.has(k)?'hint-focus':'hint-context')}}
 function patchSyncEngineToVisible(c,engine){c.patchLogicEvidence=engine.exportEvidence();c.patchSelectedRects=c.patchSelectedRects||{};for(const f of c.patchLogicEvidence.owners||[])c.paint[f.cell[0]][f.cell[1]]=f.clue;for(const f of c.patchLogicEvidence.selected||[]){let cand=engine.candidate(Number(f.clue),f.rectangleKey);if(!cand)continue;c.patchSelectedRects[f.clue]={r0:cand.r0,r1:cand.r1,c0:cand.c0,c1:cand.c1};for(const [r,col] of cand.cells)c.paint[r][col]=Number(f.clue)}}
+function patchSyncEngineEvidence(c,engine){c.patchLogicEvidence=engine.exportEvidence()}
 function patchApplyDeductionToState(c,d,engine=null){engine=engine||patchesLogicSession(c);let applied=engine.applyDeduction(d);if(!applied?.deduction)return null;patchSyncEngineToVisible(c,engine);return {...applied,engine}}
 function patchApplyDeductionToCurrent(d){if(!current||current.game!=='patches')return null;return patchApplyDeductionToState(current,d)}
 function patchCurrentLogicResult(){let engine=patchesLogicSession(),result=engine.nextDeduction();return {...result,engine}}
@@ -2755,23 +2756,29 @@ function walkthroughGenerateTangoNext(){
   if(walkthroughComplete()){s.done=true;s.total=s.moves.length;s.metrics=s.tangoLogic.metrics()}
   return true
 }
+function patchTutorSelectedIds(engine,ids){return new Set((ids||[]).filter(id=>engine.selectedRect(id)!=null))}
+function patchTutorQueueSelections(s,beforeSelected,primary,automatic){let sequence=[primary,...(automatic||[])].filter(Boolean),afterSelected=patchTutorSelectedIds(s.patchLogic,s.base.ids),pending=new Set([...afterSelected].filter(id=>!beforeSelected.has(id)));s.patchRevealQueue=s.patchRevealQueue||[];let enqueue=(id,deduction)=>{id=Number(id);if(!pending.has(id))return;let rect=s.patchLogic.selectedRect(id)?.rect;if(!rect)return;s.patchRevealQueue.push({clue:id,rectangle:JSON.parse(JSON.stringify(rect)),deduction:JSON.parse(JSON.stringify(deduction||primary)),batchPrimaryId:primary?.id||null});pending.delete(id)};for(const d of sequence)for(const c of d?.conclusions||[])if(c.type==='SELECTED_RECT')enqueue(c.clue,d);for(const id of s.base.ids)if(pending.has(Number(id)))enqueue(id,primary)}
+function patchTutorRevealNext(s){let item=s.patchRevealQueue?.shift();if(!item)return false;let id=item.clue,rect=item.rectangle,d=item.deduction,beforeSnapshot=walkthroughSnapshot(s.work);s.work.patchSelectedRects=s.work.patchSelectedRects||{};s.work.patchSelectedRects[id]={r0:rect.r0,r1:rect.r1,c0:rect.c0,c1:rect.c1};for(const [r,col] of rect.cells||PatchesLogic.helpers.rectCells(rect))s.work.paint[r][col]=id;let reasoning=patchDeductionReasoning(d,[]),info={
+    rule:d.rule,technique:patchLegacyTechniqueForDeduction(d),rank:d.rank,techniqueLevel:d.techniqueLevel,target:patchDeductionPrimaryCell(d),deduction:reasoning,
+    where:patchDeductionOrientation(d),why:patchDeductionExplanation(d),move:patchDeductionConclusionText(d),automatic:[],metrics:s.patchLogic.metrics(),beforeSnapshot,revealedClue:id,revealedRectangle:{r0:rect.r0,r1:rect.r1,c0:rect.c0,c1:rect.c1}
+  };info.snapshot=walkthroughSnapshot(s.work);info.after=info.snapshot;s.moves.push(info);if(walkthroughComplete()&&!s.patchRevealQueue.length){s.done=true;s.total=s.moves.length;s.metrics=s.patchLogic.metrics()}return true}
 function walkthroughGeneratePatchesNext(){
   let s=walkthroughSession;if(!s||s.base.game!=='patches'||s.done||s.stalled)return false;
   if(!s.patchLogic)s.patchLogic=patchesLogicSession(s.work,s.work.paint,s.work.patchSelectedRects,s.work.patchLogicEvidence);
+  if(s.patchRevealQueue?.length)return patchTutorRevealNext(s);
   if(walkthroughComplete()){s.done=true;s.total=s.moves.length;return false}
-  let result=s.patchLogic.nextDeduction();
-  if(result.contradiction){s.stalled=true;s.logicContradiction=result.contradiction;return false}
-  if(!result.deduction){s.stalled=true;return false}
-  let beforeSnapshot=walkthroughSnapshot(s.work),applied=s.patchLogic.applyDeduction(result.deduction),d=applied.deduction;if(!d){s.stalled=true;return false}
-  if(applied.contradiction){s.stalled=true;s.logicContradiction=applied.contradiction;return false}
-  patchSyncEngineToVisible(s.work,s.patchLogic);
-  let reasoning=patchDeductionReasoning(d,applied.automatic),info={
-    rule:d.rule,technique:patchLegacyTechniqueForDeduction(d),rank:d.rank,techniqueLevel:d.techniqueLevel,target:patchDeductionPrimaryCell(d),deduction:reasoning,
-    where:patchDeductionOrientation(d),why:patchDeductionExplanation(d),move:patchDeductionConclusionText(d),automatic:JSON.parse(JSON.stringify(applied.automatic||[])),metrics:s.patchLogic.metrics(),beforeSnapshot
-  };
-  info.snapshot=walkthroughSnapshot(s.work);s.moves.push(info);
-  if(walkthroughComplete()){s.done=true;s.total=s.moves.length;s.metrics=s.patchLogic.metrics()}
-  return true
+  let guard=0,maxGuard=Math.max(20,(s.base.ids?.length||1)*20);
+  while(!s.patchRevealQueue?.length&&guard++<maxGuard){
+    let result=s.patchLogic.nextDeduction();
+    if(result.contradiction){s.stalled=true;s.logicContradiction=result.contradiction;return false}
+    if(!result.deduction){s.stalled=true;return false}
+    let beforeSelected=patchTutorSelectedIds(s.patchLogic,s.base.ids),applied=s.patchLogic.applyDeduction(result.deduction),d=applied.deduction;if(!d){s.stalled=true;return false}
+    if(applied.contradiction){s.stalled=true;s.logicContradiction=applied.contradiction;return false}
+    patchSyncEngineEvidence(s.work,s.patchLogic);
+    patchTutorQueueSelections(s,beforeSelected,d,applied.automatic);
+  }
+  if(!s.patchRevealQueue?.length){s.stalled=true;return false}
+  return patchTutorRevealNext(s)
 }
 function walkthroughGenerateNext(){
   let s=walkthroughSession;if(!s||s.done||s.stalled)return false;if(s.base.game==='queens')return walkthroughGenerateQueensNext();if(s.base.game==='tango')return walkthroughGenerateTangoNext();if(s.base.game==='patches')return walkthroughGeneratePatchesNext();
@@ -2900,7 +2907,7 @@ function ensurePrecomputeWorker(){
   if(precomputeWorker)return precomputeWorker;
   if(typeof Worker==='undefined')return null;
   try{
-    let w=new Worker('./precompute-worker.js?v=2.21.16');
+    let w=new Worker('./precompute-worker.js?v=2.21.17');
     w.onmessage=e=>{
       let m=e.data||{};precomputeBusy=false;
       if(m.ok&&m.day===precomputeDay&&m.candidate){

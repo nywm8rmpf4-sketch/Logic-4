@@ -35,6 +35,7 @@ Le Logic Coach doit enseigner progressivement le raisonnement réel à partir de
   - **v2.21.14** — patch Rectangles : tap sur indice + correction des contours d’erreur — ✅ terminé
   - **v2.21.15** — patch Rectangles : suppression des séparations orange/rouges internes — ✅ terminé
   - **v2.21.16** — patch Rectangles : indices responsives selon la taille réelle des cellules — ✅ terminé
+  - **v2.21.17** — patch Tuteur Rectangles : un rectangle visible par étape — ✅ terminé
 - **v2.22** — Accessibilité — prochain jalon
 - **v2.23** — Confidentialité / portabilité des données
 - **v2.24** — Préparation iOS

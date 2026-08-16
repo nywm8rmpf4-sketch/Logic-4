@@ -1,6 +1,27 @@
-# QUADLUD — v2.21.16
+# QUADLUD — v2.21.17
 
 Application web statique mobile-first regroupant **Couronnes**, **Soleil-Lune**, **Grille 6** et **Rectangles**.
+
+## v2.21.17 — Rectangles : un rectangle par étape dans le Tuteur
+
+Patch pédagogique ciblé du Tuteur Rectangles, sans modification du moteur d’inférences ni du générateur.
+
+### Séquencement pédagogique
+- Une étape visible du **Tuteur Rectangles crée exactement un nouveau rectangle**.
+- Le moteur `patches-logic.js` continue d’appliquer normalement la déduction et toute sa fermeture coût 0 ; ces conséquences restent disponibles comme preuves internes.
+- L’état logique et l’état visuel du Tuteur sont désormais découplés : si une fermeture démontre plusieurs rectangles, ils sont placés dans une file de révélation et montrés **un par un**.
+- L’ordre de révélation suit l’ordre causal des déductions du moteur, afin qu’un rectangle utilisé comme prémisse soit visible avant un rectangle qui en dépend.
+- Chaque étape conserve une déduction structurée dont la conclusion `SELECTED_RECT` correspond exactement au rectangle nouvellement affiché.
+- Précédent / suivant restaure les snapshots visuels exacts ; la résolution finale reste complète et valide.
+
+### Validation v2.21.17
+- 6 suites moteur Rectangles : **OK**.
+- Test statique d’intégration Rectangles : **OK**.
+- Smoke Chromium Rectangles : **OK**, avec contrôle explicite de `+1` rectangle visible par étape et preuve `SELECTED_RECT` correspondante.
+- Cas synthétique 10×10 où les dix rectangles sont singletons dès le départ : **1 rectangle après l’étape 1, 2 après l’étape 2 — OK**.
+- Navigation précédent/suivant et résolution logique complète : **OK**.
+- Non-régression Chromium Couronnes / Soleil-Lune / Grille 6 : **OK**.
+- Safari/iPhone/iPad physique : **non exécuté** dans cet environnement.
 
 ## v2.21.16 — Rectangles : indices responsives selon la taille des cellules
 
