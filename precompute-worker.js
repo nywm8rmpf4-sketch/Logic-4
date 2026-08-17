@@ -6,70 +6,40 @@
  */
 'use strict';
 
-/* app.js contains the authoritative generators.  The worker provides a minimal
-   DOM/storage shim so the same generator code can be reused without maintaining
-   a second implementation that might drift from the main application. */
-function __noop(){}
-function __classList(){return {add:__noop,remove:__noop,toggle:__noop,contains:()=>false}}
-function __el(){
-  return new Proxy({
-    innerHTML:'',textContent:'',value:'',checked:false,hidden:false,dataset:{},style:{setProperty:__noop,removeProperty:__noop},
-    classList:__classList(),children:[],appendChild:__noop,insertAdjacentHTML:__noop,addEventListener:__noop,
-    querySelector:()=>__el(),querySelectorAll:()=>[],setAttribute:__noop,removeAttribute:__noop,remove:__noop,
-    getBoundingClientRect:()=>({left:0,top:0,width:320,height:320})
-  },{get:(t,p)=>p in t?t[p]:__noop,set:(t,p,v)=>(t[p]=v,true)})
-}
-self.addEventListener=__noop;
-self.matchMedia=()=>({matches:false,addEventListener:__noop});
-self.innerWidth=390;self.innerHeight=844;
-self.window=self;
-self.document={
-  documentElement:{dataset:{},lang:'fr'},
-  body:{dataset:{},classList:__classList(),appendChild:__noop,insertAdjacentHTML:__noop},
-  hidden:false,
-  querySelector:()=>__el(),querySelectorAll:()=>[],createElement:()=>__el(),addEventListener:__noop
-};
-self.localStorage={getItem:()=>null,setItem:__noop,removeItem:__noop,clear:__noop};
-if(!self.navigator)self.navigator={};
-self.requestAnimationFrame=f=>{try{f()}catch(_){};return 0};
-self.cancelAnimationFrame=__noop;
-self.setInterval=()=>0;
-self.clearInterval=__noop;
+/* v2.25/25.2: pure shared worker path.
+   Load only the authoritative logic, rating and generation modules required to
+   produce certified candidates. Application orchestration stays on the main thread. */
+importScripts('./game-contract.js?v=2.26.0');
+importScripts('./game-registry.js?v=2.26.0');
+importScripts('./queens-logic.js?v=2.26.0');
+importScripts('./difficulty-rating.js?v=2.26.0');
+importScripts('./queens-difficulty.js?v=2.26.0');
+importScripts('./tango-logic.js?v=2.26.0');
+importScripts('./tango-difficulty.js?v=2.26.0');
+importScripts('./sudoku-logic.js?v=2.26.0');
+importScripts('./sudoku-difficulty.js?v=2.26.0');
+importScripts('./patches-logic.js?v=2.26.0');
+importScripts('./patches-difficulty.js?v=2.26.0');
+importScripts('./generation-common.js?v=2.26.0');
+importScripts('./queens-generator.js?v=2.26.0');
+importScripts('./tango-generator.js?v=2.26.0');
+importScripts('./sudoku-generator.js?v=2.26.0');
+importScripts('./patches-generator.js?v=2.26.0');
 
-// Load the pure Queens proof engine before the authoritative application code.
-importScripts('./queens-logic.js?v=2.24.0');
-importScripts('./difficulty-rating.js?v=2.24.0');
-importScripts('./queens-difficulty.js?v=2.24.0');
-importScripts('./tango-logic.js?v=2.24.0');
-importScripts('./tango-difficulty.js?v=2.24.0');
-importScripts('./sudoku-logic.js?v=2.24.0');
-importScripts('./sudoku-difficulty.js?v=2.24.0');
-importScripts('./patches-logic.js?v=2.24.0');
-importScripts('./patches-difficulty.js?v=2.24.0');
-importScripts('./web-storage.js?v=2.24.0');
-importScripts('./data-serialization.js?v=2.24.0');
-importScripts('./persistence-services.js?v=2.24.0');
-// Use the exact same versioned generator implementation as the UI.
-importScripts('./app.js?v=2.24.0');
-
-function __queenBackgroundCandidate(diff,forbidden){
-  let blocked=new Set(forbidden||[]);
+function __build(game,diff,forbiddenKeys){
+  let registry=self.QuadludGameRegistry;if(!registry)throw new Error('QUADLUD game registry unavailable');
+  if(!registry.hasGame(game))throw new Error('Unknown game');
+  if(!registry.hasCapability(game,'generationIdentity'))return generateRegisteredCandidate(game,diff);
+  let blocked=new Set(forbiddenKeys||[]);
   for(let guard=0;guard<48;guard++){
-    let g=queenCandidate(diff),sig=queenCanonicalSignature(g.reg);
-    if(blocked.has(sig))continue;g.__queenSignature=sig;return g
+    let g=generateRegisteredCandidate(game,diff),identity=generatedCandidateIdentity(game,g);
+    if(blocked.has(identity))continue;g.__generationIdentity=identity;return g
   }
-  throw new Error('No fresh Queens candidate matching logical profile')
+  throw new Error('No fresh candidate matching logical profile')
 }
-function __build(game,diff,forbiddenQueens){
-  if(game==='queens')return __queenBackgroundCandidate(diff,forbiddenQueens);
-  if(game==='tango')return tangoCandidate(diff);
-  if(game==='sudoku')return sudokuCandidate(diff);
-  if(game==='patches')return patchesCandidate(diff);
-  throw new Error('Unknown game')
-}
-function __buildCertified(game,diff,forbiddenQueens){
-  let candidate=__build(game,diff,forbiddenQueens);
-  if(typeof generatedCandidateCertified!=='function'||!generatedCandidateCertified(game,diff,candidate))throw new Error('Generated candidate failed certified difficulty validation');
+function __buildCertified(game,diff,forbiddenKeys){
+  let candidate=__build(game,diff,forbiddenKeys);
+  if(!generatedCandidateCertified(game,diff,candidate))throw new Error('Generated candidate failed certified difficulty validation');
   return candidate
 }
 self.onmessage=e=>{
@@ -77,7 +47,7 @@ self.onmessage=e=>{
   if(m.cmd!=='generate')return;
   let started=Date.now();
   try{
-    let candidate=__buildCertified(m.game,m.diff,m.forbiddenQueens||[]);
+    let candidate=__buildCertified(m.game,m.diff,m.forbiddenKeys||[]);
     self.postMessage({ok:true,id:m.id,game:m.game,diff:m.diff,day:m.day,candidate,ms:Date.now()-started})
   }catch(err){
     self.postMessage({ok:false,id:m.id,game:m.game,diff:m.diff,day:m.day,error:String(err?.message||err),ms:Date.now()-started})

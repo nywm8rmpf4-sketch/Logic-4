@@ -5,8 +5,12 @@
  */
 'use strict';
 const $=s=>document.querySelector(s), app=$('#app'), toast=$('#toast'), timerEl=$('#timer');
-const VERSION='2.24.0';
+const VERSION='2.26.0';
+const WebPlatform=QuadludWebPlatform.getWebPlatform();
 const DataSerialization=QuadludDataSerialization;
+const SessionCore=QuadludSessionCore;
+const GameRegistry=QuadludGameRegistry;
+const GAME_IDS=GameRegistry.IDS;
 const PersistentData=globalThis.QuadludPersistentDataServices||QuadludPersistenceServices.createServices({storage:QuadludWebStorage.getLocalStorageAdapter(),serialization:DataSerialization});
 const PERSISTENCE_BASELINE=PersistentData.baseline, SAVE_SCHEMA=PersistentData.schemas.save, SAVE_KEY=PersistentData.keys.save;
 const LEGACY_PERSISTENCE_KEYS=PersistentData.legacyKeys;
@@ -798,7 +802,7 @@ Object.assign(GAME_RULES.patches,{"bg":"<b>Цел:</b> раздели цялат
 function gameRules(g){return GAME_RULES[g]?.[lang()]||GAME_RULES[g]?.en||''}
 
 const PREF_KEY=PersistentData.keys.preferences;
-function detectedLang(){try{let xs=[...(navigator.languages||[]),navigator.language].filter(Boolean);for(let x of xs){let c=String(x).toLowerCase().split('-')[0];if(c==='zh')return 'zh';if(SUPPORTED_LANGS.includes(c))return c}}catch(_){}return 'fr'}
+function detectedLang(){try{for(let x of WebPlatform.locale.languages()){let c=String(x).toLowerCase().split('-')[0];if(c==='zh')return 'zh';if(SUPPORTED_LANGS.includes(c))return c}}catch(_){}return 'fr'}
 function prefs(){return PersistentData.preferences.read({defaultLang:detectedLang(),supportedLangs:SUPPORTED_LANGS})}
 function languageOptionsHtml(selected){return LANGUAGE_OPTIONS.map(([code,name])=>`<option value="${code}" ${selected===code?'selected':''}>${name}</option>`).join('')}
 function savePrefs(p){PersistentData.preferences.write(p);applyPrefs()}
@@ -834,16 +838,13 @@ function resultSvg(c,seconds){
 async function shareResult(c,seconds){
   let text=resultText(c,seconds);
   try{
-    if(typeof Blob!=='undefined'&&typeof File!=='undefined'&&navigator.share){
-      let blob=new Blob([resultSvg(c,seconds)],{type:'image/svg+xml'}),file=new File([blob],`quadlud-${c.game}-${localDay()}.svg`,{type:'image/svg+xml'});
-      let fileOK=!navigator.canShare||navigator.canShare({files:[file]});
-      if(fileOK){await navigator.share({title:'QUADLUD',text,files:[file]});return}
-    }
-    if(navigator.share){await navigator.share({title:'QUADLUD',text});return}
-    if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(text);showToast(tr('resultCopied'));return}
+    let file=WebPlatform.files.createTextFile(resultSvg(c,seconds),`quadlud-${c.game}-${localDay()}.svg`,'image/svg+xml');
+    if(file&&WebPlatform.sharing.canShare({files:[file]})&&await WebPlatform.sharing.share({title:'QUADLUD',text,files:[file]}))return;
+    if(await WebPlatform.sharing.share({title:'QUADLUD',text}))return;
+    if(await WebPlatform.sharing.copyText(text)){showToast(tr('resultCopied'));return}
   }catch(e){
     if(e?.name==='AbortError')return;
-    try{if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(text);showToast(tr('resultCopied'));return}}catch(_){}
+    try{if(await WebPlatform.sharing.copyText(text)){showToast(tr('resultCopied'));return}}catch(_){}
   }
   showToast(tr('shareUnavailable'))
 }
@@ -859,18 +860,19 @@ function victoryOverlay(c,seconds){
 
 const STATS_SCHEMA=PersistentData.schemas.stats,STATS_KEY=PersistentData.keys.stats,HISTORY_LIMIT=200;
 function blankStats(){return {schema:STATS_SCHEMA,baseline:PERSISTENCE_BASELINE,started:0,solved:0,revealed:0,totalSolvedSeconds:0,byGame:{},history:[],mastery:{schema:1,byTechnique:{},updatedAt:null},training:{schema:1,byTechnique:{}},learning:{schema:1,byTechnique:{}}}}
-function safeStats(){return PersistentData.stats.read(blankStats(),{schema:STATS_SCHEMA,baseline:PERSISTENCE_BASELINE,historyLimit:HISTORY_LIMIT,validGames:['queens','tango','sudoku','patches'],validDifficulties:['easy','medium','hard','expert']})}
+function safeStats(){return PersistentData.stats.read(blankStats(),{schema:STATS_SCHEMA,baseline:PERSISTENCE_BASELINE,historyLimit:HISTORY_LIMIT,validGames:GAME_IDS,validDifficulties:['easy','medium','hard','expert']})}
 function writeStats(s){PersistentData.stats.write(s)}
 function statBucket(s,g,d){
+  if(!GameRegistry.hasGame(g))throw new Error(`Unknown QUADLUD stats game: ${g}`);
   if(!s.byGame||typeof s.byGame!=='object')s.byGame={};
   if(!s.byGame[g]||typeof s.byGame[g]!=='object')s.byGame[g]={};
   if(!s.byGame[g][d]||typeof s.byGame[g][d]!=='object')s.byGame[g][d]={started:0,solved:0,revealed:0,totalSeconds:0,best:null};
   let b=s.byGame[g][d];b.started=Math.max(0,Number(b.started)||0);b.solved=Math.max(0,Number(b.solved)||0);b.revealed=Math.max(0,Number(b.revealed)||0);b.totalSeconds=Math.max(0,Number(b.totalSeconds)||0);b.best=b.best==null?null:Math.max(0,Number(b.best)||0);return b
 }
-function localDay(ts=Date.now()){let d=new Date(ts),y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${day}`}
+function localDay(ts=WebPlatform.clock.nowMs()){let d=new Date(ts),y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${day}`}
 function statsStart(c){
   if(!c||c.attemptId)return;
-  c.attemptId=`${Date.now()}-${Math.random().toString(36).slice(2,9)}`;c.startedAt=Date.now();c.statsClosed=false;
+  c.attemptId=`${WebPlatform.clock.nowMs()}-${Math.random().toString(36).slice(2,9)}`;c.startedAt=WebPlatform.clock.nowMs();c.statsClosed=false;
   let s=safeStats(),b=statBucket(s,c.game,c.diff);s.started++;b.started++;writeStats(s)
 }
 
@@ -1001,7 +1003,7 @@ function errorSignature(e){
   return `${e?.rule||''}:${cells}`
 }
 function normalizeVisibleError(e){
-  return e?{...e,schema:1,source:'visible-state',game:current?.game||e.game,at:Date.now(),canReturn:false}:null
+  return e?{...e,schema:1,source:'visible-state',game:current?.game||e.game,at:WebPlatform.clock.nowMs(),canReturn:false}:null
 }
 function queenVisibleErrors(){
   let out=[],q=[];for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(current.state[r][c]===2)q.push([r,c]);
@@ -1073,7 +1075,7 @@ function analyzeCurrentError(action){
   if(!current||current.completed||action?.type==='COACH_APPLY')return null;
   let e=current.game==='queens'?queenErrorFromAction(action):current.game==='tango'?tangoErrorFromAction(action):current.game==='sudoku'?sudokuErrorFromAction(action):current.game==='patches'?patchErrorFromAction(action):null;
   if(!e)return null;
-  return {...e,schema:1,source:'visible-state',game:current.game,at:Date.now(),canReturn:true}
+  return {...e,schema:1,source:'visible-state',game:current.game,at:WebPlatform.clock.nowMs(),canReturn:true}
 }
 function errorRuleTitle(e){
   if(!e)return '';
@@ -1167,14 +1169,14 @@ function returnBeforeLastError(){
 function captureRejectedPatchError(info){
   if(!current||current.game!=='patches'||!info)return null;
   let rule=info.reason==='MULTIPLE_CLUES'?'P_TWO_CLUES':info.reason==='OVERLAP'?'P_OVERLAP':'P_CLUE';
-  let e={schema:1,source:'visible-state',game:'patches',rule,at:Date.now(),canReturn:false,cells:info.rect?.cells||[],target:info.rect?.cells?.[0]||null,region:info.id};
+  let e={schema:1,source:'visible-state',game:'patches',rule,at:WebPlatform.clock.nowMs(),canReturn:false,cells:info.rect?.cells||[],target:info.rect?.cells?.[0]||null,region:info.id};
   current.lastError=e;errorUsage('rejected');clearErrorFocus();refreshErrorCoach();return e
 }
 
 function statsFinish(c,seconds,outcome){
   if(!c||c.statsClosed)return;c.statsClosed=true;
   let profile=c.difficultyProfile&&typeof c.difficultyProfile==='object'?JSON.parse(JSON.stringify(c.difficultyProfile)):null,fingerprint=profile?.fingerprint||c.challengeFingerprint||c.dailyFingerprint||null;
-  let s=safeStats(),b=statBucket(s,c.game,c.diff),rec={id:c.attemptId||`${Date.now()}`,ts:Date.now(),day:localDay(),game:c.game,diff:c.diff,seconds:Math.max(0,Math.round(seconds)),outcome,puzzleFingerprint:fingerprint,minimumRequiredTier:profile?.minimumRequiredTier??null,difficultyProfile:profile,backtrackUsed:!!c.backtrackUsed,hintUsed:!!c.hintUsed,walkthroughUsed:!!c.walkthroughUsed,coachUsage:c.coachUsage?{...c.coachUsage}:null,errorCoachUsage:c.errorCoachUsage?{...c.errorCoachUsage}:null,reasoningAudit:c.reasoningAudit?{...c.reasoningAudit}:null,exploration:c.exploration?{...c.exploration}:null,challengeCode:c.challengeCode||null,challengeGenerator:c.challengeGenerator||null,challengeFingerprint:c.challengeFingerprint||null,dailyDay:c.dailyDay||null,dailyGenerator:c.dailyGenerator||null,dailyFingerprint:c.dailyFingerprint||null,masterySession:cloneMasterySession(c.masterySession),masteryMerged:true};
+  let s=safeStats(),b=statBucket(s,c.game,c.diff),rec={id:c.attemptId||`${WebPlatform.clock.nowMs()}`,ts:WebPlatform.clock.nowMs(),day:localDay(),game:c.game,diff:c.diff,seconds:Math.max(0,Math.round(seconds)),outcome,puzzleFingerprint:fingerprint,minimumRequiredTier:profile?.minimumRequiredTier??null,difficultyProfile:profile,backtrackUsed:!!c.backtrackUsed,hintUsed:!!c.hintUsed,walkthroughUsed:!!c.walkthroughUsed,coachUsage:c.coachUsage?{...c.coachUsage}:null,errorCoachUsage:c.errorCoachUsage?{...c.errorCoachUsage}:null,reasoningAudit:c.reasoningAudit?{...c.reasoningAudit}:null,exploration:c.exploration?{...c.exploration}:null,challengeCode:c.challengeCode||null,challengeGenerator:c.challengeGenerator||null,challengeFingerprint:c.challengeFingerprint||null,dailyDay:c.dailyDay||null,dailyGenerator:c.dailyGenerator||null,dailyFingerprint:c.dailyFingerprint||null,masterySession:cloneMasterySession(c.masterySession),masteryMerged:true};
   if(outcome==='solved'){s.solved++;s.totalSolvedSeconds+=rec.seconds;b.solved++;b.totalSeconds+=rec.seconds;b.best=b.best==null?rec.seconds:Math.min(b.best,rec.seconds)}
   if(outcome==='revealed'){s.revealed++;b.revealed++}
   masteryMergeIntoStats(s,c.masterySession);
@@ -1189,7 +1191,7 @@ function statsSummary(){
   let s=safeStats(),success=s.started?Math.round(100*s.solved/s.started):0,avg=s.solved?Math.round(s.totalSolvedSeconds/s.solved):0;
   let days=[...new Set(s.history.filter(x=>x.outcome==='solved').map(x=>x.day))].sort().reverse(),streak=0;
   if(days.length){
-    let cur=new Date();cur.setHours(0,0,0,0);let yday=new Date(cur);yday.setDate(yday.getDate()-1);
+    let cur=WebPlatform.clock.nowDate();cur.setHours(0,0,0,0);let yday=new Date(cur);yday.setDate(yday.getDate()-1);
     if(days[0]===localDay(cur.getTime())||days[0]===localDay(yday.getTime())){
       let d=new Date(days[0]+'T12:00:00');for(let day of days){if(day!==localDay(d.getTime()))break;streak++;d.setDate(d.getDate()-1)}
     }
@@ -1202,8 +1204,8 @@ function statsSummary(){
 // ===== v2.23 — reproducible certified friend challenges =====
 const CHALLENGE_SCHEMA=2,CHALLENGE_GENERATOR=1,CHALLENGE_NAMESPACE='quadlud-challenge-v2.23',CHALLENGE_VERSION_LABEL='v2.23';
 const CHALLENGE_ALPHABET='23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
-const CHALLENGE_GAME_TO_CODE={queens:'Q',tango:'T',sudoku:'S',patches:'P'};
-const CHALLENGE_CODE_TO_GAME={Q:'queens',T:'tango',S:'sudoku',P:'patches'};
+const CHALLENGE_GAME_TO_CODE=Object.freeze(Object.fromEntries(GAME_IDS.map(game=>[game,GameRegistry.getMetadata(game)?.challengeCode]).filter(([,code])=>typeof code==='string'&&/^[A-Z]$/.test(code))));
+const CHALLENGE_CODE_TO_GAME=Object.freeze(Object.fromEntries(Object.entries(CHALLENGE_GAME_TO_CODE).map(([game,code])=>[code,game])));
 const CHALLENGE_DIFF_TO_CODE={easy:'E',medium:'M',hard:'H',expert:'X'};
 const CHALLENGE_CODE_TO_DIFF={E:'easy',M:'medium',H:'hard',X:'expert'};
 function challengeNormalizeCode(raw=''){return String(raw).toUpperCase().replace(/[^A-Z0-9]/g,'')}
@@ -1235,47 +1237,35 @@ function challengeParse(raw){
   return challengeMake(game,diff,seed,generator)
 }
 function challengeSeedString(ch){return `${CHALLENGE_NAMESPACE}:s${ch.schema}:g${ch.generator}:${ch.game}:${ch.diff}:${ch.seed}`}
-function generatedPublicPuzzleFromCandidate(game,g){
-  if(!game||!g)return null;
-  if(game==='queens')return {game:'queens',n:g.n,reg:g.reg};
-  if(game==='tango'){
-    let state=Array.from({length:6},()=>Array(6).fill(-1));
-    for(let i of g.givens)state[Math.floor(i/6)][i%6]=g.sol[Math.floor(i/6)][i%6];
-    return {game:'tango',n:6,state,edges:g.edges}
-  }
-  if(game==='sudoku')return {game:'sudoku',n:6,state:g.sol.map((r,ri)=>r.map((v,c)=>g.empty.has(ri*6+c)?0:v))};
-  if(game==='patches')return {game:'patches',n:g.n,ids:g.ids,clues:g.clues};
-  return null
-}
-function generatedCandidateFingerprint(game,g){
-  let pub=generatedPublicPuzzleFromCandidate(game,g);if(!pub||typeof DifficultyRating==='undefined')return null;
-  return DifficultyRating.fingerprintPublicPuzzle(pub)
-}
 function challengePublicPuzzleFromCandidate(ch,g){return generatedPublicPuzzleFromCandidate(ch?.game,g)}
 function challengeFingerprintFromCandidate(ch,g){return generatedCandidateFingerprint(ch?.game,g)}
-function generatedCandidateProfile(g){return g?.difficultyProfile||null}
 function challengeCandidateProfile(g){return generatedCandidateProfile(g)}
-function generatedCandidateCertified(game,diff,g){
-  let profile=generatedCandidateProfile(g),tier=typeof DifficultyRating!=='undefined'?DifficultyRating.tierIndex(diff):null,fingerprint=generatedCandidateFingerprint(game,g);
-  return !!profile&&profile.status==='solved'&&profile.difficulty===diff&&profile.minimumRequiredTier===tier&&!profile.budgetHit&&profile.fingerprint===fingerprint
-}
 function challengeCandidateCertified(ch,g){return !!ch&&generatedCandidateCertified(ch.game,ch.diff,g)}
+function gameSessionLifecycle(game){return GameRegistry.requireCapability(game,'sessionLifecycle')}
+function createRegisteredGeneratedSession(game,diff,candidate,options={}){return gameSessionLifecycle(game).createGeneratedSession(diff,candidate,options)}
+// Rendering remains the explicit Web/UI boundary until v2.27; session creation itself is registry-driven.
+function renderInstalledSession(c){if(c.game==='queens')renderQueens(c);else if(c.game==='tango')renderTango(c);else if(c.game==='sudoku')renderSudoku(c);else if(c.game==='patches')renderPatches(c);else throw new Error(`Unknown QUADLUD game renderer: ${c.game}`)}
+function installGeneratedSession(game,diff,candidate,{context='normal',metadata=null}={}){
+  current=createRegisteredGeneratedSession(game,diff,candidate,{context});
+  if(metadata&&typeof metadata==='object')Object.assign(current,metadata);
+  renderInstalledSession(current);return current
+}
+function validateRegisteredVictory(session=current,options={}){
+  if(!session?.game||!GameRegistry.hasCapability(session.game,'sessionLifecycle'))return {solved:false,reasonKey:'gridIncomplete'};
+  return gameSessionLifecycle(session.game).validateVictory(session,options)
+}
+function checkRegisteredVictory(){let result=validateRegisteredVictory(current);if(result.solved)finish(`${tr('congrats')} ${gameLabel(current.game)}`);else status(tr(result.reasonKey||'gridIncomplete'),false);return result.solved}
 function challengeBuildCandidate(ch){
   if(!ch||ch.schema!==CHALLENGE_SCHEMA||ch.generator!==CHALLENGE_GENERATOR||!CHALLENGE_GAME_TO_CODE[ch.game]||!CHALLENGE_DIFF_TO_CODE[ch.diff])return null;
   return withSeed(challengeSeedString(ch),()=>{
-    let g=ch.game==='queens'?queenCandidate(ch.diff):ch.game==='tango'?tangoCandidate(ch.diff):ch.game==='sudoku'?sudokuCandidate(ch.diff):patchesCandidate(ch.diff);
+    let g=generateRegisteredCandidate(ch.game,ch.diff);
     if(!challengeCandidateCertified(ch,g))throw new Error('Challenge candidate is not certified at the requested difficulty');
     return g
   })
 }
 function challengePublicFingerprint(ch){return challengeFingerprintFromCandidate(ch,challengeBuildCandidate(ch))}
 function challengeInstall(ch,g){
-  if(ch.game==='queens')current={game:'queens',diff:ch.diff,n:g.n,reg:g.reg,sol:g.sol,difficultyProfile:g.difficultyProfile,generationStats:g.generationStats,state:Array.from({length:g.n},()=>Array(g.n).fill(0)),generated:true,unique:true,completed:false};
-  else if(ch.game==='tango'){let state=Array.from({length:6},()=>Array(6).fill(-1));for(let i of g.givens)state[Math.floor(i/6)][i%6]=g.sol[Math.floor(i/6)][i%6];current={game:'tango',diff:ch.diff,n:6,sol:g.sol,givens:g.givens,edges:g.edges,difficultyProfile:g.difficultyProfile,generationStats:g.generationStats,state,generated:true,unique:true,completed:false}}
-  else if(ch.game==='sudoku'){current={game:'sudoku',diff:ch.diff,n:6,sol:g.sol,empty:g.empty,difficultyProfile:g.difficultyProfile,generationStats:g.generationStats,state:g.sol.map((r,ri)=>r.map((v,c)=>g.empty.has(ri*6+c)?0:v)),sel:null,generated:true,unique:true,completed:false}}
-  else if(ch.game==='patches'){const pal=['#f3c6a8','#b9d9c1','#c6d4ed','#e2c3df','#f0dc9d','#c7e0e3','#d5ceb8','#d4e3b4','#edbfc1','#c8c4e8','#e5d0a4','#b7d7d1'];current={game:'patches',diff:ch.diff,n:g.n,reg:g.reg,ids:g.ids,cellsBy:g.cellsBy,clues:g.clues,difficultyProfile:g.difficultyProfile,generationStats:g.generationStats,pal,active:g.ids[0],paint:Array.from({length:g.n},()=>Array(g.n).fill(null)),patchSelectedRects:{},patchLogicEvidence:patchEmptyEvidence(),generated:true,unique:true,completed:false}}
-  current.challenge=true;current.challengeCode=ch.code;current.challengeSeed=ch.seed;current.challengeGenerator=ch.generator;current.challengeFingerprint=challengeFingerprintFromCandidate(ch,g);
-  if(ch.game==='queens')renderQueens(current);else if(ch.game==='tango')renderTango(current);else if(ch.game==='sudoku')renderSudoku(current);else renderPatches(current)
+  return installGeneratedSession(ch.game,ch.diff,g,{context:'challenge',metadata:{challenge:true,challengeCode:ch.code,challengeSeed:ch.seed,challengeGenerator:ch.generator,challengeFingerprint:challengeFingerprintFromCandidate(ch,g)}})
 }
 function launchChallenge(value){
   let ch=typeof value==='string'?challengeParse(value):value;if(!ch){showToast(tr('invalidChallengeCode'));return false}
@@ -1297,15 +1287,15 @@ function challengeShareText(ch){
   return `QUADLUD — ${tr('challenge')}\n${gameLabel(ch.game)} · ${DIFF[ch.diff]}\n${tr('challengeCode')}: ${ch.code}\n${challengeLink(ch.code)}`
 }
 async function copyChallengeCode(code){
-  try{if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(code);showToast(tr('codeCopied'));return true}}catch(_){}
+  try{if(await WebPlatform.sharing.copyText(code)){showToast(tr('codeCopied'));return true}}catch(_){}
   showToast(tr('shareUnavailable'));return false
 }
 async function shareChallenge(ch){
   let text=challengeShareText(ch),url=challengeLink(ch.code);
   try{
-    if(navigator.share){await navigator.share({title:`QUADLUD — ${tr('challenge')}`,text,url});return true}
-    if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(`${text}`);showToast(tr('codeCopied'));return true}
-  }catch(e){if(e?.name==='AbortError')return false;try{if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(text);showToast(tr('codeCopied'));return true}}catch(_){}}
+    if(await WebPlatform.sharing.share({title:`QUADLUD — ${tr('challenge')}`,text,url}))return true;
+    if(await WebPlatform.sharing.copyText(text)){showToast(tr('codeCopied'));return true}
+  }catch(e){if(e?.name==='AbortError')return false;try{if(await WebPlatform.sharing.copyText(text)){showToast(tr('codeCopied'));return true}}catch(_){}}
   showToast(tr('shareUnavailable'));return false
 }
 function challengeReadyHtml(ch,fromLink=false){
@@ -1316,7 +1306,7 @@ function challengeView(prefill=null,fromLink=false){
   let ch=typeof prefill==='string'?challengeParse(prefill):prefill,game=ch?.game||'queens',diff=ch?.diff||'medium';
   app.innerHTML=`<section class="panel challenge-panel"><div class="stats-head"><div><h1>${tr('challenge')}</h1><p>${tr('challengeSub')}</p></div><button class="btn" id="challengeBack">${tr('back')}</button></div>
     <div class="challenge-columns">
-      <section class="challenge-box"><h2>${tr('createChallenge')}</h2><label>${tr('game')}<select class="difficulty" id="challengeGame">${['queens','tango','sudoku','patches'].map(g=>`<option value="${g}" ${g===game?'selected':''}>${gameLabel(g)}</option>`).join('')}</select></label><label>${tr('difficulty')}<select class="difficulty" id="challengeDiff">${challengeDiffOptions(game,diff)}</select></label><button class="btn primary" id="challengeGenerate">${tr('generateChallenge')}</button></section>
+      <section class="challenge-box"><h2>${tr('createChallenge')}</h2><label>${tr('game')}<select class="difficulty" id="challengeGame">${GAME_IDS.map(g=>`<option value="${g}" ${g===game?'selected':''}>${gameLabel(g)}</option>`).join('')}</select></label><label>${tr('difficulty')}<select class="difficulty" id="challengeDiff">${challengeDiffOptions(game,diff)}</select></label><button class="btn primary" id="challengeGenerate">${tr('generateChallenge')}</button></section>
       <section class="challenge-box"><h2>${tr('joinChallenge')}</h2><label>${tr('challengeCode')}<input id="challengeInput" class="challenge-input" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="QL21-QM-XXXXXXXX-XX" value="${ch?.code||''}"></label><button class="btn" id="challengeJoin">${tr('joinChallenge')}</button></section>
     </div>
     <div id="challengeReady">${ch?challengeReadyHtml(ch,fromLink):`<p class="challenge-note">${tr('challengeNoAccount')}</p>`}</div></section>`;
@@ -1334,11 +1324,8 @@ function initialView(){let ch=challengeFromHash();if(ch)return challengeView(ch,
 
 const DAILY_KEY=PersistentData.keys.daily;
 const DAILY_SCHEMA=2,DAILY_GENERATOR=1,DAILY_NAMESPACE='quadlud-daily-v2.23',DAILY_DIFFICULTY='medium';
-const DAILY_GAMES=['queens','tango','sudoku','patches'];
+const DAILY_GAMES=GAME_IDS;
 const DAILY_LOGIC_POINTS={0:100,1:90,2:75,3:55,4:25};
-function hash32(s){let h=2166136261>>>0;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
-function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296}}
-function withSeed(seed,fn){let old=Math.random;Math.random=mulberry32(hash32(seed));try{return fn()}finally{Math.random=old}}
 function dailyState(){return PersistentData.daily.read()}
 function saveDailyState(x){PersistentData.daily.write(x)}
 function dailyKey(day,game){return `${day}:${game}`}
@@ -1350,7 +1337,7 @@ function dailySeedString(day,game){
 function dailyBuildCandidate(day,game){
   let seed=dailySeedString(day,game);if(!seed)return null;
   return withSeed(seed,()=>{
-    let g=game==='queens'?queenCandidate(DAILY_DIFFICULTY):game==='tango'?tangoCandidate(DAILY_DIFFICULTY):game==='sudoku'?sudokuCandidate(DAILY_DIFFICULTY):patchesCandidate(DAILY_DIFFICULTY);
+    let g=generateRegisteredCandidate(game,DAILY_DIFFICULTY);
     if(!generatedCandidateCertified(game,DAILY_DIFFICULTY,g))throw new Error(`Daily candidate is not certified Medium (${game})`);
     return g
   })
@@ -1358,14 +1345,8 @@ function dailyBuildCandidate(day,game){
 function dailyFingerprintFromCandidate(game,g){return generatedCandidateFingerprint(game,g)}
 function dailyPublicFingerprint(day,game){let g=dailyBuildCandidate(day,game);return g?dailyFingerprintFromCandidate(game,g):null}
 function dailyInstallCandidate(game,g,day){
-  if(game==='queens')current={game:'queens',diff:DAILY_DIFFICULTY,n:g.n,reg:g.reg,sol:g.sol,difficultyProfile:g.difficultyProfile,generationStats:g.generationStats,state:Array.from({length:g.n},()=>Array(g.n).fill(0)),generated:true,unique:true,completed:false};
-  else if(game==='tango'){let state=Array.from({length:6},()=>Array(6).fill(-1));for(let i of g.givens)state[Math.floor(i/6)][i%6]=g.sol[Math.floor(i/6)][i%6];current={game:'tango',diff:DAILY_DIFFICULTY,n:6,sol:g.sol,givens:g.givens,edges:g.edges,difficultyProfile:g.difficultyProfile,generationStats:g.generationStats,state,tangoDerivedRelations:[],generated:true,unique:true,completed:false}}
-  else if(game==='sudoku'){current={game:'sudoku',diff:DAILY_DIFFICULTY,n:6,sol:g.sol,empty:g.empty,difficultyProfile:g.difficultyProfile,generationStats:g.generationStats,state:g.sol.map((r,ri)=>r.map((v,c)=>g.empty.has(ri*6+c)?0:v)),sel:null,generated:true,unique:true,completed:false}}
-  else if(game==='patches'){const pal=['#f3c6a8','#b9d9c1','#c6d4ed','#e2c3df','#f0dc9d','#c7e0e3','#d5ceb8','#d4e3b4','#edbfc1','#c8c4e8','#e5d0a4','#b7d7d1'];current={game:'patches',diff:DAILY_DIFFICULTY,n:g.n,reg:g.reg,ids:g.ids,cellsBy:g.cellsBy,clues:g.clues,difficultyProfile:g.difficultyProfile,generationStats:g.generationStats,pal,active:g.ids[0],paint:Array.from({length:g.n},()=>Array(g.n).fill(null)),patchSelectedRects:{},patchLogicEvidence:patchEmptyEvidence(),generated:true,unique:true,completed:false}}
-  else throw new Error('Unknown Daily game');
-  current.daily=true;current.dailyDay=day;current.dailyCircuit=true;current.dailySchema=DAILY_SCHEMA;current.dailyGenerator=DAILY_GENERATOR;current.dailyFingerprint=dailyFingerprintFromCandidate(game,g);
-  if(game==='queens'){rememberQueenGeneratedThisSession(g.reg,day);renderQueens(current)}else if(game==='tango')renderTango(current);else if(game==='sudoku')renderSudoku(current);else renderPatches(current);
-  return current
+  rememberGeneratedCandidateThisSession(game,g,day);
+  return installGeneratedSession(game,DAILY_DIFFICULTY,g,{context:'daily',metadata:{daily:true,dailyDay:day,dailyCircuit:true,dailySchema:DAILY_SCHEMA,dailyGenerator:DAILY_GENERATOR,dailyFingerprint:dailyFingerprintFromCandidate(game,g)}})
 }
 function dailyHelpStage(c){
   if(c?.walkthroughUsed)return 4;
@@ -1387,9 +1368,9 @@ function markDaily(c,outcome,seconds){
   let s=dailyState(),k=dailyKey(c.dailyDay,c.game),old=s[k]||{},solvedBefore=old.outcome==='solved',sec=Math.max(0,Math.round(seconds));
   if(solvedBefore){
     // The official logical score is immutable after the first successful solve.
-    old.best=old.best==null?sec:Math.min(old.best,sec);old.lastSeconds=sec;old.lastOutcome=outcome;old.lastCompletedAt=Date.now();s[k]=old;saveDailyState(s);return
+    old.best=old.best==null?sec:Math.min(old.best,sec);old.lastSeconds=sec;old.lastOutcome=outcome;old.lastCompletedAt=WebPlatform.clock.nowMs();s[k]=old;saveDailyState(s);return
   }
-  let rec={day:c.dailyDay,game:c.game,outcome,seconds:sec,completedAt:Date.now(),best:outcome==='solved'?sec:old.best??null,dailySchema:c.dailySchema??DAILY_SCHEMA,dailyGenerator:c.dailyGenerator??DAILY_GENERATOR,fingerprint:c.dailyFingerprint||null};
+  let rec={day:c.dailyDay,game:c.game,outcome,seconds:sec,completedAt:WebPlatform.clock.nowMs(),best:outcome==='solved'?sec:old.best??null,dailySchema:c.dailySchema??DAILY_SCHEMA,dailyGenerator:c.dailyGenerator??DAILY_GENERATOR,fingerprint:c.dailyFingerprint||null};
   if(outcome==='solved'){
     rec.logicScore=dailyLogicScore(c);rec.helpStage=dailyHelpStage(c);rec.helpLabelKey=['dailyNoHelp','dailyOrientation','dailyRuleHelp','dailyExplanationHelp','dailyRevealHelp'][rec.helpStage];
     rec.errors=dailyErrorCount(c);rec.backtracks=dailyBacktrackCount(c);rec.official=true
@@ -1404,7 +1385,7 @@ function dailyCircuitSummary(day=localDay(),state=dailyState()){
 }
 function dailyNextGame(day=localDay(),state=dailyState()){return DAILY_GAMES.find(g=>dailyRecord(day,g,state)?.outcome!=='solved')||null}
 function dailyCalendar(days=28){
-  let s=dailyState(),out=[],d=new Date();d.setHours(12,0,0,0);
+  let s=dailyState(),out=[],d=WebPlatform.clock.nowDate();d.setHours(12,0,0,0);
   for(let i=0;i<days;i++){let day=localDay(d.getTime()),sum=dailyCircuitSummary(day,s);out.push({day,n:sum.completed,score:sum.scoreKnown?sum.totalScore:null});d.setDate(d.getDate()-1)}
   return out
 }
@@ -1442,7 +1423,7 @@ function launchDaily(game,day=localDay()){
   }finally{setBusy(false);startBackgroundPrecompute(game,DAILY_DIFFICULTY)}});return true
 }
 const coarsePointer=()=>window.matchMedia&&window.matchMedia('(pointer:coarse)').matches;
-function haptic(ms=12){try{if(navigator.vibrate)navigator.vibrate(ms)}catch(_){}}
+function haptic(ms=12){WebPlatform.haptics.vibrate(ms)}
 function setBusy(on,label=null){label=label||tr('generating');document.body.classList.toggle('busy',!!on);document.body.setAttribute('aria-busy',String(!!on));let x=$('#busyOverlay');if(x){x.hidden=!on;x.setAttribute('aria-busy',String(!!on));let s=x.querySelector('span');if(s)s.textContent=label}}
 function pressFeedback(el){if(!el)return;el.addEventListener('pointerdown',()=>el.classList.add('pressed'),{passive:true});for(let ev of ['pointerup','pointercancel','pointerleave'])el.addEventListener(ev,()=>el.classList.remove('pressed'),{passive:true})}
 
@@ -1470,17 +1451,13 @@ function showHintNotice(text){
   document.body.insertAdjacentHTML('beforeend',`<div class="hint-notice" id="hintNotice" role="status"><div class="hint-drag-handle" title="${tr('dragHint')}" aria-label="${tr('dragHint')}"><span>⋮⋮</span> ${tr('dragHint')}</div><div class="hint-notice-text">${text}</div><button class="btn primary hint-close" id="hintClose">${tr('closeHint')}</button></div>`);
   let n=$('#hintNotice');$('#hintClose').onclick=closeHintNotice;makeHintDraggable(n)
 }
-function timerSeconds(){return elapsedBase+(!paused&&startedAt?Math.floor((Date.now()-startedAt)/1000):0)}
+function timerSeconds(){return elapsedBase+(!paused&&startedAt?Math.floor((WebPlatform.clock.nowMs()-startedAt)/1000):0)}
 function renderTimer(){timerEl.textContent=fmt(timerSeconds())}
-function startTimer(reset=true,initial=0,isPaused=false){stopTimer(false);elapsedBase=reset?initial:timerSeconds();paused=isPaused;startedAt=paused?0:Date.now();renderTimer();if(!paused)tick=setInterval(()=>{renderTimer();if(current)saveCurrent()},1000)}
+function startTimer(reset=true,initial=0,isPaused=false){stopTimer(false);elapsedBase=reset?initial:timerSeconds();paused=isPaused;startedAt=paused?0:WebPlatform.clock.nowMs();renderTimer();if(!paused)tick=setInterval(()=>{renderTimer();if(current)saveCurrent()},1000)}
 function stopTimer(commit=true){if(commit&&!paused&&startedAt){elapsedBase=timerSeconds();startedAt=0}if(tick)clearInterval(tick);tick=null}
-function togglePause(){if(!current||current.completed)return;if(paused){paused=false;startedAt=Date.now();tick=setInterval(()=>{renderTimer();if(current)saveCurrent()},1000);showToast('Chrono repris')}else{elapsedBase=timerSeconds();startedAt=0;paused=true;if(tick)clearInterval(tick);tick=null;showToast('Chrono en pause')}updatePauseButton();saveCurrent()}
+function togglePause(){if(!current||current.completed)return;if(paused){paused=false;startedAt=WebPlatform.clock.nowMs();tick=setInterval(()=>{renderTimer();if(current)saveCurrent()},1000);showToast('Chrono repris')}else{elapsedBase=timerSeconds();startedAt=0;paused=true;if(tick)clearInterval(tick);tick=null;showToast('Chrono en pause')}updatePauseButton();saveCurrent()}
 function updatePauseButton(){let b=$('#pauseBtn');if(b)b.textContent=paused?tr('resume'):tr('pause');updateHistoryButtons()}
 function fmt(s){return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
-function shuffle(a){a=[...a];for(let i=a.length-1;i;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
-function rotGrid(grid){const n=grid.length;return Array.from({length:n},(_,r)=>Array.from({length:n},(_,c)=>grid[n-1-c][r]))}
-function flipGrid(grid){return grid.map(r=>[...r].reverse())}
-function transformGrid(grid,k){let g=grid.map(r=>[...r]);for(let i=0;i<k%4;i++)g=rotGrid(g);if(k>=4)g=flipGrid(g);return g}
 function modal(title,html){let old=$('#modal');if(old)a11yCloseDialog(old,false);document.body.insertAdjacentHTML('beforeend',`<div class="modal" id="modal"><div class="sheet"><h2>${title}</h2>${html}<button class="btn primary" id="modalClose">${tr('closeHint')}</button></div></div>`);let root=$('#modal');$('#modalClose').onclick=()=>a11yCloseDialog(root);root.onclick=e=>{if(e.target===root)a11yCloseDialog(root)};a11yOpenDialog(root,'#modalClose')}
 function confirmActionModal(title,html,confirmLabel,onConfirm){let old=$('#modal');if(old)a11yCloseDialog(old,false);document.body.insertAdjacentHTML('beforeend',`<div class="modal" id="modal"><div class="sheet"><h2>${title}</h2>${html}<div class="modal-actions"><button class="btn" id="modalCancel">${tr('cancel')}</button><button class="btn danger" id="modalConfirm">${confirmLabel}</button></div></div></div>`);let root=$('#modal');$('#modalCancel').onclick=()=>a11yCloseDialog(root);$('#modalConfirm').onclick=()=>{a11yCloseDialog(root,false);onConfirm?.()};root.onclick=e=>{if(e.target===root)a11yCloseDialog(root)};a11yOpenDialog(root,'#modalCancel')}
 
@@ -1581,7 +1558,7 @@ function masteryMergeIntoStats(stats,session){
     if(!TECHNIQUE_LIBRARY[id])continue;
     stats.mastery.byTechnique[id]=masteryMergeCounts(stats.mastery.byTechnique[id],c)
   }
-  if(session?.techniques&&Object.keys(session.techniques).length)stats.mastery.updatedAt=Date.now()
+  if(session?.techniques&&Object.keys(session.techniques).length)stats.mastery.updatedAt=WebPlatform.clock.nowMs()
 }
 function masteryLegacyFromHistory(history=[]){
   let out={};
@@ -1713,7 +1690,7 @@ function masteryTechniqueCard(id,counts){
 }
 function masteryView(){
   if(current&&!current.completed)saveCurrent();stopTimer();timerEl.textContent='00:00';current=null;updateI18n();
-  let s=safeStats(),all=effectiveMasteryByTechnique(s),games=['queens','tango','sudoku','patches'];
+  let s=safeStats(),all=effectiveMasteryByTechnique(s),games=GAME_IDS;
   let gm=games.map(g=>[g,masteryGameMetrics(g,all)]),globalCounts=emptyMasteryCounts();
   for(let [,m] of gm)globalCounts=masteryMergeCounts(globalCounts,m);
   let global=masteryMetrics(globalCounts),globalLv=masteryLevel(global),overall=global.score==null?'—':`${global.score}%`;
@@ -1777,7 +1754,7 @@ function learningCard(id,stats){
 }
 function learningView(){
   if(current&&!current.completed)saveCurrent();stopTimer();timerEl.textContent='00:00';current=null;updateI18n();
-  let s=safeStats(),games=['queens','tango','sudoku','patches'],done=learningCompletedCount(s);
+  let s=safeStats(),games=GAME_IDS,done=learningCompletedCount(s);
   let sections=games.map(g=>`<section class="learning-game"><h2>${gameLabel(g)}</h2><div class="learning-grid">${techniqueIdsForGame(g).map(id=>learningCard(id,s)).join('')}</div></section>`).join('');
   app.innerHTML=`<section class="panel learning-panel"><div class="stats-head"><div><h1>${tr('learn')}</h1><p>${tr('learnSub')}</p></div><button class="btn" id="learningBack">${tr('back')}</button></div>
     <div class="learning-overall"><b>${done}/27</b><span>${tr('lessonCompletedCount')}</span><div class="learning-mini-bar"><i style="width:${done/27*100}%"></i></div></div>${sections}</section>`;
@@ -1901,7 +1878,7 @@ function trainingCard(id,all,stats,recommended){
 }
 function trainingView(){
   if(current&&!current.completed)saveCurrent();stopTimer();timerEl.textContent='00:00';current=null;updateI18n();
-  let s=safeStats(),all=effectiveMasteryByTechnique(s),recommended=trainingRecommendedId(all),games=['queens','tango','sudoku','patches'];
+  let s=safeStats(),all=effectiveMasteryByTechnique(s),recommended=trainingRecommendedId(all),games=GAME_IDS;
   let sections=games.map(g=>`<section class="training-game"><h2>${gameLabel(g)}</h2><div class="training-grid">${techniqueIdsForGame(g).map(id=>trainingCard(id,all,s,recommended)).join('')}</div></section>`).join('');
   app.innerHTML=`<section class="panel training-panel"><div class="stats-head"><div><h1>${tr('training')}</h1><p>${tr('trainingSub')}</p></div><button class="btn" id="trainingBack">${tr('back')}</button></div>${sections}</section>`;
   $('#trainingBack').onclick=home;app.querySelectorAll('[data-learn-from-training]').forEach(b=>b.onclick=()=>lessonView(b.dataset.learnFromTraining));app.querySelectorAll('[data-tech]').forEach(b=>b.onclick=()=>launchTraining(b.dataset.tech));app.querySelectorAll('button').forEach(pressFeedback)
@@ -1924,7 +1901,7 @@ function trainingSudokuDirectHint(id){
   for(let u of units)for(let v=1;v<=6;v++){let places=u.cells.filter(([r,c])=>current.state[r][c]===0&&sudokuCandidatesAt(r,c).includes(v));if(places.length===1){let [r,c]=places[0],cand=sudokuCandidatesAt(r,c);if(cand.length>1)return {r,c,v,rank:0,technique:id,why:lang()==='fr'?`${v} n’a qu’une seule position possible dans ${u.nameFr}.`:`${v} has only one possible position in ${u.nameEn}.`}}}
   return null
 }
-function trainingHintForId(id,deadline=Date.now()+1800){
+function trainingHintForId(id,deadline=WebPlatform.clock.nowMs()+1800){
   let x=TECHNIQUE_LIBRARY[id];if(!x||!current||current.game!==x.game)return null;let h=null,r=x.rank;
   if(x.game==='queens')h=r===0?findQueenLogicalHint():r===1?findQueenRank1Hint(deadline):r===2?findQueenRank2Hint(deadline):findQueenRank3Hint(deadline);
   else if(x.game==='tango')h=r===0?findTangoLogicalHint():r===1?findTangoRank1Hint():findTangoRank2Hint();
@@ -1933,7 +1910,7 @@ function trainingHintForId(id,deadline=Date.now()+1800){
   if(!h||h.timeout||coachTechniqueId(x.game,h)!==id)return null;h.technique=id;return h
 }
 function trainingBuildQueensDirect(id,deadline){
-  for(let attempt=0;attempt<5&&Date.now()<deadline;attempt++){
+  for(let attempt=0;attempt<5&&WebPlatform.clock.nowMs()<deadline;attempt++){
     let g=queenCandidate('medium');
     // Exclusions and unique-position exercises are constructed only from valid queen solution/regions; validation below uses visible state only.
     if(id==='Q_EXCLUSION_ROW'){
@@ -1955,7 +1932,7 @@ function trainingBuildQueensDirect(id,deadline){
   return null
 }
 function trainingBuildTangoDirect(id,deadline){
-  for(let a=0;a<4&&Date.now()<deadline;a++){
+  for(let a=0;a<4&&WebPlatform.clock.nowMs()<deadline;a++){
     let g=tangoCandidate('easy');trainingSetTangoBase(g,'easy',true);
     if(id==='T_BALANCE_ROW'){
       for(let r=0;r<6;r++)for(let v=0;v<2;v++){let cells=[];for(let c=0;c<6;c++)if(g.sol[r][c]===v)cells.push(c);if(cells.length===3){current.state=Array.from({length:6},()=>Array(6).fill(-1));current.givens=new Set();for(let c of cells){current.state[r][c]=v;current.givens.add(r*6+c)}let h=trainingHintForId(id,deadline);if(h)return h}}
@@ -1971,12 +1948,12 @@ function trainingBuildTangoDirect(id,deadline){
   return null
 }
 function trainingBuildSudokuDirect(id,deadline){
-  for(let a=0;a<4&&Date.now()<deadline;a++){
+  for(let a=0;a<4&&WebPlatform.clock.nowMs()<deadline;a++){
     let g=sudokuCandidate('medium');
     if(id==='S_NAKED_SINGLE'){
       for(let r=0;r<6;r++)for(let target=0;target<6;target++){trainingSetSudokuBase(g,'medium');current.empty=new Set();for(let rr=0;rr<6;rr++)for(let c=0;c<6;c++)if(rr!==r||c===target)current.empty.add(rr*6+c);current.state=Array.from({length:6},()=>Array(6).fill(0));for(let c=0;c<6;c++)if(c!==target)current.state[r][c]=g.sol[r][c];let h=trainingHintForId(id,deadline);if(h)return h}
     }else{
-      for(let k=0;k<500&&Date.now()<deadline;k++){
+      for(let k=0;k<500&&WebPlatform.clock.nowMs()<deadline;k++){
         trainingSetSudokuBase(g,'medium');let holes=12+Math.floor(Math.random()*16),idx=shuffle(Array.from({length:36},(_,i)=>i)).slice(0,holes);current.empty=new Set(idx);current.state=g.sol.map((row,r)=>row.map((v,c)=>current.empty.has(r*6+c)?0:v));let h=trainingHintForId(id,deadline);if(h)return h
       }
     }
@@ -1984,9 +1961,9 @@ function trainingBuildSudokuDirect(id,deadline){
   return null
 }
 function trainingBuildPatchDirect(id,deadline){
-  for(let a=0;a<8&&Date.now()<deadline;a++){
+  for(let a=0;a<8&&WebPlatform.clock.nowMs()<deadline;a++){
     let g=patchesCandidate(id==='P_SINGLE_RECTANGLE'?'easy':'medium');trainingSetPatchBase(g,id==='P_SINGLE_RECTANGLE'?'easy':'medium');
-    for(let k=0;k<100&&Date.now()<deadline;k++){
+    for(let k=0;k<100&&WebPlatform.clock.nowMs()<deadline;k++){
       current.paint=Array.from({length:g.n},()=>Array(g.n).fill(null));let p=id==='P_MANDATORY_CELL'?Math.random()*.42:Math.random()*.18;for(let r=0;r<g.n;r++)for(let c=0;c<g.n;c++)if(Math.random()<p)current.paint[r][c]=g.reg[r][c];let h=trainingHintForId(id,deadline);if(h)return h
     }
   }
@@ -2004,20 +1981,20 @@ function trainingLoadAdvancedFixture(id,deadline){
 }
 function trainingBuildAdvanced(id,deadline){
   let fixture=trainingLoadAdvancedFixture(id,deadline);if(fixture)return fixture;let x=TECHNIQUE_LIBRARY[id],diff=trainingDifficulty(id);
-  for(let b=0;b<4&&Date.now()<deadline;b++){
+  for(let b=0;b<4&&WebPlatform.clock.nowMs()<deadline;b++){
     if(x.game==='queens')trainingSetQueenBase(queenCandidate(diff),diff);
     else if(x.game==='tango'){let g=tangoCandidate(diff);trainingSetTangoBase(g,diff,true);current.edges=g.edges}
     else if(x.game==='sudoku')trainingSetSudokuBase(sudokuCandidate(diff),diff);
     else if(x.game==='patches')trainingSetPatchBase(patchesCandidate(diff),diff);
     let base=current;
-    for(let k=0;k<90&&Date.now()<deadline;k++){
+    for(let k=0;k<90&&WebPlatform.clock.nowMs()<deadline;k++){
       let p=.12+Math.random()*.72;trainingRandomProgress(x.game,base,p);let h=trainingHintForId(id,deadline);if(h)return h
     }
   }
   return null
 }
 function buildTrainingExercise(id){
-  let x=TECHNIQUE_LIBRARY[id];if(!x)return null;let deadline=Date.now()+5500,h=null;
+  let x=TECHNIQUE_LIBRARY[id];if(!x)return null;let deadline=WebPlatform.clock.nowMs()+5500,h=null;
   if(x.rank===0){if(x.game==='queens')h=trainingBuildQueensDirect(id,deadline);else if(x.game==='tango')h=trainingBuildTangoDirect(id,deadline);else if(x.game==='sudoku')h=trainingBuildSudokuDirect(id,deadline);else h=trainingBuildPatchDirect(id,deadline)}
   else h=trainingBuildAdvanced(id,deadline);
   if(!h)return null;
@@ -2291,32 +2268,14 @@ function patchCurrentLogicResult(){let engine=patchesLogicSession(),result=engin
 function patchLogicContradictionText(w){if(!w)return '';let prefix=w.clue!=null?`${patchZoneName(w.clue)} : `:'';return `${prefix}${patchContradictionReason(w)}.`}
 function patchCoachHandleDeduction(d){let boardKey=historySnapshotKey(),sig=d.signature||d.id,flow=current.hintFlow,isSame=flow?.kind==='patches-proof'&&flow.boardKey===boardKey&&flow.signature===sig;if(!isSame){current.hintFlow={kind:'patches-proof',boardKey,signature:sig,stage:1,deduction:JSON.parse(JSON.stringify(d))};coachUsage(1,patchLegacyTechniqueForDeduction(d));patchFocusDeduction(d,false);showHintNotice(`<span class="coach-progress">1/2</span><b>${tr('where')} :</b> ${patchDeductionOrientation(d)}`);saveCurrent();return}let proof=flow.deduction||d,before=historySnapshotKey();coachUsage(2,patchLegacyTechniqueForDeduction(proof));coachUsage(3,patchLegacyTechniqueForDeduction(proof));markHintUsed();updateScoreFlags();patchFocusDeduction(proof,true);let application=patchApplyDeductionToCurrent(proof);if(!application){current.hintFlow=null;showHintNotice(tr('hintError'));return}drawP();historyRecord({type:'COACH_APPLY',reasoning:patchDeductionReasoning(application.deduction,application.automatic),coachStage:2,coachFlowVersion:4},before);current.hintFlow=null;showHintNotice(`<span class="coach-progress">2/2</span><b>${patchRuleHumanTitle(proof)}</b><br>${patchDeductionExplanation(proof)}`);maybeAutoFinish();saveCurrent();haptic(12)}
 
-function cloneGrid(x){return Array.isArray(x)?x.map(r=>Array.isArray(r)?[...r]:r):x}
-function puzzleSnapshot(){
-  if(!current)return null;
-  if(current.game==='queens')return {game:'queens',state:cloneGrid(current.state)};
-  if(current.game==='tango')return {game:'tango',state:cloneGrid(current.state),tangoPendingCell:current.tangoPendingCell?[...current.tangoPendingCell]:null,tangoDerivedRelations:JSON.parse(JSON.stringify(current.tangoDerivedRelations||[]))};
-  if(current.game==='sudoku')return {game:'sudoku',state:cloneGrid(current.state)};
-  if(current.game==='patches')return {game:'patches',paint:cloneGrid(current.paint),patchSelectedRects:JSON.parse(JSON.stringify(current.patchSelectedRects||{})),patchLogicEvidence:JSON.parse(JSON.stringify(current.patchLogicEvidence||patchEmptyEvidence()))};
-  return {game:current.game}
-}
-function historySnapshotKey(s=puzzleSnapshot()){return JSON.stringify(s)}
-function historyInit(force=false){
-  if(!current)return null;
-  let h=current.moveHistory;
-  if(!force&&h&&h.schema===1&&h.nodes&&h.cursor&&h.nodes[h.cursor])return h;
-  let root={id:'h0',parent:null,children:[],preferred:null,action:{type:'START',game:current.game,at:Date.now()},snapshot:puzzleSnapshot()};
-  current.moveHistory={schema:1,nextId:1,cursor:'h0',nodes:{h0:root},stats:{undos:0,redos:0,branches:0}};
-  return current.moveHistory
-}
-function historyNode(){let h=current?.moveHistory;return h?.nodes?.[h.cursor]||null}
-function historyCanUndo(){let n=historyNode();return !!(current&&!current.completed&&n?.parent&&current.moveHistory.nodes[n.parent])}
-function historyRedoTarget(){
-  let h=current?.moveHistory,n=h?.nodes?.[h.cursor];if(!n||!n.children?.length)return null;
-  let id=n.preferred&&n.children.includes(n.preferred)?n.preferred:n.children[n.children.length-1];
-  return h.nodes[id]||null
-}
-function historyCanRedo(){return !!(current&&!current.completed&&historyRedoTarget())}
+function cloneGrid(x){return SessionCore.cloneGrid(x)}
+function puzzleSnapshot(){return SessionCore.puzzleSnapshot(current)}
+function historySnapshotKey(s=puzzleSnapshot()){return SessionCore.snapshotKey(s)}
+function historyInit(force=false){return SessionCore.ensureHistory(current,force)}
+function historyNode(){return SessionCore.historyNode(current)}
+function historyCanUndo(){return SessionCore.canUndo(current)}
+function historyRedoTarget(){return SessionCore.redoTarget(current)}
+function historyCanRedo(){return SessionCore.canRedo(current)}
 
 // ===== v2.19.1 — classify legal moves as justified deductions or hypotheses =====
 function reasoningAuditBucket(){
@@ -2349,7 +2308,7 @@ function withAuditSnapshot(beforeKey,fn){
   current=clone;try{return fn(clone)}finally{current=snap}
 }
 function proofResult(status,technique=null,rank=null,target=null,detail=null){
-  return {schema:1,status,source:'visible-state',technique,rank,target,detail,at:Date.now()}
+  return {schema:1,status,source:'visible-state',technique,rank,target,detail,at:WebPlatform.clock.nowMs()}
 }
 function queenDirectPlacementAt(r,c){
   if(current.state[r][c]!==0||!queenCellAllowed(r,c))return null;let n=current.n;
@@ -2366,11 +2325,11 @@ function justifyQueenAt(r,c,v,deadline){
   let opp=v===2?1:2;
   let chosenBad=withTempCurrent(x=>{x.state[r][c]=v},()=>queenStateContradiction()),oppBad=withTempCurrent(x=>{x.state[r][c]=opp},()=>queenStateContradiction());
   if(!chosenBad&&oppBad)return proofResult('justified','Q_CONTRADICTION_R1',1,[r,c],null);
-  if(Date.now()>=deadline)return proofResult('unknown',null,null,[r,c],'timeout');
+  if(WebPlatform.clock.nowMs()>=deadline)return proofResult('unknown',null,null,[r,c],'timeout');
   let opp2=withTempCurrent(x=>{x.state[r][c]=opp},()=>queenBoundedContradiction(1,deadline));if(opp2?.timeout)return proofResult('unknown',null,null,[r,c],'timeout');
   let chosen2=withTempCurrent(x=>{x.state[r][c]=v},()=>queenBoundedContradiction(1,deadline));if(chosen2?.timeout)return proofResult('unknown',null,null,[r,c],'timeout');
   if(opp2?.bad&&!chosen2?.bad)return proofResult('justified','Q_CONTRADICTION_R2',2,[r,c],null);
-  if(Date.now()>=deadline)return proofResult('unknown',null,null,[r,c],'timeout');
+  if(WebPlatform.clock.nowMs()>=deadline)return proofResult('unknown',null,null,[r,c],'timeout');
   let opp3=withTempCurrent(x=>{x.state[r][c]=opp},()=>queenBoundedContradiction(2,deadline));if(opp3?.timeout)return proofResult('unknown',null,null,[r,c],'timeout');
   let chosen3=withTempCurrent(x=>{x.state[r][c]=v},()=>queenBoundedContradiction(2,deadline));if(chosen3?.timeout)return proofResult('unknown',null,null,[r,c],'timeout');
   if(opp3?.bad&&!chosen3?.bad)return proofResult('justified','Q_CONTRADICTION_R3',3,[r,c],null);
@@ -2422,7 +2381,7 @@ function patchRectangleJustification(action){
   if(p.status==='proven'){let d=p.deduction||null,x=proofResult('justified',patchLegacyTechniqueForDeduction(d),d?.rank??p.fact?.rank??0,target,{logicalStatus:'proven',deduction:d?patchDeductionReasoning(d):null});x.logicalStatus='proven';return x}
   let x=proofResult('unjustified',null,null,target,{logicalStatus:p.status,contradiction:p.contradiction||null});x.logicalStatus=p.status;return x
 }
-function firstKnownLogicalMoveFromSnapshot(beforeKey,deadline=Date.now()+250){
+function firstKnownLogicalMoveFromSnapshot(beforeKey,deadline=WebPlatform.clock.nowMs()+250){
   return withAuditSnapshot(beforeKey,()=>{
     let h=null,g=current.game;
     if(g==='queens'){let q=queenLogicSession(),r=q.nextDeduction();return r.deduction?queenDeductionReasoning(r.deduction):null}
@@ -2435,7 +2394,7 @@ function firstKnownLogicalMoveFromSnapshot(beforeKey,deadline=Date.now()+250){
 function evaluateMoveJustification(beforeKey,action,error=null){
   if(!current||current.training||error||!action||['COACH_APPLY','AUTO_CROSS_ENABLE','PATCH_REMOVE','LEARNING_GUIDED'].includes(action.type))return null;
   if(current.game==='patches'&&action.type==='PATCH_RECTANGLE')return withAuditSnapshot(beforeKey,()=>patchRectangleJustification(action));
-  let ch=auditConstructiveChange(action);if(!ch)return null;let deadline=Date.now()+350;
+  let ch=auditConstructiveChange(action);if(!ch)return null;let deadline=WebPlatform.clock.nowMs()+350;
   let result=withAuditSnapshot(beforeKey,()=>{
     if(current.game==='queens'){
       let q=queenLogicSession(),p=q.proveAction([ch.row,ch.column],ch.to);
@@ -2502,7 +2461,7 @@ function refreshReasoningAudit(){
 }
 function acceptLastMoveAsHypothesis(){
   let h=current?.moveHistory,a=current?.lastMoveAudit;if(!h||!a?.historyNode)return false;let n=h.nodes[a.historyNode];if(!n?.justification||n.justification.status!=='unjustified')return false;if(current.game==='sudoku'&&n.justification.logicalStatus&&n.justification.logicalStatus!=='not-yet-proven')return false;
-  n.justification.status='hypothesis';n.justification.acceptedAt=Date.now();let b=reasoningAuditBucket();b.hypotheses++;current.lastMoveAudit={...n.justification,historyNode:n.id,parentNode:n.parent};refreshReasoningAudit();saveCurrent();showToast(tr('hypothesisAccepted'));return true
+  n.justification.status='hypothesis';n.justification.acceptedAt=WebPlatform.clock.nowMs();let b=reasoningAuditBucket();b.hypotheses++;current.lastMoveAudit={...n.justification,historyNode:n.id,parentNode:n.parent};refreshReasoningAudit();saveCurrent();showToast(tr('hypothesisAccepted'));return true
 }
 
 
@@ -2513,20 +2472,9 @@ function explorationState(){
   if(!e||typeof e!=='object')return null;
   return e
 }
-function historyNodeDepth(id){
-  let h=current?.moveHistory,d=0,n=h?.nodes?.[id],guard=0;
-  while(n?.parent&&guard++<10000){d++;n=h.nodes[n.parent]}return d
-}
-function historyIsDescendant(id,ancestor){
-  let h=current?.moveHistory,n=h?.nodes?.[id],guard=0;
-  while(n&&guard++<10000){if(n.id===ancestor)return true;n=n.parent?h.nodes[n.parent]:null}return false
-}
-function historyPathFrom(ancestor,id){
-  if(!historyIsDescendant(id,ancestor))return [];
-  let h=current.moveHistory,out=[],n=h.nodes[id],guard=0;
-  while(n&&n.id!==ancestor&&guard++<10000){out.push(n.id);n=h.nodes[n.parent]}
-  return out.reverse()
-}
+function historyNodeDepth(id){return SessionCore.nodeDepth(current,id)}
+function historyIsDescendant(id,ancestor){return SessionCore.isDescendant(current,id,ancestor)}
+function historyPathFrom(ancestor,id){return SessionCore.pathFrom(current,ancestor,id)}
 function historyActionShort(node){
   if(!node)return tr('branchStart');
   let a=node.action||{};if(a.type==='START')return tr('branchStart');let j=node.justification,e=node.error,ch=(a.changes||[])[0];
@@ -2608,11 +2556,11 @@ function refreshExplorationPanel(){
 function startExploration(){
   if(!current||current.completed||paused||current.training)return false;
   let h=historyInit(),cursor=h.cursor;
-  current.exploration={schema:1,active:true,branchPoint:cursor,startedAt:Date.now(),returns:0,analyses:0,kept:0};
+  current.exploration={schema:1,active:true,branchPoint:cursor,startedAt:WebPlatform.clock.nowMs(),returns:0,analyses:0,kept:0};
   closeHintNotice();refreshExplorationPanel();saveCurrent();showToast(tr('testHypothesis'));return true
 }
 function closeExploration(){
-  let e=explorationState();if(!e)return false;e.active=false;e.closedAt=Date.now();refreshExplorationPanel();saveCurrent();return true
+  let e=explorationState();if(!e)return false;e.active=false;e.closedAt=WebPlatform.clock.nowMs();refreshExplorationPanel();saveCurrent();return true
 }
 function setHistoryCursor(id){
   let h=current?.moveHistory,n=h?.nodes?.[id];if(!n||current.completed||paused)return false;
@@ -2630,13 +2578,13 @@ function keepExplorationBranch(){
   let e=explorationState(),h=current?.moveHistory;if(!e?.active||h.cursor===e.branchPoint)return false;
   let path=historyPathFrom(e.branchPoint,h.cursor),parent=e.branchPoint;
   for(let id of path){let p=h.nodes[parent];if(p?.children?.includes(id))p.preferred=id;parent=id}
-  e.kept=(e.kept||0)+1;e.keptNode=h.cursor;e.active=false;e.closedAt=Date.now();refreshExplorationPanel();saveCurrent();showToast(tr('branchKept'));return true
+  e.kept=(e.kept||0)+1;e.keptNode=h.cursor;e.active=false;e.closedAt=WebPlatform.clock.nowMs();refreshExplorationPanel();saveCurrent();showToast(tr('branchKept'));return true
 }
 function explorationContradiction(){
   let errors=currentVisibleErrors();if(errors.length)return {bad:true,kind:'rules',html:errors.map(e=>`<b>${errorRuleTitle(e)}</b><br>${errorDetailedMessage(e)}`).join('<hr>')};
   if(current.game==='queens'){
     if(queenStateContradiction())return {bad:true,kind:'logic',html:queenImmediateContradictionDetail()};
-    let d=queenBoundedContradiction(2,Date.now()+700);if(d?.bad)return {bad:true,kind:'logic',html:d.reason||queenRank3BranchSummary(d)}
+    let d=queenBoundedContradiction(2,WebPlatform.clock.nowMs()+700);if(d?.bad)return {bad:true,kind:'logic',html:d.reason||queenRank3BranchSummary(d)}
   }else if(current.game==='tango'){
     let t=tangoLogicSession(),w=t.diagnose();if(w)return {bad:true,kind:'logic',html:tangoLogicContradictionText(w)}
   }else if(current.game==='sudoku'){
@@ -2664,96 +2612,46 @@ function explorationOnRecordedNode(node){
   // In Exploration, a legal but unproved first move is explicitly a hypothesis.
   let path=historyPathFrom(e.branchPoint,node.id),h=current.moveHistory,priorHypothesis=path.slice(0,-1).some(id=>h.nodes[id]?.justification?.status==='hypothesis');
   if(!priorHypothesis&&node.justification?.status==='unjustified'&&!(current.game==='sudoku'&&node.justification.logicalStatus&&node.justification.logicalStatus!=='not-yet-proven')){
-    node.justification.status='hypothesis';node.justification.acceptedAt=Date.now();node.justification.exploration=true;
+    node.justification.status='hypothesis';node.justification.acceptedAt=WebPlatform.clock.nowMs();node.justification.exploration=true;
     let b=reasoningAuditBucket();b.hypotheses++;current.lastMoveAudit={...node.justification,historyNode:node.id,parentNode:node.parent};showToast(tr('branchHypothesisAuto'))
   }
   refreshReasoningAudit();refreshExplorationPanel()
 }
 
-function historyChanges(beforeKey,after){
-  if(!beforeKey||!after)return [];
-  try{
-    let before=JSON.parse(beforeKey),a=before.state||before.paint,b=after.state||after.paint;if(!Array.isArray(a)||!Array.isArray(b))return [];
-    let out=[];for(let r=0;r<Math.min(a.length,b.length);r++)for(let c=0;c<Math.min(a[r]?.length||0,b[r]?.length||0);c++)if(a[r][c]!==b[r][c])out.push({row:r,column:c,from:a[r][c],to:b[r][c]});
-    return out
-  }catch(_){return []}
-}
-function normalizeHistoryAction(action,beforeKey=null,after=null){
-  let a=typeof action==='string'?{type:action}:(action&&typeof action==='object'?{...action}:{type:'MOVE'});
-  a.type=a.type||'MOVE';a.game=current?.game||a.game||null;a.at=Date.now();a.changes=historyChanges(beforeKey,after);
-  if(a.type==='MOVE'&&a.changes.length===1){
-    let ch=a.changes[0];a.target={row:ch.row,column:ch.column};
-    if(a.game==='tango')a.type='SET_SYMBOL';
-    else if(a.game==='sudoku')a.type='SET_DIGIT';
-    else if(a.game==='queens')a.type='SET_QUEEN_CELL';
-    else if(a.game==='patches')a.type='SET_REGION_CELL'
-  }
-  return a
-}
+function historyChanges(beforeKey,after){return SessionCore.historyChanges(beforeKey,after)}
+function normalizeHistoryAction(action,beforeKey=null,after=null){return SessionCore.normalizeHistoryAction(current,action,beforeKey,after)}
 function historyRecord(action='MOVE',beforeKey=null){
   if(!current)return false;
-  let h=historyInit(),snap=puzzleSnapshot(),key=historySnapshotKey(snap);
-  if(beforeKey!=null&&beforeKey===key){updateHistoryButtons();return false}
-  let parent=h.nodes[h.cursor];if(!parent)return false;
-  let normalized=normalizeHistoryAction(action,beforeKey,snap);
-  let existing=(parent.children||[]).map(id=>h.nodes[id]).find(n=>n&&historySnapshotKey(n.snapshot)===key);
-  if(existing){
-    parent.preferred=existing.id;h.cursor=existing.id;existing.action=normalized;
-    let err=analyzeCurrentError(normalized);existing.error=err?{...err,historyNode:existing.id,parentNode:parent.id}:null;
-    current.lastError=existing.error?{...existing.error}:null;if(existing.error)errorUsage('detected',existing.error.technique||null);
-    let audit=evaluateMoveJustification(beforeKey,normalized,existing.error);applyAuditResult(existing,audit);explorationOnRecordedNode(existing);
-    masteryRecognizePlayerMove(beforeKey,normalized,existing.error,audit);if(current.training&&!existing.error)trainingMoveCompleted(normalized);refreshErrorCoach();updateHistoryButtons();return true
-  }
-  let id=`h${h.nextId++}`,hadAlternative=(parent.children||[]).length>0;
-  let node={id,parent:parent.id,children:[],preferred:null,action:normalized,snapshot:snap};
-  let err=analyzeCurrentError(normalized);node.error=err?{...err,historyNode:id,parentNode:parent.id}:null;
-  parent.children=parent.children||[];parent.children.push(id);parent.preferred=id;h.nodes[id]=node;h.cursor=id;
+  let rec=SessionCore.recordHistory(current,action,beforeKey);if(!rec.changed){updateHistoryButtons();return false}
+  let {node,parent,normalized,existing}=rec;
+  let err=analyzeCurrentError(normalized);node.error=err?{...err,historyNode:node.id,parentNode:parent.id}:null;
   current.lastError=node.error?{...node.error}:null;if(node.error)errorUsage('detected',node.error.technique||null);
   let audit=evaluateMoveJustification(beforeKey,normalized,node.error);applyAuditResult(node,audit);explorationOnRecordedNode(node);
-  masteryRecognizePlayerMove(beforeKey,normalized,node.error,audit);if(current.training&&!node.error)trainingMoveCompleted(normalized);refreshErrorCoach();
-  if(hadAlternative)h.stats.branches=(h.stats.branches||0)+1;
-  updateHistoryButtons();return true
+  masteryRecognizePlayerMove(beforeKey,normalized,node.error,audit);if(current.training&&!node.error)trainingMoveCompleted(normalized);refreshErrorCoach();updateHistoryButtons();return true
 }
 function restorePuzzleSnapshot(s){
   if(!current||!s||s.game!==current.game)return false;
   current.hintFlow=null;current.lastReasoning=null;current.lastError=null;current.lastMoveAudit=null;current.masteryPendingAid=null;clearHintFocus();clearErrorFocus();closeHintNotice();$('#victory')?.remove();
-  if(s.game==='queens'){current.state=cloneGrid(s.state);drawQ()}
-  else if(s.game==='tango'){current.state=cloneGrid(s.state);current.tangoPendingCell=s.tangoPendingCell?[...s.tangoPendingCell]:null;current.tangoDerivedRelations=JSON.parse(JSON.stringify(s.tangoDerivedRelations||[]));drawT()}
-  else if(s.game==='sudoku'){current.state=cloneGrid(s.state);drawS()}
-  else if(s.game==='patches'){current.paint=cloneGrid(s.paint);current.patchSelectedRects=JSON.parse(JSON.stringify(s.patchSelectedRects||{}));current.patchLogicEvidence=JSON.parse(JSON.stringify(s.patchLogicEvidence||patchEmptyEvidence()));drawP()}
+  if(!SessionCore.applyPuzzleSnapshot(current,s))return false;
+  if(s.game==='queens')drawQ();else if(s.game==='tango')drawT();else if(s.game==='sudoku')drawS();else if(s.game==='patches')drawP();
   status('',true);updateScoreFlags();return true
 }
 function undoMoves(count=1){
   if(!current||current.completed||paused)return 0;
-  let h=historyInit(),moved=0,countN=Math.max(1,Math.floor(Number(count)||1));
-  while(moved<countN){
-    let n=h.nodes[h.cursor];if(!n?.parent)break;
-    let parent=h.nodes[n.parent];if(!parent)break;
-    parent.preferred=n.id;h.cursor=parent.id;moved++
-  }
-  if(!moved){updateHistoryButtons();return 0}
-  h.stats.undos=(h.stats.undos||0)+moved;markBacktrack();restorePuzzleSnapshot(h.nodes[h.cursor].snapshot);syncErrorFromHistory();syncReasoningAuditFromHistory();trainingSyncPath();updateHistoryButtons();refreshExplorationPanel();saveCurrent();haptic(7);return moved
+  let step=SessionCore.undoHistory(current,count),moved=step.moved;if(!moved){updateHistoryButtons();return 0}
+  markBacktrack();restorePuzzleSnapshot(step.snapshot);syncErrorFromHistory();syncReasoningAuditFromHistory();trainingSyncPath();updateHistoryButtons();refreshExplorationPanel();saveCurrent();haptic(7);return moved
 }
 function redoMoves(count=1){
   if(!current||current.completed||paused)return 0;
-  let h=historyInit(),moved=0,countN=Math.max(1,Math.floor(Number(count)||1));
-  while(moved<countN){
-    let n=h.nodes[h.cursor];if(!n?.children?.length)break;
-    let id=n.preferred&&n.children.includes(n.preferred)?n.preferred:n.children[n.children.length-1],next=h.nodes[id];if(!next)break;
-    h.cursor=id;moved++
-  }
-  if(!moved){updateHistoryButtons();return 0}
-  h.stats.redos=(h.stats.redos||0)+moved;restorePuzzleSnapshot(h.nodes[h.cursor].snapshot);syncErrorFromHistory();syncReasoningAuditFromHistory();trainingSyncPath();updateHistoryButtons();refreshExplorationPanel();saveCurrent();haptic(7);return moved
+  let step=SessionCore.redoHistory(current,count),moved=step.moved;if(!moved){updateHistoryButtons();return 0}
+  restorePuzzleSnapshot(step.snapshot);syncErrorFromHistory();syncReasoningAuditFromHistory();trainingSyncPath();updateHistoryButtons();refreshExplorationPanel();saveCurrent();haptic(7);return moved
 }
 function updateHistoryButtons(){
   let u=$('#undoBtn'),r=$('#redoBtn');
   if(u)u.disabled=!current||current.completed||paused||!historyCanUndo();
   if(r)r.disabled=!current||current.completed||paused||!historyCanRedo()
 }
-function historySummary(){
-  let h=current?.moveHistory;if(!h)return {nodes:0,branches:0,undos:0,redos:0};
-  return {nodes:Object.keys(h.nodes||{}).length,branches:h.stats?.branches||0,undos:h.stats?.undos||0,redos:h.stats?.redos||0}
-}
+function historySummary(){return SessionCore.summary(current)}
 document.addEventListener('keydown',e=>{
   if(!(e.ctrlKey||e.metaKey)||String(e.key).toLowerCase()!=='z')return;
   if(!current||paused||current.completed)return;e.preventDefault();
@@ -2763,22 +2661,11 @@ document.addEventListener('keydown',e=>{
 function plainCurrent(){return DataSerialization.serializeCurrentState(current)}
 function discardLegacyPersistence(){PersistentData.save.discardLegacy()}
 function persistenceContract(){let d=typeof DifficultyRating!=='undefined'?DifficultyRating:null;return {difficultySchema:d?.SCHEMA_VERSION??1,ratingVersion:d?.RATING_VERSION??1,fingerprintVersion:d?.FINGERPRINT_VERSION??1,generatorVersion:d?.GENERATOR_VERSION??1}}
-function persistenceSnapshot(c){
-  if(!c)return null;
-  if(c.game==='queens')return {game:'queens',state:cloneGrid(c.state)};
-  if(c.game==='tango')return {game:'tango',state:cloneGrid(c.state),tangoPendingCell:c.tangoPendingCell?[...c.tangoPendingCell]:null,tangoDerivedRelations:JSON.parse(JSON.stringify(c.tangoDerivedRelations||[]))};
-  if(c.game==='sudoku')return {game:'sudoku',state:cloneGrid(c.state)};
-  if(c.game==='patches')return {game:'patches',paint:cloneGrid(c.paint),patchSelectedRects:JSON.parse(JSON.stringify(c.patchSelectedRects||{})),patchLogicEvidence:JSON.parse(JSON.stringify(c.patchLogicEvidence||patchEmptyEvidence()))};
-  return {game:c.game}
-}
-function persistenceHistoryValid(c){let h=c?.moveHistory,node=h?.nodes?.[h.cursor],root=h?.nodes?.h0;if(!h||h.schema!==1||!node||!root||root.parent!==null)return false;try{return JSON.stringify(node.snapshot)===JSON.stringify(persistenceSnapshot(c))}catch(_){return false}}
+function persistenceSnapshot(c){return SessionCore.puzzleSnapshot(c)}
+function persistenceHistoryValid(c){return SessionCore.historyValid(c)}
 function persistencePublicPuzzle(c){
-  let root=c?.moveHistory?.nodes?.h0?.snapshot;if(!c||!root)return null;
-  if(c.game==='queens')return {game:'queens',n:c.n,reg:c.reg};
-  if(c.game==='tango')return {game:'tango',n:c.n||6,state:root.state,edges:c.edges||[]};
-  if(c.game==='sudoku')return {game:'sudoku',n:6,state:root.state};
-  if(c.game==='patches')return {game:'patches',n:c.n,ids:c.ids,clues:c.clues};
-  return null
+  let root=c?.moveHistory?.nodes?.h0?.snapshot;if(!c||!root||!GameRegistry.hasGame(c.game))return null;
+  try{return GameRegistry.requireCapability(c.game,'publicPuzzleFromSession')(c,root)}catch(_){return null}
 }
 function persistenceFingerprint(c){try{return typeof DifficultyRating!=='undefined'?DifficultyRating.fingerprintPublicPuzzle(persistencePublicPuzzle(c)):null}catch(_){return null}}
 function persistenceNeedsCertifiedProfile(c){return !!(c?.generated&&!c.training&&!c.learning)}
@@ -2795,16 +2682,16 @@ function persistenceCertifiedProfileValid(c,fingerprint){
 function persistencePayloadValid(x){
   if(!x||typeof x!=='object'||x.schema!==SAVE_SCHEMA||x.baseline!==PERSISTENCE_BASELINE||!x.current||typeof x.current!=='object')return false;
   let expected=persistenceContract(),contract=x.contract;if(!contract||contract.difficultySchema!==expected.difficultySchema||contract.ratingVersion!==expected.ratingVersion||contract.fingerprintVersion!==expected.fingerprintVersion)return false;
-  let c=x.current;if(!['queens','tango','sudoku','patches'].includes(c.game)||!['easy','medium','hard','expert'].includes(c.diff)||c.completed||!persistenceHistoryValid(c))return false;
+  let c=x.current;if(!GAME_IDS.includes(c.game)||!['easy','medium','hard','expert'].includes(c.diff)||c.completed||!persistenceHistoryValid(c))return false;
   let fingerprint=persistenceFingerprint(c);if((x.puzzleFingerprint||null)!==(fingerprint||null)||!persistenceCertifiedProfileValid(c,fingerprint))return false;
   return Number.isFinite(Number(x.elapsed))&&Number(x.elapsed)>=0&&typeof x.paused==='boolean'
 }
-function saveCurrent(){if(!current||current.completed||current.trainingCompleted)return;try{let c=plainCurrent();if(!persistenceHistoryValid(c))return;let fingerprint=persistenceFingerprint(c);if(!persistenceCertifiedProfileValid(c,fingerprint))return;let payload=DataSerialization.createSaveEnvelope({schema:SAVE_SCHEMA,baseline:PERSISTENCE_BASELINE,version:VERSION,contract:persistenceContract(),puzzleFingerprint:fingerprint,current:c,elapsed:timerSeconds(),paused:!!paused,savedAt:Date.now()});PersistentData.save.write(payload)}catch(_){}}
+function saveCurrent(){if(!current||current.completed||current.trainingCompleted)return;try{let c=plainCurrent();if(!persistenceHistoryValid(c))return;let fingerprint=persistenceFingerprint(c);if(!persistenceCertifiedProfileValid(c,fingerprint))return;let payload=DataSerialization.createSaveEnvelope({schema:SAVE_SCHEMA,baseline:PERSISTENCE_BASELINE,version:VERSION,contract:persistenceContract(),puzzleFingerprint:fingerprint,current:c,elapsed:timerSeconds(),paused:!!paused,savedAt:WebPlatform.clock.nowMs()});PersistentData.save.write(payload)}catch(_){}}
 function getSaved(){return PersistentData.save.read({validate:persistencePayloadValid})}
 function clearSaved(){PersistentData.save.clear()}
 
 
-const PORTABLE_GAMES=['queens','tango','sudoku','patches'],PORTABLE_DIFFS=['easy','medium','hard','expert'],USER_DATA_MAX_BYTES=5*1024*1024,USER_DATA_MAX_DAILY_RECORDS=5000;
+const PORTABLE_GAMES=GAME_IDS,PORTABLE_DIFFS=['easy','medium','hard','expert'],USER_DATA_MAX_BYTES=5*1024*1024,USER_DATA_MAX_DAILY_RECORDS=5000;
 function portableJsonEqual(a,b){try{return JSON.stringify(a)===JSON.stringify(b)}catch(_){return false}}
 function portableFiniteNonNegative(v){return typeof v==='number'&&Number.isFinite(v)&&v>=0}
 function portablePreferencesValid(raw){if(!raw||typeof raw!=='object'||Array.isArray(raw))return false;let n=DataSerialization.normalizePreferences(raw,{defaultLang:'en',supportedLangs:SUPPORTED_LANGS});return portableJsonEqual(n,raw)}
@@ -2830,8 +2717,8 @@ function portableStatsValid(raw){
 function portableDailyValid(raw){
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return false;let entries=Object.entries(raw);if(entries.length>USER_DATA_MAX_DAILY_RECORDS)return false;
   for(const [key,r] of entries){
-    if(!r||typeof r!=='object'||Array.isArray(r)||!/^\d{4}-\d{2}-\d{2}:(queens|tango|sudoku|patches)$/.test(key))return false;
-    let [day,game]=key.split(':');if(r.day!==day||r.game!==game||r.dailySchema!==DAILY_SCHEMA||r.dailyGenerator!==DAILY_GENERATOR||!['solved','revealed','abandoned'].includes(r.outcome))return false;
+    if(!r||typeof r!=='object'||Array.isArray(r)||!/^\d{4}-\d{2}-\d{2}:[a-z][a-z0-9-]*$/.test(key))return false;
+    let split=key.lastIndexOf(':'),day=key.slice(0,split),game=key.slice(split+1);if(!GameRegistry.hasGame(game)||r.day!==day||r.game!==game||r.dailySchema!==DAILY_SCHEMA||r.dailyGenerator!==DAILY_GENERATOR||!['solved','revealed','abandoned'].includes(r.outcome))return false;
     if(!portableFiniteNonNegative(r.seconds)||!portableFiniteNonNegative(r.completedAt)||r.best!=null&&!portableFiniteNonNegative(r.best))return false;
     if(r.fingerprint!=null&&(typeof r.fingerprint!=='string'||!/^qfp1-[0-9a-f]{32}$/.test(r.fingerprint)))return false;
     if(r.outcome==='solved'&&r.official===true){if(!portableFiniteNonNegative(r.logicScore)||r.logicScore>100||!Number.isInteger(r.helpStage)||r.helpStage<0||r.helpStage>4)return false}
@@ -2862,15 +2749,15 @@ function replacePortableData(bundle){
 }
 function createUserDataExport(){
   if(current&&!current.completed)saveCurrent();let data=userDataSnapshot();
-  return DataSerialization.createUserDataPackage({sourceVersion:VERSION,persistenceBaseline:PERSISTENCE_BASELINE,exportedAt:new Date().toISOString(),...data})
+  return DataSerialization.createUserDataPackage({sourceVersion:VERSION,persistenceBaseline:PERSISTENCE_BASELINE,exportedAt:WebPlatform.clock.nowIso(),...data})
 }
 function importUserDataPackage(pkg){let bundle=portableImportBundle(pkg);replacePortableData(bundle);stopTimer();timerEl.textContent='00:00';current=null;paused=false;elapsedBase=0;startedAt=0;applyPrefs();updateI18n();return bundle}
 function eraseAllUserData(){let results=[PersistentData.save.clear(),PersistentData.stats.clear(),PersistentData.daily.clear(),PersistentData.preferences.clear()];discardLegacyPersistence();stopTimer();timerEl.textContent='00:00';current=null;paused=false;elapsedBase=0;startedAt=0;applyPrefs();updateI18n();return results.every(Boolean)}
 function privacyInfoModal(){modal(tr('privacyTitle'),`<p>${tr('privacyText')}</p><p><b>${tr('privateExportNote')}</b> ${tr('privacyPrivateExport')}</p><p>${tr('privacyEraseScope')}</p>`)}
 function downloadUserDataExport(){
-  try{let pkg=createUserDataExport(),text=DataSerialization.stringify(pkg),blob=new Blob([text],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a'),day=new Date().toISOString().slice(0,10);a.href=url;a.download=`QUADLUD-user-data-${day}.json`;a.style.display='none';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),0);showToast(tr('exportDone'));return pkg}catch(_){showToast(tr('exportFailed'));return null}
+  try{let pkg=createUserDataExport(),text=DataSerialization.stringify(pkg),day=WebPlatform.clock.nowIso().slice(0,10);if(!WebPlatform.files.downloadText(text,{filename:`QUADLUD-user-data-${day}.json`,type:'application/json'}))throw new Error('download-unavailable');showToast(tr('exportDone'));return pkg}catch(_){showToast(tr('exportFailed'));return null}
 }
-function readPortableFileText(file){if(file&&typeof file.text==='function')return file.text();return new Promise((resolve,reject)=>{try{let r=new FileReader();r.onload=()=>resolve(String(r.result||''));r.onerror=()=>reject(r.error||new Error('read-failed'));r.readAsText(file)}catch(err){reject(err)}})}
+function readPortableFileText(file){return WebPlatform.files.readText(file)}
 async function handleUserDataFileImport(e){let input=e?.target||$('#dataImportFile'),file=input?.files?.[0];if(!file)return;try{if(file.size>USER_DATA_MAX_BYTES)throw new Error('too-large');let text=await readPortableFileText(file);if(text.length>USER_DATA_MAX_BYTES)throw new Error('too-large');let pkg=DataSerialization.parse(text);importUserDataPackage(pkg);settingsView();showToast(tr('importDone'))}catch(err){showToast(err?.message==='too-large'?tr('importTooLarge'):err?.message==='Persistent write failed'?tr('importFailed'):tr('importInvalid'))}finally{if(input)input.value=''}}
 function confirmEraseUserData(){confirmActionModal(tr('eraseTitle'),`<p>${tr('eraseConfirm')}</p>`,tr('eraseConfirmButton'),()=>{let ok=eraseAllUserData();settingsView();showToast(ok?tr('eraseDone'):tr('eraseFailed'))})}
 globalThis.QuadludUserData=Object.freeze({createExport:createUserDataExport,validateImport:portableImportBundle,importPackage:importUserDataPackage,erase:eraseAllUserData});
@@ -2878,7 +2765,7 @@ $('#homeBtn').onclick=home;$('#themeBtn').onclick=cycleTheme;
 
 function statsView(){
   if(current&&!current.completed)saveCurrent();stopTimer();timerEl.textContent='00:00';current=null;updateI18n();
-  let {s,success,avg,streak}=statsSummary(),games=['queens','tango','sudoku','patches'];
+  let {s,success,avg,streak}=statsSummary(),games=GAME_IDS;
   let rows=games.map(g=>{let bs=['easy','medium','hard','expert'].map(d=>s.byGame?.[g]?.[d]).filter(Boolean),started=bs.reduce((a,b)=>a+(b.started||0),0),solved=bs.reduce((a,b)=>a+(b.solved||0),0),total=bs.reduce((a,b)=>a+(b.totalSeconds||0),0),best=bs.map(b=>b.best).filter(v=>v!=null);return `<div class="stat-game"><b>${gameLabel(g)}</b><span>${solved}/${started} ${tr('solved')}</span><span>${solved?fmt(Math.round(total/solved)):'—'} ${tr('average')}</span><span>${best.length?fmt(Math.min(...best)):'—'} ${tr('record')}</span></div>`}).join('');
   let hist=s.history.slice(0,20).map(x=>`<div class="history-row"><span><b>${gameLabel(x.game)}</b> · ${DIFF[x.diff]}</span><span>${x.outcome==='solved'?tr('solvedStatus'):x.outcome==='revealed'?tr('revealedStatus'):x.outcome==='abandoned'?tr('abandonedStatus'):tr('finishedStatus')} · ${fmt(x.seconds)} ${aidBadges(x,true)}</span><small>${new Date(x.ts).toLocaleDateString(dateLocale())}</small></div>`).join('')||`<p class="empty-state">${tr('none')}</p>`;
   app.innerHTML=`<section class="panel stats-panel"><div class="stats-head"><div><h1>${tr('stats')}</h1><p>${tr('statsLocal')}</p></div><button class="btn" id="statsBack">${tr('back')}</button></div>
@@ -2887,13 +2774,14 @@ function statsView(){
   $('#statsBack').onclick=home;app.querySelectorAll('button').forEach(pressFeedback)
 }
 function home(){if(current&&!current.completed)saveCurrent();stopTimer();timerEl.textContent='00:00';current=null;updateI18n();let saved=getSaved();app.innerHTML=`<section class="hero"><h1>${tr('homeTitle')}</h1><p>${tr('homeSub')}</p></section>${saved?`<button class="resume-card" id="resumeBtn"><b>${tr('resume')} ${gameLabel(saved.current.game)}</b><span>${DIFF[saved.current.diff]} · ${fmt(saved.elapsed||0)}</span></button>`:''}<section class="cards">
-<button class="game-card" data-g="queens"><span class="game-icon" aria-hidden="true">♛</span><span><h2>${gameLabel('queens')}</h2><p>${tr('queensSub')}</p></span></button>
-<button class="game-card" data-g="tango"><span class="game-icon" aria-hidden="true">☀︎</span><span><h2>${gameLabel('tango')}</h2><p>${tr('tangoSub')}</p></span></button>
-<button class="game-card" data-g="sudoku"><span class="game-icon" aria-hidden="true">✎</span><span><h2>${gameLabel('sudoku')}</h2><p>${tr('sudokuSub')}</p></span></button>
-<button class="game-card" data-g="patches"><span class="game-icon" aria-hidden="true">▦</span><span><h2>${gameLabel('patches')}</h2><p>${tr('patchesSub')}</p></span></button>
+<button class="game-card" data-g="queens"><span class="game-icon" aria-hidden="true">♛</span><span><h2>${gameLabel('queens')}</h2><p>${gameDescription('queens')}</p></span></button>
+<button class="game-card" data-g="tango"><span class="game-icon" aria-hidden="true">☀︎</span><span><h2>${gameLabel('tango')}</h2><p>${gameDescription('tango')}</p></span></button>
+<button class="game-card" data-g="sudoku"><span class="game-icon" aria-hidden="true">✎</span><span><h2>${gameLabel('sudoku')}</h2><p>${gameDescription('sudoku')}</p></span></button>
+<button class="game-card" data-g="patches"><span class="game-icon" aria-hidden="true">▦</span><span><h2>${gameLabel('patches')}</h2><p>${gameDescription('patches')}</p></span></button>
 </section><button class="daily-card" id="dailyBtn"><span>◆</span><b>${tr('daily')}</b><small>${dailyHomeLine()}</small></button><button class="stats-card challenge-home-card" id="challengeBtn"><span>↗</span><b>${tr('challenge')}</b><small>${tr('challengeSub')}</small></button><button class="stats-card" id="statsBtn"><span>▥</span><b>${tr('stats')}</b><small>${tr('statsSub')}</small></button><button class="stats-card mastery-home-card" id="masteryBtn"><span>◎</span><b>${tr('mastery')}</b><small>${tr('masterySub')}</small></button><button class="stats-card learning-home-card" id="learnBtn"><span>◉</span><b>${tr('learn')}</b><small>${tr('learnSub')}</small></button><button class="stats-card training-home-card" id="trainingBtn"><span>◇</span><b>${tr('training')}</b><small>${tr('trainingSub')}</small></button><button class="settings-card" id="settingsBtn"><span>⚙︎</span><b>${tr('prefs')}</b><small>${tr('prefsSub')}</small></button><button class="settings-card" id="aboutBtn"><span>ⓘ</span><b>${tr('about')}</b><small>${tr('aboutSub')}</small></button><div class="footer-note">QUADLUD v${VERSION} · © 2026 Serge Benoliel</div>`;
 if(saved)$('#resumeBtn').onclick=resumeSaved;$('#dailyBtn').onclick=dailyView;$('#challengeBtn').onclick=()=>challengeView();$('#statsBtn').onclick=statsView;$('#masteryBtn').onclick=masteryView;$('#learnBtn').onclick=learningView;$('#trainingBtn').onclick=trainingView;$('#settingsBtn').onclick=settingsView;$('#aboutBtn').onclick=aboutView;app.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>launch(b.dataset.g,'easy'));app.querySelectorAll('button').forEach(pressFeedback)}
-function gameLabel(g){return {queens:tr('gameQueens'),tango:tr('gameTango'),sudoku:tr('gameSudoku'),patches:tr('gamePatches')}[g]||g}
+function gameLabel(g){let metadata=GameRegistry.getMetadata(g);return metadata?tr(metadata.labelKey):g}
+function gameDescription(g){let metadata=GameRegistry.getMetadata(g);return metadata?.descriptionKey?tr(metadata.descriptionKey):''}
 
 // ===== v2.21.4 — non-destructive logical walkthrough =====
 let walkthroughSession=null;
@@ -3105,28 +2993,13 @@ $('#difficulty').onchange=e=>launch(current.game,e.target.value);$('#newBtn').on
 function resetCurrent(){
   if(!current)return;
   if(current.training)return resetTrainingExercise();
-  let hadProgress=current.game==='queens'?current.state.flat().some(v=>v!==0):current.game==='tango'?current.state.some((row,r)=>row.some((v,c)=>!current.givens.has(r*6+c)&&v!==-1)):current.game==='sudoku'?current.state.some((row,r)=>row.some((v,c)=>current.empty.has(r*6+c)&&v!==0)):current.game==='patches'?current.paint.flat().some(v=>v!==null):false;
-  if(hadProgress)markBacktrack();
-  $('#victory')?.remove();
-  closeHintNotice();
-  clearHintFocus();
-  current.hintFlow=null;current.lastError=null;current.lastMoveAudit=null;current.exploration=null;clearErrorFocus();
-  if(current.game==='queens'){
-    $('#qboard')?.classList.remove('queens-win');
-    current.state=Array.from({length:current.n},()=>Array(current.n).fill(0));
-    drawQ();
-  }else if(current.game==='tango'){
-    current.tangoPendingCell=null;current.tangoDerivedRelations=[];current.state=Array.from({length:6},()=>Array(6).fill(-1));
-    for(let i of current.givens)current.state[Math.floor(i/6)][i%6]=current.sol[Math.floor(i/6)][i%6];
-    drawT();
-  }else if(current.game==='sudoku'){
-    current.state=current.sol.map((r,ri)=>r.map((v,c)=>current.empty.has(ri*6+c)?0:v));
-    current.sel=null;drawS();
-  }else if(current.game==='patches'){
-    current.paint=Array.from({length:current.n},()=>Array(current.n).fill(null));
-    current.patchSelectedRects={};current.patchLogicEvidence=patchEmptyEvidence();
-    current.active=current.ids[0];drawP();
-  }
+  let hadProgress=SessionCore.hasPuzzleProgress(current);if(hadProgress)markBacktrack();
+  $('#victory')?.remove();closeHintNotice();clearHintFocus();current.hintFlow=null;current.lastError=null;current.lastMoveAudit=null;current.exploration=null;clearErrorFocus();
+  if(!SessionCore.resetPuzzleState(current))return;
+  if(current.game==='queens'){$('#qboard')?.classList.remove('queens-win');drawQ()}
+  else if(current.game==='tango')drawT();
+  else if(current.game==='sudoku'){current.sel=null;drawS()}
+  else if(current.game==='patches'){current.active=current.ids[0];drawP()}
   let wasCompleted=!!current.completed;
   current.completed=false;
   if(wasCompleted||current.statsClosed){current.backtrackUsed=false;current.hintUsed=false;current.attemptId=null;current.statsClosed=false;statsStart(current)}
@@ -3136,45 +3009,46 @@ function resetCurrent(){
 
 // ===== v2.7.0 — background precomputation =====
 const PRECOMPUTE_TARGET=2;
-const PRECOMPUTE_COMBOS=[
-  ['queens','easy'],['queens','medium'],['queens','hard'],['queens','expert'],
-  ['tango','easy'],['tango','medium'],['tango','hard'],['tango','expert'],
-  ['sudoku','easy'],['sudoku','medium'],['sudoku','hard'],['sudoku','expert'],
-  ['patches','easy'],['patches','medium'],['patches','hard'],['patches','expert']
-];
+const PRECOMPUTE_COMBOS=GAME_IDS.flatMap(game=>['easy','medium','hard','expert'].map(diff=>[game,diff]));
 const precomputeCache=new Map();
-const precomputeReservedQueens=new Set();
+const precomputeReservedIdentities=new Map();
 let precomputeWorker=null,precomputeBusy=false,precomputeRequestId=0,precomputeDay=null,precomputePreferred=null,precomputeStarted=false;
 
 function precomputeKey(game,diff){return `${game}:${diff}`}
 function precomputeBucket(game,diff){
   let k=precomputeKey(game,diff);if(!precomputeCache.has(k))precomputeCache.set(k,[]);return precomputeCache.get(k)
 }
+function precomputeReservedSet(game){if(!precomputeReservedIdentities.has(game))precomputeReservedIdentities.set(game,new Set());return precomputeReservedIdentities.get(game)}
 function resetPrecomputeDay(day=localDay()){
   if(precomputeDay===day)return;
-  precomputeDay=day;precomputeCache.clear();precomputeReservedQueens.clear()
+  precomputeDay=day;precomputeCache.clear();precomputeReservedIdentities.clear()
 }
-function precomputeForbiddenQueens(day=localDay()){
+function precomputeForbiddenKeys(game,day=localDay()){
   resetPrecomputeDay(day);
-  let out=new Set(precomputeReservedQueens);
-  try{for(let sig of queenSessionSet(day))out.add(sig)}catch(_){}
-  return [...out]
+  try{
+    if(!GameRegistry.hasCapability(game,'generationIdentity'))return [];
+    let out=new Set(precomputeReservedSet(game));
+    for(let identity of generationSessionSet(game,day))out.add(identity);
+    return [...out]
+  }catch(_){return []}
 }
 function ensurePrecomputeWorker(){
   if(precomputeWorker)return precomputeWorker;
-  if(typeof Worker==='undefined')return null;
+  if(!WebPlatform.workers.supported())return null;
   try{
-    let w=new Worker('./precompute-worker.js?v=2.24.0');
+    let w=WebPlatform.workers.create('./precompute-worker.js?v=2.26.0');if(!w)return null;
     w.onmessage=e=>{
       let m=e.data||{};precomputeBusy=false;
       if(m.ok&&m.day===precomputeDay&&m.candidate&&precomputeCandidateCertified(m.game,m.diff,m.candidate)){
         let bucket=precomputeBucket(m.game,m.diff);
         if(bucket.length<PRECOMPUTE_TARGET){
-          if(m.game==='queens'){
-            let sig=m.candidate.__queenSignature||queenCanonicalSignature(m.candidate.reg);
-            let displayed=false;try{displayed=queenSessionSet(m.day).has(sig)}catch(_){}
-            if(!displayed&&!precomputeReservedQueens.has(sig)){m.candidate.__queenSignature=sig;precomputeReservedQueens.add(sig);bucket.push(m.candidate)}
-          }else bucket.push(m.candidate)
+          let identity=generatedCandidateIdentity(m.game,m.candidate);
+          if(identity==null)bucket.push(m.candidate);
+          else{
+            let displayed=false;try{displayed=generationSessionSet(m.game,m.day).has(identity)}catch(_){}
+            let reserved=precomputeReservedSet(m.game);
+            if(!displayed&&!reserved.has(identity)){m.candidate.__generationIdentity=identity;reserved.add(identity);bucket.push(m.candidate)}
+          }
         }
       }
       setTimeout(()=>schedulePrecompute(),80)
@@ -3200,14 +3074,14 @@ function precomputeOrder(){
 }
 function schedulePrecompute(game=null,diff=null){
   if(game&&diff)precomputePreferred={game,diff};
-  if(!precomputeStarted||document.hidden||precomputeBusy)return;
+  if(!precomputeStarted||WebPlatform.lifecycle.isHidden()||precomputeBusy)return;
   let day=localDay();resetPrecomputeDay(day);
   let w=ensurePrecomputeWorker();if(!w)return;
   for(let [g,d] of precomputeOrder()){
     if(precomputeBucket(g,d).length>=PRECOMPUTE_TARGET)continue;
     precomputeBusy=true;
     let id=++precomputeRequestId;
-    w.postMessage({cmd:'generate',id,game:g,diff:d,day,forbiddenQueens:g==='queens'?precomputeForbiddenQueens(day):[]});
+    w.postMessage({cmd:'generate',id,game:g,diff:d,day,forbiddenKeys:precomputeForbiddenKeys(g,day)});
     return
   }
 }
@@ -3219,13 +3093,12 @@ function takePrecomputed(game,diff,day=localDay()){
   resetPrecomputeDay(day);
   let bucket=precomputeBucket(game,diff);
   while(bucket.length){
-    let g=bucket.shift();
-    if(game==='queens'){
-      let sig=g.__queenSignature||queenCanonicalSignature(g.reg);
-      precomputeReservedQueens.delete(sig);
-      let already=false;try{already=queenSessionSet(day).has(sig)}catch(_){}
+    let g=bucket.shift(),identity=generatedCandidateIdentity(game,g);
+    if(identity!=null){
+      precomputeReservedSet(game).delete(identity);
+      let already=false;try{already=generationSessionSet(game,day).has(identity)}catch(_){}
       if(already)continue;
-      rememberQueenGeneratedThisSession(g.reg,day)
+      rememberGeneratedCandidateThisSession(game,g,day)
     }
     return g
   }
@@ -3234,9 +3107,9 @@ function takePrecomputed(game,diff,day=localDay()){
 function precomputeStatus(){
   let out={};for(let [g,d] of PRECOMPUTE_COMBOS)out[precomputeKey(g,d)]=precomputeBucket(g,d).length;return out
 }
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&precomputeStarted)setTimeout(()=>schedulePrecompute(),150)});
+WebPlatform.lifecycle.onVisibilityChange(()=>{if(!WebPlatform.lifecycle.isHidden()&&precomputeStarted)setTimeout(()=>schedulePrecompute(),150)});
 
-function launch(game,diff){closePreviousAttempt();clearSaved();stopTimer();paused=false;setBusy(true);current={game,diff};requestAnimationFrame(()=>{try{if(game==='queens')queens(diff);if(game==='tango')tango(diff);if(game==='sudoku')sudoku(diff);if(game==='patches')patches(diff);historyInit(true);updateHistoryButtons();statsStart(current);startTimer(true,0,false);saveCurrent();haptic(8)}finally{setBusy(false);startBackgroundPrecompute(game,diff)}})}
+function launch(game,diff){if(!GameRegistry.hasGame(game))throw new Error(`Unknown QUADLUD game: ${game}`);closePreviousAttempt();clearSaved();stopTimer();paused=false;setBusy(true);current={game,diff};requestAnimationFrame(()=>{try{let candidate=normalLaunchCandidate(game,diff);installGeneratedSession(game,diff,candidate,{context:'normal'});historyInit(true);updateHistoryButtons();statsStart(current);startTimer(true,0,false);saveCurrent();haptic(8)}finally{setBusy(false);startBackgroundPrecompute(game,diff)}})}
 function resumeSaved(){let s=getSaved();if(!s)return home();stopTimer();let c=DataSerialization.deserializeCurrentState(s.current);current=c;historyInit(false);if(c.game==='queens')renderQueens(c);if(c.game==='tango')renderTango(c);if(c.game==='sudoku')renderSudoku(c);if(c.game==='patches')renderPatches(c);startTimer(true,s.elapsed||0,!!s.paused);updatePauseButton();refreshExplorationPanel();showToast(tr('restored'));if(!c.training)startBackgroundPrecompute(c.game,c.diff)}
 
 
@@ -3381,7 +3254,7 @@ function queenStateContradiction(){
   return false
 }
 const QUEEN_HINT_BUDGET_MS=5000;
-function hintBudgetExpired(deadline){return Number.isFinite(deadline)&&Date.now()>=deadline}
+function hintBudgetExpired(deadline){return Number.isFinite(deadline)&&WebPlatform.clock.nowMs()>=deadline}
 function queenHintTimeout(){return {timeout:true}}
 function findQueenRank1Hint(deadline=Infinity){
   let n=current.n;
@@ -3875,18 +3748,12 @@ function focusHintContext(kind,[r,c],message={}){
 function clearHintFocus(){document.querySelectorAll('.hint-focus,.hint-context').forEach(x=>{x.classList.remove('hint-focus');x.classList.remove('hint-context')})}
 function touchSave(fn,action='MOVE'){return()=>{if(paused)return;let before=historySnapshotKey();closeHintNotice();current.hintFlow=null;clearHintFocus();fn();historyRecord(action,before);saveCurrent()}}
 // QUEENS
-const queenBases={easy:{sol:[1,3,5,0,2,4],reg:[[0,0,1,1,1,1],[0,1,1,1,1,1],[0,0,0,0,2,2],[3,4,4,4,2,2],[4,4,4,4,2,2],[4,4,4,4,5,2]]},medium:{sol:[2,5,1,4,0,3,6],reg:[[0,0,0,0,0,1,1],[2,0,6,6,6,1,6],[2,2,6,3,3,1,6],[2,2,6,5,3,1,6],[4,2,6,5,3,3,6],[4,2,6,5,5,5,6],[6,6,6,6,6,6,6]]},hard:{sol:[2,5,0,3,6,1,4,7],reg:[[0,0,0,0,0,4,4,4],[2,2,0,0,0,1,4,4],[2,7,7,4,4,4,4,4],[2,2,7,3,3,4,4,4],[5,2,7,6,3,4,4,7],[5,5,7,6,6,6,6,7],[7,7,7,7,6,6,7,7],[7,7,7,7,7,7,7,7]]}};
-function queens(diff){let base=queenBases[diff],k=Math.floor(Math.random()*8),reg=transformGrid(base.reg,k),n=reg.length,queensSol=Array(n).fill(-1);let mask=base.sol.map((c,r)=>Array.from({length:n},(_,j)=>j===c?1:0));mask=transformGrid(mask,k);for(let r=0;r<n;r++)queensSol[r]=mask[r].indexOf(1);current={game:'queens',diff,n,reg,sol:queensSol,state:Array.from({length:n},()=>Array(n).fill(0)),completed:false};renderQueens(current)}
 
 
-function solvedQ(){return !!current&&current.game==='queens'&&current.state.every((row,r)=>row[current.sol[r]]===2)&&current.state.flat().filter(v=>v===2).length===current.n}
-function solvedT(){return !!current&&current.game==='tango'&&current.state.every((row,r)=>row.every((v,c)=>v===current.sol[r][c]))}
-function solvedS(){return !!current&&current.game==='sudoku'&&current.state.every((row,r)=>row.every((v,c)=>v===current.sol[r][c]))}
-function solvedP(){return !!current&&current.game==='patches'&&current.paint.every((row,r)=>row.every((v,c)=>v===current.reg[r][c]))}
 function maybeAutoFinish(){
   if(!current||current.completed||paused||current.training)return false;
-  let ok=current.game==='queens'?solvedQ():current.game==='tango'?solvedT():current.game==='sudoku'?solvedS():current.game==='patches'?solvedP():false;
-  if(ok){finish(`${tr('congrats')} ${gameLabel(current.game)}`);return true}
+  let result=validateRegisteredVictory(current,{strictGeneratedSolution:true});
+  if(result.solved){finish(`${tr('congrats')} ${gameLabel(current.game)}`);return true}
   return false
 }
 function celebrateBoard(){
@@ -3945,7 +3812,7 @@ let endDrag=e=>{if(!dragging||e.pointerId!==pointerId)return;e.preventDefault();
 b.onpointerup=endDrag;b.onpointercancel=e=>{if(!dragging||e.pointerId!==pointerId)return;try{b.releasePointerCapture(pointerId)}catch(_){};dragging=false;pointerId=null;startCell=null;dragAxis=null;visited.clear();drawQ()};
 drawQ();$('#queenAutoCross').onchange=e=>{let before=historySnapshotKey();setQueenAutoCross(e.target.checked);if(e.target.checked){for(let r=0;r<current.n;r++)for(let col=0;col<current.n;col++)if(current.state[r][col]===2)applyQueenAutoCross(r,col);drawQ();historyRecord({type:'AUTO_CROSS_ENABLE'},before);saveCurrent();showToast(tr('autoCrossOn'))}else showToast(tr('autoCrossOff'))};$('#checkBtn').onclick=checkQ;$('#hintBtn').onclick=hintQ;$('#solutionBtn').onclick=()=>{if(paused)return;current.state=current.state.map((row,r)=>row.map((_,col)=>col===current.sol[r]?2:1));drawQ();finish(tr('solutionShown'),'revealed')}}
 function drawQ(){let b=$('#qboard');if(current?.game==='queens'&&current.completed&&solvedQ())b.classList.add('queens-win');[...b.children].forEach((d,i)=>{let r=Math.floor(i/current.n),c=i%current.n,v=current.state[r][c];d.innerHTML=v===2?'<span class="queen" aria-hidden="true">♛</span>':v===1?'<span class="mark" aria-hidden="true">×</span>':'';d.classList.remove('error')});applyConfiguredIllegalClasses(b,queenIllegalCells(),current.n);applyUnjustifiedHighlights();a11ySyncQueens();updateScoreFlags()}
-function checkQ(){if(solvedQ())finish(`${tr('congrats')} ${gameLabel('queens')}`);else status(tr('gridIncomplete'),false)}
+function checkQ(){return checkRegisteredVictory()}
 
 function queenHintNoResultMessage(elapsedMs){
   if(!DETAILED_HINT_LANGS.has(lang()))return `<b>${tr('noLogicalHint')}</b><br>${tr('hintNoR0')}<br>${tr('hintNoR1')}<br>${tr('hintNoR2')}<br>${tr('hintNoR3')}`;
@@ -3981,8 +3848,6 @@ function hintQ(){
 }
 
 // TANGO
-const tangoSolutions={easy:[[0,1,0,1,0,1],[1,0,1,0,1,0],[1,1,0,0,1,0],[0,0,1,1,0,1],[1,0,0,1,0,1],[0,1,1,0,1,0]],medium:[[0,1,0,0,1,1],[1,0,1,1,0,0],[0,0,1,0,1,1],[1,1,0,1,0,0],[0,1,1,0,0,1],[1,0,0,1,1,0]],hard:[[1,0,1,0,0,1],[0,1,0,1,1,0],[1,1,0,0,1,0],[0,0,1,1,0,1],[1,0,1,0,1,0],[0,1,0,1,0,1]]};
-function tango(diff){let sol=transformGrid(tangoSolutions[diff],Math.floor(Math.random()*8)),n=6,givenCount={easy:12,medium:8,hard:5}[diff],relCount={easy:8,medium:10,hard:11}[diff],positions=shuffle(Array.from({length:36},(_,i)=>i)),givens=new Set(positions.slice(0,givenCount)),edges=[];for(let r=0;r<n;r++)for(let c=0;c<n;c++){if(c<n-1)edges.push([r,c,'r',sol[r][c]===sol[r][c+1]?'=':'×']);if(r<n-1)edges.push([r,c,'d',sol[r][c]===sol[r+1][c]?'=':'×'])}edges=shuffle(edges).slice(0,relCount);let state=Array.from({length:n},()=>Array(n).fill(-1));for(let i of givens){let r=Math.floor(i/6),c=i%6;state[r][c]=sol[r][c]}current={game:'tango',diff,n,sol,givens,edges,state,tangoDerivedRelations:[],completed:false};renderTango(current)}
 function renderTango(c){shell(gameLabel('tango'),`6×6 · ${tr('generated')}`,c.diff,`<div class="board-wrap"><div class="board" id="tboard" style="grid-template-columns:repeat(6,minmax(0,1fr));grid-template-rows:repeat(6,minmax(0,1fr))"></div></div>`,gameRules('tango'));let b=$('#tboard');for(let r=0;r<6;r++)for(let col=0;col<6;col++){let d=document.createElement('div');d.className='cell'+(c.givens.has(r*6+col)?' fixed':'');d.dataset.r=r;d.dataset.c=col;if(!c.givens.has(r*6+col))d.onclick=touchSave(()=>{
   let prev=current.state[r][col],next=(prev+2)%3-1;
   current.tangoPendingCell=null;current.tangoDerivedRelations=[];
@@ -3992,26 +3857,16 @@ function renderTango(c){shell(gameLabel('tango'),`6×6 · ${tr('generated')}`,c.
   haptic(8);drawT();updateScoreFlags();maybeAutoFinish()
 });b.appendChild(d)}a11ySetupGrid(b,6,6,{activate:d=>{if(!d.classList.contains('fixed'))d.click()}});drawT();$('#checkBtn').onclick=checkT;$('#hintBtn').onclick=hintT;$('#solutionBtn').onclick=()=>{if(paused)return;current.tangoPendingCell=null;current.state=current.sol.map(r=>[...r]);drawT();finish(tr('solutionShown'),'revealed')}}
 function drawT(){let b=$('#tboard');[...b.children].forEach((d,i)=>{let r=Math.floor(i/6),c=i%6,v=current.state[r][c];d.innerHTML=v===0?'<span class="tango-symbol" aria-hidden="true">☾</span>':v===1?'<span class="tango-symbol" aria-hidden="true">☀</span>':''});current.edges.forEach(([r,c,dir,s])=>{let d=b.children[r*6+c];let e=document.createElement('span');e.className='relation '+dir;e.textContent=s;e.setAttribute('aria-hidden','true');d.appendChild(e)});let ignore=current.tangoPendingCell?keyCell(...current.tangoPendingCell):null;applyConfiguredIllegalClasses(b,tangoIllegalCells(ignore),6);applyUnjustifiedHighlights();a11ySyncTango();updateScoreFlags()}
-function checkT(){if(solvedT())finish(`${tr('congrats')} ${gameLabel('tango')}`);else status(tr('tangoIncomplete'),false)}
+function checkT(){return checkRegisteredVictory()}
 function hintT(){if(current?.training)return trainingCoach();if(paused)return;if(showVisibleErrorsBeforeHint())return;if(showExplorationContradictionBeforeHint())return;current.tangoPendingCell=null;try{let result=tangoCurrentLogicResult();if(result.contradiction){current.hintFlow=null;clearHintFocus();let cells=result.contradiction.cells||[];let b=$('#tboard');if(b)for(let [r,c] of cells){let el=b.children[r*6+c];if(el)el.classList.add('error-focus')}showHintNotice(`<b>⚠ ${tr('contradictionFound')}</b><br>${tangoLogicContradictionText(result.contradiction)}`);return}if(!result.deduction)return showHintNotice(`<b>${tr('noLogicalHint')}</b><br>${tr('tlgNoDeduction')}`);tangoCoachHandleDeduction(result.deduction)}catch(err){console.error('Soleil/Lune proof engine failed',err);showHintNotice(`<b>${tr('hintError')}</b>`)}}
 
 // MINI SUDOKU 6x6 regions 2x3
-const sudBase=[[1,2,3,4,5,6],[4,5,6,1,2,3],[2,3,4,5,6,1],[5,6,1,2,3,4],[3,4,5,6,1,2],[6,1,2,3,4,5]];
-function countMiniSudoku(grid,limit=2){let n=6,count=0;function valid(r,c,v){for(let i=0;i<n;i++)if(grid[r][i]===v||grid[i][c]===v)return false;let br=Math.floor(r/2)*2,bc=Math.floor(c/3)*3;for(let rr=br;rr<br+2;rr++)for(let cc=bc;cc<bc+3;cc++)if(grid[rr][cc]===v)return false;return true}function bt(){if(count>=limit)return;let best=null,bestCand=null;for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(grid[r][c]===0){let cand=[];for(let v=1;v<=6;v++)if(valid(r,c,v))cand.push(v);if(!cand.length)return;if(!best||cand.length<bestCand.length){best=[r,c];bestCand=cand;if(cand.length===1)break}}if(!best){count++;return}let [r,c]=best;for(let v of bestCand){grid[r][c]=v;bt();grid[r][c]=0;if(count>=limit)return}}bt();return count}
-function makeSudokuHoles(sol,target){let puzzle=sol.map(r=>[...r]),order=shuffle(Array.from({length:36},(_,i)=>i)),holes=[];for(let i of order){if(holes.length>=target)break;let r=Math.floor(i/6),c=i%6,old=puzzle[r][c];puzzle[r][c]=0;if(countMiniSudoku(puzzle.map(x=>[...x]),2)===1)holes.push(i);else puzzle[r][c]=old}return new Set(holes)}
-function sudoku(diff){let map=shuffle([1,2,3,4,5,6]),sol=sudBase.map(r=>r.map(v=>map[v-1]));if(Math.random()<.5)sol=sol.map(r=>[...r].reverse());if(Math.random()<.5)sol=[...sol].reverse();let holes={easy:16,medium:22,hard:27}[diff],empty=makeSudokuHoles(sol,holes);current={game:'sudoku',diff,n:6,sol,empty,state:sol.map((r,ri)=>r.map((v,c)=>empty.has(ri*6+c)?0:v)),sel:null,completed:false};renderSudoku(current)}
 function renderSudoku(c){shell(gameLabel('sudoku'),`6×6 · 1–6 · ${tr('generated')}`,c.diff,`<div class="board-wrap"><div class="board sudoku" id="sboard" style="grid-template-columns:repeat(6,minmax(0,1fr));grid-template-rows:repeat(6,minmax(0,1fr))"></div></div><div class="numpad" id="numpad" role="group" aria-label="${tr('placeDigit')}">${[1,2,3,4,5,6].map(n=>`<button data-n="${n}">${n}</button>`).join('')}<button data-n="0" aria-label="${tr('erase')}">⌫</button></div>`,gameRules('sudoku'));let b=$('#sboard');for(let r=0;r<6;r++)for(let col=0;col<6;col++){let fixed=!c.empty.has(r*6+col),d=document.createElement('div');d.className='cell '+(fixed?'fixed ':'')+((col===2)?'boxR ':'')+((r===1||r===3)?'boxB ':'');if(!fixed)d.onclick=touchSave(()=>{current.sel=[r,col];drawS()});b.appendChild(d)}a11ySetupGrid(b,6,6,{initialIndex:c.sel?c.sel[0]*6+c.sel[1]:0,activate:d=>{let r=+d.dataset.r,col=+d.dataset.c;current.sel=[r,col];drawS()},onFocus:(d)=>{let r=+d.dataset.r,col=+d.dataset.c;if(!current.sel||current.sel[0]!==r||current.sel[1]!==col){current.sel=[r,col];drawS()}}});$('#numpad').querySelectorAll('button').forEach(bt=>bt.onclick=touchSave(()=>{if(current.sel){let [r,col]=current.sel,prev=current.state[r][col],next=+bt.dataset.n;if(prev!==0&&prev!==next)markBacktrack();current.state[r][col]=next;haptic(8);drawS();updateScoreFlags();maybeAutoFinish()}}));drawS();$('#checkBtn').onclick=checkS;$('#hintBtn').onclick=hintS;$('#solutionBtn').onclick=()=>{if(paused)return;current.state=current.sol.map(r=>[...r]);drawS();finish(tr('solutionShown'),'revealed')}}
 function drawS(){let sel=current.sel,sv=sel?current.state[sel[0]][sel[1]]:0;[...$('#sboard').children].forEach((d,i)=>{let r=Math.floor(i/6),c=i%6,v=current.state[r][c];d.textContent=v||'';let sameUnit=!!sel&&(r===sel[0]||c===sel[1]||(Math.floor(r/2)===Math.floor(sel[0]/2)&&Math.floor(c/3)===Math.floor(sel[1]/3)));d.classList.toggle('peer',sameUnit&&!(r===sel[0]&&c===sel[1]));d.classList.toggle('same-value',!!sv&&v===sv&&!(r===sel[0]&&c===sel[1]));d.classList.toggle('selected',!!sel&&sel[0]===r&&sel[1]===c);d.classList.remove('error')});applyConfiguredIllegalClasses($('#sboard'),sudokuIllegalCells(),6);applyUnjustifiedHighlights();a11ySyncSudoku();updateScoreFlags()}
-function checkS(){if(solvedS())finish(`${tr('congrats')} ${gameLabel('sudoku')}`);else status(tr('sudokuIncomplete'),false)}
+function checkS(){return checkRegisteredVictory()}
 function hintS(){if(current?.training)return trainingCoach();if(paused)return;if(showVisibleErrorsBeforeHint())return;if(showExplorationContradictionBeforeHint())return;try{let result=sudokuCurrentValueStep();if(result.contradiction)return sudokuShowLogicalContradiction(result.contradiction);let value=sudokuValueStepConclusion(result);if(!value)return showHintNotice(`<b>${tr('noLogicalHint')}</b><br>${tr('slgNoDeduction')}`);let primary=result.primaryDeduction||result.deduction,technique=sudokuLegacyTechniqueForDeduction(primary),rank=sudokuCoachRankForDeduction(primary),[r,c]=value.cell,move=sudokuFormat('slgPlaceDigitAt',{value:value.value,cell:cellName(r,c)}),reasoning=sudokuValueStepReasoning(result);hintStage('sudoku',[r,c],{move,look:sudokuDeductionOrientation(primary),why:sudokuValueStepExplanation(result,current.state),reveal:tr('digitRevealed'),rank,value:value.value,reasoning},()=>{current.state[r][c]=value.value;current.sel=[r,c];drawS();maybeAutoFinish()})}catch(err){console.error('Grille 6 proof engine failed',err);showHintNotice(`<b>${tr('hintError')}</b>`)}}
 
 // PATCHES — connected target regions; player paints each clue region.
-const patchDefs={
-easy:{n:5,reg:[[0,0,1,1,1],[0,0,1,2,2],[3,3,3,2,2],[3,4,4,4,5],[3,4,5,5,5]]},
-medium:{n:6,reg:[[0,0,1,1,1,2],[0,3,3,1,2,2],[0,3,4,4,4,2],[5,3,4,6,6,6],[5,5,7,7,6,8],[5,7,7,8,8,8]]},
-hard:{n:7,reg:[[0,0,1,1,1,2,2],[0,3,3,1,2,2,4],[0,3,5,5,5,4,4],[6,3,5,7,7,7,4],[6,6,5,8,7,9,9],[6,10,10,8,8,9,11],[10,10,8,8,11,11,11]]}};
-function patchShape(cells){let rs=cells.map(x=>x[0]),cs=cells.map(x=>x[1]),h=Math.max(...rs)-Math.min(...rs)+1,w=Math.max(...cs)-Math.min(...cs)+1,rect=h*w===cells.length;if(!rect)return 'libre';if(h===w)return 'carré';return h>w?'vertical':'horizontal'}
-function patches(diff){let def=patchDefs[diff],reg=transformGrid(def.reg,Math.floor(Math.random()*8)),n=reg.length,ids=[...new Set(reg.flat())],cellsBy={};ids.forEach(id=>cellsBy[id]=[]);for(let r=0;r<n;r++)for(let c=0;c<n;c++)cellsBy[reg[r][c]].push([r,c]);let clues={};ids.forEach(id=>{let cells=cellsBy[id],p=cells[Math.floor(cells.length/2)],mode=diff==='easy'?'both':diff==='medium'?(Math.random()<.5?'size':'shape'):(Math.random()<.45?'shape':Math.random()<.8?'size':'none');clues[id]={pos:p,size:cells.length,shape:patchShape(cells),mode}});const pal=['#f3c6a8','#b9d9c1','#c6d4ed','#e2c3df','#f0dc9d','#c7e0e3','#d5ceb8','#d4e3b4','#edbfc1','#c8c4e8','#e5d0a4','#b7d7d1'];current={game:'patches',diff,n,reg,ids,cellsBy,clues,pal,active:ids[0],paint:Array.from({length:n},()=>Array(n).fill(null)),patchSelectedRects:{},patchLogicEvidence:patchEmptyEvidence(),completed:false};renderPatches(current)}
 let patchPaintFrame=0,patchDragFrame=0,patchDragPending=null,patchClueResizeObserver=null;
 const PATCH_DRAG_THRESHOLD_FINE=5,PATCH_DRAG_THRESHOLD_COARSE=9,PATCH_HYSTERESIS=.18;
 function patchUpdateResponsiveClues(board,n){
@@ -4286,7 +4141,7 @@ function drawP(){
   applyIllegalClasses(b,patchIllegalCells(),current.n);applyUnjustifiedHighlights();a11ySyncPatches();
   updateScoreFlags()
 }
-function checkP(){let n=current.n,all=current.paint.every(row=>row.every(v=>v!==null));if(!all){status(tr('patchAll'),false);return}let cluePositions=new Map(current.ids.map(id=>[current.clues[id].pos.join(','),id]));for(let id of current.ids){let cells=[];for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.paint[r][c]===id)cells.push([r,c]);if(!cells.length){status(tr('patchEach'),false);return}let own=current.clues[id].pos;if(!cells.some(([r,c])=>r===own[0]&&c===own[1])){status(tr('patchOwn'),false);return}let other=cells.some(([r,c])=>cluePositions.has(r+','+c)&&cluePositions.get(r+','+c)!==id);if(other){status(tr('patchTwo'),false);return}let seen=new Set([cells[0].join(',')]),q=[cells[0]],set=new Set(cells.map(x=>x.join(',')));while(q.length){let [r,c]=q.pop();for(let [rr,cc] of [[r+1,c],[r-1,c],[r,c+1],[r,c-1]]){let k=rr+','+cc;if(set.has(k)&&!seen.has(k)){seen.add(k);q.push([rr,cc])}}}if(seen.size!==cells.length){status(tr('patchConnected'),false);return}let cl=current.clues[id],sh=patchShape(cells);if(sh==='libre'){status(tr('patchRect'),false);return}if((cl.mode==='both'||cl.mode==='size')&&cells.length!==cl.size){status(tr('patchSize'),false);return}if((cl.mode==='both'||cl.mode==='shape')&&sh!==cl.shape){status(tr('patchShape'),false);return}}finish(`${tr('congrats')} ${gameLabel('patches')}`)}
+function checkP(){return checkRegisteredVictory()}
 function hintP(){
   if(current?.training)return trainingCoach();if(paused)return;if(showVisibleErrorsBeforeHint())return;if(showExplorationContradictionBeforeHint())return;
   if(!patchesLogicAvailable()){showHintNotice(tr('hintError'));return}
@@ -4295,244 +4150,15 @@ function hintP(){
   if(!result.deduction){current.hintFlow=null;clearHintFocus();showHintNotice(tr('plNoDeduction'));return}
   patchCoachHandleDeduction(result.deduction)
 }
-// Queens generator primitives restored from the last known complete baseline (v2.21.11).
-// They are shared by the current certified generator and QA uniqueness checks.
-function countQueensGenerated(reg,limit=2){const n=reg.length;let count=0,usedC=new Set(),usedR=new Set();function bt(r,prev){if(count>=limit)return;if(r===n){count++;return}for(let c=0;c<n;c++){let z=reg[r][c];if(usedC.has(c)||usedR.has(z))continue;if(r>0&&Math.abs(c-prev)===1)continue;usedC.add(c);usedR.add(z);bt(r+1,c);usedC.delete(c);usedR.delete(z);if(count>=limit)return}}bt(0,-99);return count}
-function randomQueenSolution(n){for(let t=0;t<3000;t++){let p=shuffle(Array.from({length:n},(_,i)=>i));if(p.every((c,r)=>r===0||Math.abs(c-p[r-1])!==1))return p}return null}
-function queenRegionsFromSolution(sol,singleCount){const n=sol.length,singleRows=new Set(shuffle(Array.from({length:n},(_,i)=>i)).slice(0,singleCount)),reg=Array.from({length:n},()=>Array(n).fill(-1));for(let r=0;r<n;r++)reg[r][sol[r]]=r;let left=n*n-n;while(left){let options=[];for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(reg[r][c]===-1){let ids=[];for(let [rr,cc] of [[r+1,c],[r-1,c],[r,c+1],[r,c-1]])if(rr>=0&&rr<n&&cc>=0&&cc<n&&reg[rr][cc]>=0&&!singleRows.has(reg[rr][cc])&&!ids.includes(reg[rr][cc]))ids.push(reg[rr][cc]);if(ids.length)options.push([r,c,ids])}if(!options.length)return null;let [r,c,ids]=options[Math.floor(Math.random()*options.length)],sizes=Array(n).fill(0);for(let row of reg)for(let x of row)if(x>=0)sizes[x]++;ids.sort((a,b)=>sizes[a]-sizes[b]);let pool=ids.slice(0,Math.min(2,ids.length)),id=pool[Math.floor(Math.random()*pool.length)];reg[r][c]=id;left--}return reg}
-
-function queenRegionConnectedAfterMove(reg,id,rr,cc){
-  let cells=[];for(let r=0;r<reg.length;r++)for(let c=0;c<reg.length;c++)if(reg[r][c]===id&&!(r===rr&&c===cc))cells.push([r,c]);
-  if(!cells.length)return false;
-  let set=new Set(cells.map(x=>x.join(','))),seen=new Set([cells[0].join(',')]),q=[cells[0]];
-  while(q.length){let [r,c]=q.pop();for(let [r2,c2] of [[r+1,c],[r-1,c],[r,c+1],[r,c-1]]){let k=r2+','+c2;if(set.has(k)&&!seen.has(k)){seen.add(k);q.push([r2,c2])}}}
-  return seen.size===cells.length
-}
-function reduceQueenSingletons(reg,sol,maxSingles){
-  reg=reg.map(r=>[...r]);let n=reg.length;
-  for(let pass=0;pass<n*3;pass++){
-    let sizes=Array(n).fill(0);for(let row of reg)for(let id of row)sizes[id]++;
-    let singles=[];for(let id=0;id<n;id++)if(sizes[id]===1)singles.push(id);
-    if(singles.length<=maxSingles)return reg;
-    let changed=false;
-    for(let id of shuffle(singles.slice(maxSingles))){
-      let qr=id,qc=sol[id],cands=[];
-      for(let [rr,cc] of shuffle([[qr+1,qc],[qr-1,qc],[qr,qc+1],[qr,qc-1]])){
-        if(rr<0||rr>=n||cc<0||cc>=n)continue;
-        let donor=reg[rr][cc];
-        if(donor===id||sizes[donor]<3)continue;
-        if(rr===donor&&cc===sol[donor])continue; // never steal donor queen
-        if(!queenRegionConnectedAfterMove(reg,donor,rr,cc))continue;
-        cands.push([rr,cc,donor])
-      }
-      if(cands.length){
-        let [rr,cc,donor]=cands[Math.floor(Math.random()*cands.length)];
-        reg[rr][cc]=id;sizes[id]++;sizes[donor]--;changed=true
-      }
-    }
-    if(!changed)break
-  }
-  let sizes=Array(n).fill(0);for(let row of reg)for(let id of row)sizes[id]++;
-  return sizes.filter(x=>x===1).length<=maxSingles?reg:null
-}
 
 
 
-function growQueenTwoCellRegions(reg,sol,maxTwos=3){
-  reg=reg.map(row=>[...row]);let n=reg.length,guard=0;
-  while(queenTwoCellRegions(reg)>maxTwos&&guard++<n*n*4){
-    let sizes=Array(n).fill(0);for(let row of reg)for(let id of row)sizes[id]++;
-    let targets=shuffle(Array.from({length:n},(_,id)=>id).filter(id=>sizes[id]===2)),changed=false;
-    for(let id of targets){
-      let candidates=[];
-      for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(reg[r][c]===id){
-        for(let [rr,cc] of shuffle([[r+1,c],[r-1,c],[r,c+1],[r,c-1]])){
-          if(rr<0||rr>=n||cc<0||cc>=n)continue;
-          let donor=reg[rr][cc];
-          if(donor===id||sizes[donor]<=3)continue;
-          if(rr===donor&&cc===sol[donor])continue;
-          if(!queenRegionConnectedAfterMove(reg,donor,rr,cc))continue;
-          candidates.push([rr,cc,donor])
-        }
-      }
-      if(candidates.length){
-        let [rr,cc,donor]=candidates[Math.floor(Math.random()*candidates.length)];
-        reg[rr][cc]=id;sizes[id]++;sizes[donor]--;changed=true;
-        if(queenTwoCellRegions(reg)<=maxTwos)return reg
-      }
-    }
-    if(!changed)break
-  }
-  return queenTwoCellRegions(reg)<=maxTwos?reg:null
-}
-
-// v2.23 — Queens generation certified by the shared logical rating.
-// Structural parameters remain heuristics only; acceptance is always an exact logical tier match.
-const queenCertifiedTemplatesV223=Object.freeze({"easy":{"n":7,"sol":[5,3,1,4,2,6,0],"reg":[[0,0,0,0,0,1,0],[0,0,0,0,0,0,0],[0,2,0,0,0,3,0],[3,3,3,3,4,3,3],[3,3,3,3,3,3,3],[5,5,3,3,3,3,6],[5,5,3,3,3,3,3]]},"medium":{"n":8,"sol":[7,0,3,1,6,4,2,5],"reg":[[0,0,0,0,0,0,0,1],[0,0,0,2,2,0,0,2],[0,0,0,2,2,2,2,2],[0,3,3,3,2,2,2,4],[3,3,3,3,5,2,6,4],[3,3,3,5,5,4,4,4],[3,3,7,5,5,4,4,4],[3,3,5,5,5,4,4,4]]},"hard":{"n":9,"sol":[3,7,4,0,5,1,8,6,2],"reg":[[5,5,5,8,8,8,8,8,7],[5,6,5,6,6,6,8,7,7],[5,6,5,5,6,6,7,7,7],[5,6,5,5,6,6,6,6,7],[5,6,6,6,6,4,6,7,7],[5,3,4,4,4,4,6,6,7],[5,3,4,0,4,4,2,2,2],[5,3,3,0,4,1,1,1,2],[5,3,0,0,0,0,1,1,1]]},"expert":{"n":9,"sol":[2,8,1,4,6,3,5,0,7],"reg":[[0,0,0,3,3,3,4,4,1],[0,2,5,5,3,4,4,1,1],[0,2,5,5,3,4,4,1,1],[0,5,5,5,3,4,4,6,6],[5,5,5,5,3,3,4,6,6],[5,5,5,5,3,6,6,6,6],[5,5,5,5,6,6,6,6,6],[7,5,5,6,6,6,6,6,6],[7,5,5,6,6,6,8,8,6]]}});
-const queenCertifiedGenerationConfigV223=Object.freeze({
-  easy:Object.freeze({n:7,single:4,maxSingles:99,maxTwos:99,attempts:320,strategy:'random'}),
-  medium:Object.freeze({n:8,single:3,maxSingles:99,maxTwos:99,attempts:620,strategy:'random'}),
-  hard:Object.freeze({n:9,single:3,maxSingles:0,maxTwos:3,attempts:32,strategy:'template-mutation'}),
-  expert:Object.freeze({n:9,single:3,maxSingles:0,maxTwos:3,attempts:16,strategy:'template-mutation'})
-});
-function queenGenerationStatsV223(diff,cfg){return {generatorVersion:typeof DifficultyRating!=='undefined'?DifficultyRating.GENERATOR_VERSION:1,targetDifficulty:diff,strategy:cfg.strategy,attempts:0,rejected:{structure:0,uniqueness:0,ratingMismatch:0,budgetExhausted:0,invalid:0},fallbackUsed:false}}
-function queenRateGeneratedV223(reg){
-  if(typeof QueensDifficulty==='undefined'||typeof DifficultyRating==='undefined')throw new Error('Queens certified rating dependencies unavailable');
-  return QueensDifficulty.ratePuzzle({game:'queens',n:reg.length,reg})
-}
-function queenExactDifficultyMatchV223(rate,diff){return !!rate&&rate.profile?.status==='solved'&&rate.profile?.difficulty===diff&&rate.profile?.minimumRequiredTier===DifficultyRating.tierIndex(diff)&&!rate.profile?.budgetHit}
-function queenCertifiedResultV223(candidate,rate,stats){
-  let profile=JSON.parse(JSON.stringify(rate.profile));
-  stats.fingerprint=profile.fingerprint;stats.minimumRequiredTier=profile.minimumRequiredTier;stats.totalLogicalSteps=profile.totalLogicalSteps;
-  return {n:candidate.n,sol:[...candidate.sol],reg:candidate.reg.map(r=>[...r]),difficultyProfile:profile,generationStats:JSON.parse(JSON.stringify(stats))}
-}
-function queenRecordRatingRejectionV223(stats,rate){
-  if(rate?.profile?.status==='budget-exhausted'||rate?.profile?.budgetHit)stats.rejected.budgetExhausted++;
-  else if(rate?.profile?.status==='invalid'||rate?.profile?.status==='contradictory')stats.rejected.invalid++;
-  else stats.rejected.ratingMismatch++
-}
-function queenTransformCertifiedTemplateV223(base){
-  let k=Math.floor(Math.random()*8),reg=transformGrid(base.reg,k),n=reg.length,mask=base.sol.map((c,r)=>Array.from({length:n},(_,j)=>j===c?1:0));
-  mask=transformGrid(mask,k);let sol=Array(n).fill(-1);for(let r=0;r<n;r++)sol[r]=mask[r].indexOf(1);
-  return {n,sol,reg}
-}
-function queenTemplateBoundaryMovesV223(reg,sol){
-  let n=reg.length,protectedCells=new Set(sol.map((c,r)=>`${r}:${c}`)),moves=[],seen=new Set();
-  for(let r=0;r<n;r++)for(let c=0;c<n;c++){
-    if(protectedCells.has(`${r}:${c}`))continue;
-    let donor=reg[r][c];
-    for(let [rr,cc] of [[r+1,c],[r-1,c],[r,c+1],[r,c-1]]){
-      if(rr<0||rr>=n||cc<0||cc>=n)continue;let receiver=reg[rr][cc];if(receiver===donor)continue;
-      let key=`${r},${c}>${receiver}`;if(seen.has(key))continue;
-      if(!queenRegionConnectedAfterMove(reg,donor,r,c))continue;seen.add(key);moves.push([r,c,receiver])
-    }
-  }
-  return moves
-}
-function queenMutatedTemplateCandidateV223(base){
-  let candidate={n:base.n,sol:[...base.sol],reg:base.reg.map(r=>[...r])},moveCount=1+(Math.random()<0.22?1:0);
-  for(let i=0;i<moveCount;i++){let moves=queenTemplateBoundaryMovesV223(candidate.reg,candidate.sol);if(!moves.length)return null;let [r,c,receiver]=moves[Math.floor(Math.random()*moves.length)];candidate.reg[r][c]=receiver}
-  return candidate
-}
-function queenRandomStructuralCandidateV223(cfg){
-  let sol=randomQueenSolution(cfg.n);if(!sol)return null;
-  let reg=queenRegionsFromSolution(sol,cfg.single);if(!reg)return null;
-  if(cfg.maxSingles<99){reg=reduceQueenSingletons(reg,sol,cfg.maxSingles);if(!reg)return null}
-  if(cfg.maxTwos<99){reg=growQueenTwoCellRegions(reg,sol,cfg.maxTwos);if(!reg)return null}
-  return {n:cfg.n,sol,reg}
-}
-function queenCertifiedStructureMatchesV223(reg,cfg){
-  return reg.length===cfg.n&&(cfg.maxSingles>=99||queenSingletonRegions(reg)<=cfg.maxSingles)&&(cfg.maxTwos>=99||queenTwoCellRegions(reg)<=cfg.maxTwos)
-}
-function generateQueensPuzzle(diff){
-  const cfg=queenCertifiedGenerationConfigV223[diff];if(!cfg)throw new Error('Unknown Queens difficulty');
-  let stats=queenGenerationStatsV223(diff,cfg),base=queenCertifiedTemplatesV223[diff];
-  for(let t=0;t<cfg.attempts;t++){
-    stats.attempts++;
-    let candidate=cfg.strategy==='random'?queenRandomStructuralCandidateV223(cfg):queenMutatedTemplateCandidateV223(base);
-    if(!candidate||!queenCertifiedStructureMatchesV223(candidate.reg,cfg)){stats.rejected.structure++;continue}
-    if(countQueensGenerated(candidate.reg,2)!==1){stats.rejected.uniqueness++;continue}
-    let rate=queenRateGeneratedV223(candidate.reg);
-    if(!queenExactDifficultyMatchV223(rate,diff)){queenRecordRatingRejectionV223(stats,rate);continue}
-    return queenCertifiedResultV223(candidate,rate,stats)
-  }
-  // Deterministic safety net: use the certified template itself, transformed only by a board symmetry.
-  stats.fallbackUsed=true;stats.attempts++;
-  let fallback=queenTransformCertifiedTemplateV223(base);
-  if(!queenCertifiedStructureMatchesV223(fallback.reg,cfg))throw new Error(`Queens certified fallback structure mismatch (${diff})`);
-  if(countQueensGenerated(fallback.reg,2)!==1)throw new Error(`Queens certified fallback uniqueness mismatch (${diff})`);
-  let rate=queenRateGeneratedV223(fallback.reg);
-  if(!queenExactDifficultyMatchV223(rate,diff))throw new Error(`Queens certified generation failed exact difficulty match (${diff})`);
-  return queenCertifiedResultV223(fallback,rate,stats)
-}
-function queens(diff){let g=generateQueensPuzzle(diff);current={game:'queens',diff,n:g.n,reg:g.reg,sol:g.sol,state:Array.from({length:g.n},()=>Array(g.n).fill(0)),generated:true,unique:true,completed:false};renderQueens(current)}
-
-const tangoValidRows=(()=>{let rows=[];for(let m=0;m<64;m++){let a=Array.from({length:6},(_,i)=>(m>>(5-i))&1);if(a.reduce((x,y)=>x+y,0)!==3)continue;if([0,1,2,3].some(i=>a[i]===a[i+1]&&a[i]===a[i+2]))continue;rows.push(a)}return rows})();
-function generateTangoSolution(){let grid=[];function partialOK(row){for(let c=0;c<6;c++){let col=grid.map(r=>r[c]).concat(row[c]);let ones=col.reduce((a,b)=>a+b,0);if(ones>3||col.length-ones>3)return false;let L=col.length;if(L>=3&&col[L-1]===col[L-2]&&col[L-1]===col[L-3])return false}return true}function bt(r){if(r===6)return true;for(let row of shuffle(tangoValidRows)){if(!partialOK(row))continue;grid.push(row);if(bt(r+1))return true;grid.pop()}return false}bt(0);return grid.map(r=>[...r])}
-function tangoEdgeValue(sol,r,c,d){let a=sol[r][c],b=d==='r'?sol[r][c+1]:sol[r+1][c];return a===b?'=':'×'}
-function countTangoSolutions(givens,edges,limit=2){let grid=Array.from({length:6},()=>Array(6).fill(-1)),count=0;for(let i of givens.keys()){let r=Math.floor(i/6),c=i%6;grid[r][c]=givens.get(i)}function partial(r,c,v){for(let [rr,cc,d,s] of edges){let r2=d==='r'?rr:rr+1,c2=d==='r'?cc+1:cc;if((rr===r&&cc===c)||(r2===r&&c2===c)){let other=(rr===r&&cc===c)?grid[r2][c2]:grid[rr][cc];if(other!==-1&&((s==='='&&v!==other)||(s==='×'&&v===other)))return false}}let row=grid[r].slice();row[c]=v;let ones=row.filter(x=>x===1).length,zeros=row.filter(x=>x===0).length;if(ones>3||zeros>3)return false;for(let i=0;i<4;i++)if(row[i]!==-1&&row[i]===row[i+1]&&row[i]===row[i+2])return false;let col=grid.map((x,rr)=>rr===r?v:x[c]),co=col.filter(x=>x===1).length,cz=col.filter(x=>x===0).length;if(co>3||cz>3)return false;for(let i=0;i<4;i++)if(col[i]!==-1&&col[i]===col[i+1]&&col[i]===col[i+2])return false;return true}function bt(){if(count>=limit)return;let best=null,bestVals=null;for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(grid[r][c]===-1){let vals=[0,1].filter(v=>partial(r,c,v));if(!vals.length)return;if(!best||vals.length<bestVals.length){best=[r,c];bestVals=vals;if(vals.length===1)break}}if(!best){count++;return}let [r,c]=best;for(let v of bestVals){grid[r][c]=v;bt();grid[r][c]=-1;if(count>=limit)return}}bt();return count}
-// v2.23 — Soleil-Lune generation certified by the shared logical rating.
-// Historical clue counts remain search heuristics only; the exact logical tier is the acceptance criterion.
-const tangoCertifiedTemplatesV223=Object.freeze({
-  easy:Object.freeze([{state:[[-1,-1,-1,-1,-1,-1],[-1,-1,-1,0,-1,0],[-1,-1,-1,-1,-1,-1],[-1,-1,-1,-1,-1,-1],[1,-1,1,1,-1,-1],[-1,-1,-1,-1,-1,-1]],edges:[[4,1,'d','×'],[1,1,'r','='],[0,2,'d','='],[0,4,'d','='],[5,4,'r','×']],sol:[[1,0,1,0,1,0],[0,1,1,0,1,0],[1,0,0,1,0,1],[0,1,0,0,1,1],[1,0,1,1,0,0],[0,1,0,1,0,1]]}]),
-  medium:Object.freeze([
-    {state:[[0,-1,-1,-1,1,-1],[-1,-1,-1,-1,-1,-1],[-1,-1,-1,-1,-1,1],[-1,-1,0,-1,-1,-1],[-1,-1,-1,-1,-1,-1],[-1,-1,0,1,-1,-1]],edges:[[1,4,'r','='],[2,3,'d','='],[3,3,'d','×'],[4,3,'r','='],[1,1,'r','×']],sol:[[0,1,1,0,1,0],[0,0,1,0,1,1],[1,0,0,1,0,1],[0,1,0,1,1,0],[1,0,1,0,0,1],[1,1,0,1,0,0]]},
-    {state:[[-1,1,-1,-1,0,1],[-1,-1,-1,-1,0,-1],[-1,-1,-1,-1,-1,-1],[-1,-1,-1,-1,-1,1],[-1,-1,-1,-1,-1,-1],[-1,-1,-1,-1,-1,-1]],edges:[[2,2,'d','='],[3,3,'r','×'],[1,5,'d','×'],[4,2,'r','×'],[2,1,'r','='],[4,4,'d','×'],[4,2,'d','×']],sol:[[0,1,0,1,0,1],[1,0,0,1,0,1],[0,1,1,0,1,0],[0,0,1,0,1,1],[1,1,0,1,0,0],[1,0,1,0,1,0]]},
-    {state:[[0,-1,-1,-1,-1,-1],[-1,-1,-1,-1,0,-1],[-1,-1,-1,-1,-1,-1],[-1,-1,-1,-1,-1,-1],[0,-1,-1,-1,-1,0],[1,-1,-1,-1,-1,-1]],edges:[[5,1,'r','='],[2,3,'d','×'],[4,2,'r','×'],[0,2,'r','×'],[3,0,'d','='],[1,1,'d','='],[1,2,'r','=']],sol:[[0,1,1,0,1,0],[1,0,1,1,0,0],[1,0,0,1,0,1],[0,1,0,0,1,1],[0,1,1,0,1,0],[1,0,0,1,0,1]]},
-    {state:[[-1,-1,-1,-1,0,-1],[-1,-1,-1,-1,-1,-1],[1,0,-1,-1,-1,-1],[-1,-1,-1,-1,-1,-1],[-1,-1,-1,-1,-1,-1],[-1,-1,-1,1,-1,-1]],edges:[[3,0,'d','×'],[0,0,'d','='],[4,2,'d','×'],[0,4,'d','='],[2,2,'r','×'],[4,4,'d','×'],[3,1,'r','×'],[1,0,'r','=']],sol:[[0,1,1,0,0,1],[0,0,1,1,0,1],[1,0,0,1,1,0],[1,1,0,0,1,0],[0,1,1,0,0,1],[1,0,0,1,1,0]]}
-  ]),
-  hard:Object.freeze([
-    {state:[[-1,-1,-1,-1,-1,-1],[0,-1,-1,-1,-1,-1],[-1,-1,-1,-1,-1,-1],[-1,-1,-1,-1,1,-1],[-1,-1,1,-1,-1,-1],[-1,1,-1,-1,-1,-1]],edges:[[1,0,'d','='],[2,2,'d','×'],[1,5,'d','×'],[4,4,'d','='],[0,2,'d','='],[2,3,'r','=']],sol:[[1,0,0,1,1,0],[0,1,0,1,1,0],[0,1,1,0,0,1],[1,0,0,1,1,0],[1,0,1,0,0,1],[0,1,1,0,0,1]]},
-    {state:[[0,-1,-1,-1,-1,-1],[-1,-1,-1,0,-1,-1],[-1,1,-1,-1,1,-1],[-1,-1,-1,-1,-1,-1],[-1,-1,-1,-1,-1,-1],[-1,-1,-1,1,-1,-1]],edges:[[3,2,'d','×'],[3,0,'d','='],[5,4,'r','='],[4,2,'r','×'],[4,2,'d','×']],sol:[[0,0,1,1,0,1],[1,0,1,0,1,0],[1,1,0,0,1,0],[0,1,0,1,0,1],[0,0,1,0,1,1],[1,1,0,1,0,0]]},
-    {state:[[-1,-1,-1,-1,-1,-1],[-1,-1,-1,-1,-1,-1],[-1,-1,0,-1,-1,-1],[-1,-1,-1,-1,-1,-1],[-1,-1,1,-1,-1,-1],[-1,-1,-1,0,-1,-1]],edges:[[4,1,'r','='],[1,5,'d','='],[0,0,'d','='],[3,3,'r','×'],[0,1,'r','='],[1,1,'d','×'],[3,5,'d','=']],sol:[[1,0,0,1,0,1],[1,0,1,0,1,0],[0,1,0,1,1,0],[1,0,0,1,0,1],[0,1,1,0,0,1],[0,1,1,0,1,0]]},
-    {state:[[-1,-1,-1,-1,-1,0],[-1,-1,-1,-1,-1,-1],[-1,1,0,-1,-1,-1],[-1,-1,-1,-1,-1,-1],[-1,-1,1,-1,-1,-1],[1,-1,-1,-1,-1,-1]],edges:[[0,5,'d','='],[0,3,'r','×'],[1,0,'d','='],[0,2,'d','×'],[4,5,'d','=']],sol:[[1,0,1,0,1,0],[0,1,0,1,1,0],[0,1,0,1,0,1],[1,0,1,0,1,0],[0,1,1,0,0,1],[1,0,0,1,0,1]]}
-  ]),
-  expert:Object.freeze([
-    {state:[[-1,-1,-1,-1,-1,-1],[0,-1,-1,1,-1,-1],[-1,-1,-1,-1,-1,0],[-1,-1,-1,-1,-1,-1],[-1,-1,-1,-1,-1,-1],[-1,-1,0,0,-1,-1]],edges:[[1,2,'r','×'],[2,4,'d','='],[1,0,'d','×'],[4,0,'d','='],[2,1,'r','×'],[3,2,'d','='],[2,5,'d','×']],sol:[[0,0,1,1,0,1],[0,1,0,1,0,1],[1,1,0,0,1,0],[0,0,1,0,1,1],[1,0,1,1,0,0],[1,1,0,0,1,0]]},
-    {state:[[-1,-1,-1,-1,-1,-1],[0,-1,-1,0,1,0],[-1,-1,-1,-1,-1,-1],[-1,-1,0,-1,-1,-1],[-1,-1,-1,-1,-1,-1],[-1,1,-1,-1,-1,-1]],edges:[[2,0,'d','×'],[2,2,'r','='],[2,1,'d','×'],[3,3,'d','×'],[0,0,'d','×'],[0,3,'r','=']],sol:[[1,0,0,1,1,0],[0,1,1,0,1,0],[0,0,1,1,0,1],[1,1,0,0,1,0],[1,0,0,1,0,1],[0,1,1,0,0,1]]},
-    {state:[[-1,-1,-1,-1,-1,-1],[1,-1,-1,-1,-1,-1],[-1,-1,-1,0,1,-1],[-1,-1,-1,-1,-1,-1],[-1,-1,-1,-1,-1,-1],[-1,-1,-1,-1,-1,-1]],edges:[[5,4,'r','='],[0,3,'r','×'],[1,3,'d','×'],[1,1,'d','='],[2,4,'r','×'],[2,3,'d','×'],[2,2,'r','×'],[4,3,'r','×'],[2,0,'d','=']],sol:[[1,0,0,1,0,1],[1,1,0,1,0,0],[0,1,1,0,1,0],[0,0,1,1,0,1],[1,1,0,0,1,0],[0,0,1,0,1,1]]},
-    {state:[[-1,-1,-1,-1,-1,-1],[-1,-1,-1,-1,-1,-1],[0,-1,-1,-1,-1,-1],[-1,-1,-1,-1,-1,-1],[-1,-1,-1,-1,-1,-1],[-1,0,-1,-1,-1,-1]],edges:[[4,2,'r','='],[0,3,'d','='],[5,1,'r','×'],[2,5,'d','×'],[1,3,'r','×'],[2,1,'r','×'],[0,5,'d','='],[1,2,'r','×'],[0,0,'r','×'],[4,4,'d','×']],sol:[[0,1,0,1,1,0],[1,1,0,1,0,0],[0,0,1,0,1,1],[1,0,1,1,0,0],[0,1,0,0,1,1],[1,0,1,0,0,1]]}
-  ])
-});
-const tangoCertifiedGenerationConfigV223=Object.freeze({
-  easy:Object.freeze({minClues:15,randomAttempts:4,templateAttempts:4,strategy:'random+certified-template'}),
-  medium:Object.freeze({minClues:12,randomAttempts:0,templateAttempts:6,strategy:'certified-template-transform'}),
-  hard:Object.freeze({minClues:10,randomAttempts:0,templateAttempts:6,strategy:'certified-template-transform'}),
-  expert:Object.freeze({minClues:10,randomAttempts:0,templateAttempts:6,strategy:'certified-template-transform'})
-});
-function tangoGenerationStatsV223(diff,cfg){return {generatorVersion:typeof DifficultyRating!=='undefined'?DifficultyRating.GENERATOR_VERSION:1,targetDifficulty:diff,strategy:cfg.strategy,attempts:0,randomAttempts:0,templateAttempts:0,rejected:{structure:0,uniqueness:0,ratingMismatch:0,budgetExhausted:0,invalid:0},fallbackUsed:false}}
-function tangoCandidateStateV223(candidate){let state=Array.from({length:6},()=>Array(6).fill(-1));for(let i of candidate.givens)state[Math.floor(i/6)][i%6]=candidate.sol[Math.floor(i/6)][i%6];return state}
-function tangoGivenMapV223(candidate){let map=new Map();for(let i of candidate.givens)map.set(i,candidate.sol[Math.floor(i/6)][i%6]);return map}
-function tangoRateGeneratedV223(candidate){if(typeof TangoDifficulty==='undefined'||typeof DifficultyRating==='undefined')throw new Error('Soleil-Lune certified rating dependencies unavailable');return TangoDifficulty.ratePuzzle({game:'tango',n:6,state:tangoCandidateStateV223(candidate),edges:candidate.edges})}
-function tangoExactDifficultyMatchV223(rate,diff){return !!rate&&rate.profile?.status==='solved'&&rate.profile?.difficulty===diff&&rate.profile?.minimumRequiredTier===DifficultyRating.tierIndex(diff)&&!rate.profile?.budgetHit}
-function tangoRecordRatingRejectionV223(stats,rate){if(rate?.profile?.status==='budget-exhausted'||rate?.profile?.budgetHit)stats.rejected.budgetExhausted++;else if(rate?.profile?.status==='invalid'||rate?.profile?.status==='contradictory')stats.rejected.invalid++;else stats.rejected.ratingMismatch++}
-function tangoSolutionValidV223(candidate){let sol=candidate?.sol;if(!Array.isArray(sol)||sol.length!==6||sol.some(r=>!Array.isArray(r)||r.length!==6))return false;for(let r=0;r<6;r++){let row=sol[r];if(row.filter(x=>x===1).length!==3||row.filter(x=>x===0).length!==3)return false;for(let c=0;c<4;c++)if(row[c]===row[c+1]&&row[c]===row[c+2])return false}for(let c=0;c<6;c++){let col=sol.map(r=>r[c]);if(col.filter(x=>x===1).length!==3||col.filter(x=>x===0).length!==3)return false;for(let r=0;r<4;r++)if(col[r]===col[r+1]&&col[r]===col[r+2])return false}for(let i of candidate.givens){let r=Math.floor(i/6),c=i%6;if(![0,1].includes(sol[r][c]))return false}for(let [r,c,d,rel] of candidate.edges)if(tangoEdgeValue(sol,r,c,d)!==rel)return false;return true}
-function tangoCertifiedResultV223(candidate,rate,stats){let profile=JSON.parse(JSON.stringify(rate.profile));stats.fingerprint=profile.fingerprint;stats.minimumRequiredTier=profile.minimumRequiredTier;stats.totalLogicalSteps=profile.totalLogicalSteps;stats.givenCount=candidate.givens.size;stats.relationCount=candidate.edges.length;return {sol:candidate.sol.map(r=>[...r]),givens:new Set(candidate.givens),edges:candidate.edges.map(e=>[...e]),difficultyProfile:profile,generationStats:JSON.parse(JSON.stringify(stats))}}
-function tangoRandomStructuralCandidateV223(minClues){let sol=generateTangoSolution(),all=[];for(let i=0;i<36;i++)all.push({t:'g',i,v:sol[Math.floor(i/6)][i%6]});for(let r=0;r<6;r++)for(let c=0;c<6;c++){if(c<5)all.push({t:'e',e:[r,c,'r',tangoEdgeValue(sol,r,c,'r')]});if(r<5)all.push({t:'e',e:[r,c,'d',tangoEdgeValue(sol,r,c,'d')]})}let giv=new Map(),edges=[],order=shuffle(all);for(let clue of order){if(clue.t==='g')giv.set(clue.i,clue.v);else edges.push(clue.e);if(giv.size+edges.length>=minClues&&countTangoSolutions(giv,edges,2)===1)break}if(countTangoSolutions(giv,edges,2)!==1)return null;let removals=shuffle([...giv.keys()].map(i=>({t:'g',i})).concat(edges.map(e=>({t:'e',e}))));for(let rm of removals){if(giv.size+edges.length<=minClues)break;if(rm.t==='g'){let v=giv.get(rm.i);giv.delete(rm.i);if(countTangoSolutions(giv,edges,2)!==1)giv.set(rm.i,v)}else{let idx=edges.findIndex(e=>e.join('|')===rm.e.join('|'));if(idx<0)continue;let old=edges.splice(idx,1)[0];if(countTangoSolutions(giv,edges,2)!==1)edges.splice(idx,0,old)}}return {sol,givens:new Set(giv.keys()),edges}}
-function tangoTransformTemplateV223(base,k=Math.floor(Math.random()*8),invert=Math.random()<.5){let n=6,state=transformGrid(base.state,k),sol=transformGrid(base.sol,k),labels=transformGrid(Array.from({length:n},(_,r)=>Array.from({length:n},(_,c)=>r*n+c)),k),mapped=Array(n*n);for(let r=0;r<n;r++)for(let c=0;c<n;c++)mapped[labels[r][c]]=[r,c];if(invert){state=state.map(row=>row.map(v=>v===-1?-1:1-v));sol=sol.map(row=>row.map(v=>1-v))}let edges=base.edges.map(([r,c,d,rel])=>{let a=mapped[r*n+c],b=mapped[(d==='r'?r:r+1)*n+(d==='r'?c+1:c)];if(a[0]===b[0]){let left=a[1]<b[1]?a:b;return [left[0],left[1],'r',rel]}let top=a[0]<b[0]?a:b;return [top[0],top[1],'d',rel]}).sort((a,b)=>a[0]-b[0]||a[1]-b[1]||a[2].localeCompare(b[2]));let givens=new Set();for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(state[r][c]!==-1)givens.add(r*n+c);return {sol,givens,edges}}
-function tangoTemplateCandidateV223(diff,forcedIndex=null,forcedTransform=null,forcedInvert=null){let pool=tangoCertifiedTemplatesV223[diff];if(!pool?.length)return null;let base=pool[forcedIndex==null?Math.floor(Math.random()*pool.length):forcedIndex%pool.length],transform=forcedTransform==null?(diff==='expert'?0:Math.floor(Math.random()*8)):forcedTransform;return tangoTransformTemplateV223(base,transform,forcedInvert==null?Math.random()<.5:forcedInvert)}
-function generateTangoPuzzle(diff){let cfg=tangoCertifiedGenerationConfigV223[diff];if(!cfg)throw new Error('Unknown Soleil-Lune difficulty');let stats=tangoGenerationStatsV223(diff,cfg);for(let t=0;t<cfg.randomAttempts;t++){stats.attempts++;stats.randomAttempts++;let candidate=tangoRandomStructuralCandidateV223(cfg.minClues);if(!candidate){stats.rejected.uniqueness++;continue}if(!tangoSolutionValidV223(candidate)){stats.rejected.structure++;continue}let rate=tangoRateGeneratedV223(candidate);if(!tangoExactDifficultyMatchV223(rate,diff)){tangoRecordRatingRejectionV223(stats,rate);continue}return tangoCertifiedResultV223(candidate,rate,stats)}for(let t=0;t<cfg.templateAttempts;t++){stats.attempts++;stats.templateAttempts++;let candidate=tangoTemplateCandidateV223(diff);if(!candidate||!tangoSolutionValidV223(candidate)){stats.rejected.structure++;continue}if(countTangoSolutions(tangoGivenMapV223(candidate),candidate.edges,2)!==1){stats.rejected.uniqueness++;continue}let rate=tangoRateGeneratedV223(candidate);if(!tangoExactDifficultyMatchV223(rate,diff)){tangoRecordRatingRejectionV223(stats,rate);continue}stats.fallbackUsed=cfg.randomAttempts>0;return tangoCertifiedResultV223(candidate,rate,stats)}stats.fallbackUsed=true;stats.attempts++;stats.templateAttempts++;let fallback=tangoTemplateCandidateV223(diff,0,0,false);if(!fallback||!tangoSolutionValidV223(fallback))throw new Error(`Soleil-Lune certified fallback structure mismatch (${diff})`);if(countTangoSolutions(tangoGivenMapV223(fallback),fallback.edges,2)!==1)throw new Error(`Soleil-Lune certified fallback uniqueness mismatch (${diff})`);let rate=tangoRateGeneratedV223(fallback);if(!tangoExactDifficultyMatchV223(rate,diff))throw new Error(`Soleil-Lune certified generation failed exact difficulty match (${diff})`);return tangoCertifiedResultV223(fallback,rate,stats)}
-function tango(diff){let g=generateTangoPuzzle(diff),state=Array.from({length:6},()=>Array(6).fill(-1));for(let i of g.givens){let r=Math.floor(i/6),c=i%6;state[r][c]=g.sol[r][c]}current={game:'tango',diff,n:6,sol:g.sol,givens:g.givens,edges:g.edges,state,generated:true,unique:true,completed:false};renderTango(current)}
-
-function randomSudokuSolution(){let bands=shuffle([[0,1],[2,3],[4,5]]),rows=bands.flatMap(b=>shuffle(b)),stacks=shuffle([[0,1,2],[3,4,5]]),cols=stacks.flatMap(s=>shuffle(s)),map=shuffle([1,2,3,4,5,6]);return rows.map(r=>cols.map(c=>map[sudBase[r][c]-1]))}
-function sudoku(diff){let sol=randomSudokuSolution(),holes={easy:16,medium:22,hard:27}[diff],empty=makeSudokuHoles(sol,holes),actual=empty.size;if(actual<Math.min(holes-2,20)){sol=randomSudokuSolution();empty=makeSudokuHoles(sol,holes);actual=empty.size}current={game:'sudoku',diff,n:6,sol,empty,state:sol.map((r,ri)=>r.map((v,c)=>empty.has(ri*6+c)?0:v)),sel:null,generated:true,unique:countMiniSudoku(sol.map((r,ri)=>r.map((v,c)=>empty.has(ri*6+c)?0:v)),2)===1,completed:false};renderSudoku(current)}
-
-function makeRectTiling(n,target){let targetCount=target[0]+Math.floor(Math.random()*(target[1]-target[0]+1)),rects=[{r:0,c:0,h:n,w:n}];let guard=0;while(rects.length<targetCount&&guard++<300){let candidates=rects.map((x,i)=>[x,i]).filter(([x])=>x.h>1||x.w>1);if(!candidates.length)break;let [rect,idx]=candidates[Math.floor(Math.random()*candidates.length)],splits=[];if(rect.h>1)for(let k=1;k<rect.h;k++)splits.push(['h',k]);if(rect.w>1)for(let k=1;k<rect.w;k++)splits.push(['w',k]);let [dir,k]=splits[Math.floor(Math.random()*splits.length)],a,b;if(dir==='h'){a={r:rect.r,c:rect.c,h:k,w:rect.w};b={r:rect.r+k,c:rect.c,h:rect.h-k,w:rect.w}}else{a={r:rect.r,c:rect.c,h:rect.h,w:k};b={r:rect.r,c:rect.c+k,h:rect.h,w:rect.w-k}}rects.splice(idx,1,a,b)}if(rects.length!==targetCount)return null;let reg=Array.from({length:n},()=>Array(n).fill(-1));rects.forEach((x,id)=>{x.id=id;for(let r=x.r;r<x.r+x.h;r++)for(let c=x.c;c<x.c+x.w;c++)reg[r][c]=id});return {reg,rects}}
-function rectShape(h,w){return h===w?'carré':h>w?'vertical':'horizontal'}
-function possiblePatchRects(n,clue,allCluePos){let out=[];for(let r0=0;r0<n;r0++)for(let r1=r0;r1<n;r1++)for(let c0=0;c0<n;c0++)for(let c1=c0;c1<n;c1++){if(clue.pos[0]<r0||clue.pos[0]>r1||clue.pos[1]<c0||clue.pos[1]>c1)continue;let h=r1-r0+1,w=c1-c0+1,area=h*w,shape=rectShape(h,w);if((clue.mode==='both'||clue.mode==='size')&&area!==clue.size)continue;if((clue.mode==='both'||clue.mode==='shape')&&shape!==clue.shape)continue;let containsOther=false;for(let p of allCluePos)if(p!==clue.pos&&p[0]>=r0&&p[0]<=r1&&p[1]>=c0&&p[1]<=c1){containsOther=true;break}if(!containsOther){let cells=[];for(let r=r0;r<=r1;r++)for(let c=c0;c<=c1;c++)cells.push(r*n+c);out.push(cells)}}return out}
-function countPatchSolutions(n,ids,clues,limit=2){let positions=ids.map(id=>clues[id].pos),opts={};for(let id of ids){opts[id]=possiblePatchRects(n,clues[id],positions);if(!opts[id].length)return 0}let count=0,covered=new Set();function bt(done){if(count>=limit)return;if(done.size===ids.length){if(covered.size===n*n)count++;return}let best=null,bestOpts=null;for(let id of ids)if(!done.has(id)){let avail=opts[id].filter(cells=>cells.every(x=>!covered.has(x)));if(!avail.length)return;if(!best||avail.length<bestOpts.length){best=id;bestOpts=avail;if(avail.length===1)break}}done.add(best);for(let cells of bestOpts){cells.forEach(x=>covered.add(x));bt(done);cells.forEach(x=>covered.delete(x));if(count>=limit)break}done.delete(best)}bt(new Set());return count}
-// v2.23 — Rectangles generation certified by the shared logical rating.
-// Board size, rectangle count and clue modes are search heuristics only; the exact logical tier is the acceptance criterion.
-const patchesCertifiedTemplatesV223=Object.freeze({
-  easy:Object.freeze({n:6,reg:[[0,1,1,1,4,4],[2,3,3,3,4,4],[5,6,7,7,7,7],[8,8,8,8,8,8],[9,9,9,9,9,9],[9,9,9,9,9,9]],clues:Object.freeze([{pos:[0,0],mode:'size'},{pos:[0,2],mode:'size'},{pos:[1,0],mode:'shape'},{pos:[1,1],mode:'size'},{pos:[1,5],mode:'none'},{pos:[2,0],mode:'size'},{pos:[2,1],mode:'shape'},{pos:[2,5],mode:'size'},{pos:[3,0],mode:'shape'},{pos:[5,0],mode:'size'}])}),
-  medium:Object.freeze({n:5,reg:[[4,0,1,2,3],[4,5,5,5,5],[4,5,5,5,5],[4,5,5,5,5],[4,5,5,5,5]],clues:Object.freeze([{pos:[0,1],mode:'shape'},{pos:[0,2],mode:'size'},{pos:[0,3],mode:'size'},{pos:[0,4],mode:'shape'},{pos:[2,0],mode:'shape'},{pos:[4,2],mode:'shape'}])}),
-  hard:Object.freeze({n:7,reg:[[1,1,1,1,2,2,0],[1,1,1,1,2,2,0],[3,3,3,3,3,3,3],[5,5,5,5,5,4,7],[5,5,5,5,5,6,7],[8,8,8,8,8,8,8],[9,9,9,9,9,9,9]],clues:Object.freeze([{pos:[0,6],mode:'size'},{pos:[1,3],mode:'size'},{pos:[1,5],mode:'shape'},{pos:[2,4],mode:'shape'},{pos:[3,5],mode:'size'},{pos:[4,0],mode:'size'},{pos:[4,5],mode:'none'},{pos:[4,6],mode:'size'},{pos:[5,2],mode:'size'},{pos:[6,4],mode:'none'}])}),
-  expert:Object.freeze({n:5,reg:[[0,0,0,0,1],[0,0,0,0,1],[4,4,2,3,3],[4,4,2,3,3],[4,4,2,5,5]],clues:Object.freeze([{pos:[0,3],mode:'none'},{pos:[0,4],mode:'none'},{pos:[2,2],mode:'size'},{pos:[3,4],mode:'none'},{pos:[4,0],mode:'both'},{pos:[4,3],mode:'size'}])})
-});
-const patchesCertifiedGenerationConfigV223=Object.freeze({
-  easy:Object.freeze({n:5,range:[6,8],randomAttempts:8,templateAttempts:8,modeChoices:Object.freeze(['both','size','shape']),strategy:'heuristic-random+certified-template'}),
-  medium:Object.freeze({n:6,range:[8,10],randomAttempts:4,templateAttempts:8,modeChoices:Object.freeze(['size','shape','none']),strategy:'heuristic-random+certified-template'}),
-  hard:Object.freeze({n:7,range:[10,12],randomAttempts:0,templateAttempts:8,modeChoices:Object.freeze(['none','shape','size']),strategy:'certified-template-transform'}),
-  expert:Object.freeze({n:8,range:[11,14],randomAttempts:0,templateAttempts:8,modeChoices:Object.freeze(['none','shape','size']),strategy:'certified-template-transform'})
-});
-function patchesGenerationStatsV223(diff,cfg){return {generatorVersion:typeof DifficultyRating!=='undefined'?DifficultyRating.GENERATOR_VERSION:1,targetDifficulty:diff,strategy:cfg.strategy,sizeHeuristic:cfg.n,rectangleRange:[...cfg.range],attempts:0,randomAttempts:0,templateAttempts:0,rejected:{structure:0,uniqueness:0,ratingMismatch:0,budgetExhausted:0,invalid:0},fallbackUsed:false}}
-function patchesBuildCandidateFromRegV223(reg,clueSpecs){let n=reg.length,ids=clueSpecs.map((_,id)=>id),cellsBy={};for(let id of ids)cellsBy[id]=[];for(let r=0;r<n;r++)for(let c=0;c<n;c++){let id=reg[r][c];if(!Object.prototype.hasOwnProperty.call(cellsBy,id))return null;cellsBy[id].push([r,c])}if(ids.some(id=>!cellsBy[id].length))return null;let clues={};for(let id of ids){let cells=cellsBy[id],src=clueSpecs[id],pos=src.pos.slice();if(!cells.some(([r,c])=>r===pos[0]&&c===pos[1]))return null;clues[id]={pos,size:cells.length,shape:patchShape(cells),mode:src.mode}}return {n,reg:reg.map(row=>row.slice()),ids,cellsBy,clues}}
-function patchesRandomStructuralCandidateV223(cfg){let til=makeRectTiling(cfg.n,cfg.range);if(!til)return null;let ids=til.rects.map(x=>x.id),clues={};for(let rect of til.rects){let cells=[];for(let r=rect.r;r<rect.r+rect.h;r++)for(let c=rect.c;c<rect.c+rect.w;c++)cells.push([r,c]);let pos=cells[Math.floor(Math.random()*cells.length)];clues[rect.id]={pos,size:rect.h*rect.w,shape:rectShape(rect.h,rect.w),mode:'both'}}if(countPatchSolutions(cfg.n,ids,clues,2)!==1)return null;for(let id of shuffle(ids)){let old=clues[id].mode;for(let mode of shuffle([...cfg.modeChoices])){clues[id].mode=mode;if(countPatchSolutions(cfg.n,ids,clues,2)===1)break;clues[id].mode=old}}if(countPatchSolutions(cfg.n,ids,clues,2)!==1)return null;let cellsBy={};for(let id of ids)cellsBy[id]=[];for(let r=0;r<cfg.n;r++)for(let c=0;c<cfg.n;c++)cellsBy[til.reg[r][c]].push([r,c]);return {n:cfg.n,reg:til.reg.map(row=>row.slice()),ids,cellsBy,clues}}
-function patchesTransformTemplateV223(base,k=Math.floor(Math.random()*8)){let n=base.n,reg=transformGrid(base.reg,k),labels=transformGrid(Array.from({length:n},(_,r)=>Array.from({length:n},(_,c)=>r*n+c)),k),mapped=Array(n*n);for(let r=0;r<n;r++)for(let c=0;c<n;c++)mapped[labels[r][c]]=[r,c];let specs=base.clues.map(clue=>({pos:mapped[clue.pos[0]*n+clue.pos[1]],mode:clue.mode}));return patchesBuildCandidateFromRegV223(reg,specs)}
-function patchesTemplateCandidateV223(diff,forcedTransform=null){let base=patchesCertifiedTemplatesV223[diff];if(!base)return null;return patchesTransformTemplateV223(base,forcedTransform==null?Math.floor(Math.random()*8):forcedTransform)}
-function patchesRateGeneratedV223(candidate){if(typeof PatchesDifficulty==='undefined'||typeof DifficultyRating==='undefined')throw new Error('Rectangles certified rating dependencies unavailable');return PatchesDifficulty.ratePuzzle({game:'patches',n:candidate.n,ids:candidate.ids,clues:candidate.clues})}
-function patchesExactDifficultyMatchV223(rate,diff){return !!rate&&rate.profile?.status==='solved'&&rate.profile?.difficulty===diff&&rate.profile?.minimumRequiredTier===DifficultyRating.tierIndex(diff)&&!rate.profile?.budgetHit}
-function patchesRecordRatingRejectionV223(stats,rate){if(rate?.profile?.status==='budget-exhausted'||rate?.profile?.budgetHit)stats.rejected.budgetExhausted++;else if(rate?.profile?.status==='invalid'||rate?.profile?.status==='contradictory')stats.rejected.invalid++;else stats.rejected.ratingMismatch++}
-function patchesSolutionValidV223(candidate){if(!candidate||!Number.isInteger(candidate.n)||!Array.isArray(candidate.reg)||candidate.reg.length!==candidate.n||candidate.reg.some(row=>!Array.isArray(row)||row.length!==candidate.n))return false;if(!Array.isArray(candidate.ids)||!candidate.ids.length||!candidate.clues||!candidate.cellsBy)return false;for(let id of candidate.ids){let cells=candidate.cellsBy[id],clue=candidate.clues[id];if(!Array.isArray(cells)||!cells.length||!clue?.pos||!cells.some(([r,c])=>r===clue.pos[0]&&c===clue.pos[1]))return false;let rs=cells.map(x=>x[0]),cs=cells.map(x=>x[1]),r0=Math.min(...rs),r1=Math.max(...rs),c0=Math.min(...cs),c1=Math.max(...cs);if((r1-r0+1)*(c1-c0+1)!==cells.length)return false;if(clue.size!==cells.length||clue.shape!==patchShape(cells))return false;for(let [r,c] of cells)if(candidate.reg[r][c]!==id)return false}return candidate.reg.flat().every(id=>candidate.ids.includes(id))}
-function patchesCertifiedResultV223(candidate,rate,stats){let profile=JSON.parse(JSON.stringify(rate.profile)),modes={both:0,size:0,shape:0,none:0};for(let id of candidate.ids)modes[candidate.clues[id].mode]=(modes[candidate.clues[id].mode]||0)+1;stats.fingerprint=profile.fingerprint;stats.minimumRequiredTier=profile.minimumRequiredTier;stats.totalLogicalSteps=profile.totalLogicalSteps;stats.n=candidate.n;stats.clueCount=candidate.ids.length;stats.clueModes=modes;return {n:candidate.n,reg:candidate.reg.map(r=>r.slice()),ids:[...candidate.ids],cellsBy:JSON.parse(JSON.stringify(candidate.cellsBy)),clues:JSON.parse(JSON.stringify(candidate.clues)),difficultyProfile:profile,generationStats:JSON.parse(JSON.stringify(stats))}}
-function generatePatchesPuzzle(diff){let cfg=patchesCertifiedGenerationConfigV223[diff];if(!cfg)throw new Error('Unknown Rectangles difficulty');let stats=patchesGenerationStatsV223(diff,cfg);for(let t=0;t<cfg.randomAttempts;t++){stats.attempts++;stats.randomAttempts++;let candidate=patchesRandomStructuralCandidateV223(cfg);if(!candidate||!patchesSolutionValidV223(candidate)){stats.rejected.structure++;continue}if(countPatchSolutions(candidate.n,candidate.ids,candidate.clues,2)!==1){stats.rejected.uniqueness++;continue}let rate=patchesRateGeneratedV223(candidate);if(!patchesExactDifficultyMatchV223(rate,diff)){patchesRecordRatingRejectionV223(stats,rate);continue}return patchesCertifiedResultV223(candidate,rate,stats)}for(let t=0;t<cfg.templateAttempts;t++){stats.attempts++;stats.templateAttempts++;let candidate=patchesTemplateCandidateV223(diff);if(!candidate||!patchesSolutionValidV223(candidate)){stats.rejected.structure++;continue}if(countPatchSolutions(candidate.n,candidate.ids,candidate.clues,2)!==1){stats.rejected.uniqueness++;continue}let rate=patchesRateGeneratedV223(candidate);if(!patchesExactDifficultyMatchV223(rate,diff)){patchesRecordRatingRejectionV223(stats,rate);continue}stats.fallbackUsed=cfg.randomAttempts>0;return patchesCertifiedResultV223(candidate,rate,stats)}stats.fallbackUsed=true;stats.attempts++;stats.templateAttempts++;let fallback=patchesTemplateCandidateV223(diff,0);if(!fallback||!patchesSolutionValidV223(fallback))throw new Error(`Rectangles certified fallback structure mismatch (${diff})`);if(countPatchSolutions(fallback.n,fallback.ids,fallback.clues,2)!==1)throw new Error(`Rectangles certified fallback uniqueness mismatch (${diff})`);let rate=patchesRateGeneratedV223(fallback);if(!patchesExactDifficultyMatchV223(rate,diff))throw new Error(`Rectangles certified generation failed exact difficulty match (${diff})`);return patchesCertifiedResultV223(fallback,rate,stats)}
-function patches(diff){let g=generatePatchesPuzzle(diff);const pal=['#f3c6a8','#b9d9c1','#c6d4ed','#e2c3df','#f0dc9d','#c7e0e3','#d5ceb8','#d4e3b4','#edbfc1','#c8c4e8','#e5d0a4','#b7d7d1'];current={game:'patches',diff,n:g.n,reg:g.reg,ids:g.ids,cellsBy:g.cellsBy,clues:g.clues,pal,active:g.ids[0],paint:Array.from({length:g.n},()=>Array(g.n).fill(null)),patchSelectedRects:{},patchLogicEvidence:patchEmptyEvidence(),generated:true,unique:true,completed:false};renderPatches(current)}
 
 function keyboardInput(e){if(!current||paused||current.completed)return;if(current.game==='sudoku'&&current.sel){let next=null,n=Number(e.key);if(n>=1&&n<=6)next=n;else if(e.key==='Backspace'||e.key==='Delete'||e.key==='0')next=0;if(next==null)return;let [r,c]=current.sel;if(!current.empty.has(r*6+c))return;e.preventDefault();let prev=current.state[r][c];if(prev===next)return;let before=historySnapshotKey();closeHintNotice();current.hintFlow=null;clearHintFocus();if(prev!==0&&prev!==next)markBacktrack();current.state[r][c]=next;haptic(next?6:5);drawS();historyRecord({type:'SET_DIGIT',primaryTarget:[r,c],input:'keyboard'},before);saveCurrent();updateScoreFlags();maybeAutoFinish()}}
 document.addEventListener('keydown',keyboardInput);
 function status(t,ok){let s=$('#status');if(!s)return;s.textContent=t;s.className='status '+(ok?'ok':'bad');if(!ok)playTone('error')}
 function finish(t,outcome='solved'){let total=timerSeconds(),snapshot=current?{...current}:null;stopTimer(false);elapsedBase=total;startedAt=0;paused=true;if(current){statsFinish(current,total,outcome);markDaily(current,outcome,total);current.completed=true;if(current.game==='patches')applyUnjustifiedHighlights()}clearSaved();renderTimer();status(`${t} — ${fmt(elapsedBase)}`,true);updatePauseButton();if(outcome==='solved'&&snapshot)requestAnimationFrame(()=>{celebrateBoard();setTimeout(()=>victoryOverlay(snapshot,total),2100)})}
-document.addEventListener('visibilitychange',()=>{if(document.hidden&&current&&!current.completed)saveCurrent()});window.addEventListener('pagehide',()=>{if(current&&!current.completed)saveCurrent()});if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+WebPlatform.lifecycle.onVisibilityChange(()=>{if(WebPlatform.lifecycle.isHidden()&&current&&!current.completed)saveCurrent()});WebPlatform.lifecycle.onPageHide(()=>{if(current&&!current.completed)saveCurrent()});if(WebPlatform.serviceWorker.supported())WebPlatform.lifecycle.onLoad(()=>WebPlatform.serviceWorker.register('./sw.js').catch(()=>{}));
 discardLegacyPersistence();applyPrefs();try{window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{if(prefs().theme==='auto')applyPrefs()})}catch(_){}initialView();
 
 
@@ -4546,90 +4172,29 @@ function queenLogicalComplete(){
   if(new Set(queens.map(([r,c])=>current.reg[r][c])).size!==n)return false;
   return !queenStateContradiction()
 }
-function queenRegionSizeCount(reg,size){
-  let sizes={};for(let id of reg.flat())sizes[id]=(sizes[id]||0)+1;
-  return Object.values(sizes).filter(x=>x===size).length
-}
-function queenSingletonRegions(reg){return queenRegionSizeCount(reg,1)}
-function queenTwoCellRegions(reg){return queenRegionSizeCount(reg,2)}
 
-// v2.6.2 — Queens session anti-repeat.
+// v2.6.2 — generation identity session anti-repeat.
+// Only games declaring the optional generationIdentity capability participate.
 // Kept deliberately in memory only: restarting/reloading the application clears it.
-const queenGeneratedSessionByDay=new Map();
+const generatedIdentitySessionByDay=new Map();
 
-function normalizeQueenRegionIds(reg){
-  let ids=new Map(),next=0;
-  return reg.map(row=>row.map(id=>{
-    if(!ids.has(id))ids.set(id,next++);
-    return ids.get(id)
-  }))
+function generationSessionSet(game,day=localDay()){
+  for(let d of [...generatedIdentitySessionByDay.keys()])if(d!==day)generatedIdentitySessionByDay.delete(d);
+  if(!generatedIdentitySessionByDay.has(day))generatedIdentitySessionByDay.set(day,new Map());
+  let perGame=generatedIdentitySessionByDay.get(day);
+  if(!perGame.has(game))perGame.set(game,new Set());
+  return perGame.get(game)
 }
-function queenRegionSignature(reg){
-  let g=normalizeQueenRegionIds(reg);
-  return `${g.length}|${g.map(row=>row.join(',')).join(';')}`
+function rememberGeneratedCandidateThisSession(game,candidate,day=localDay()){
+  let identity=generatedCandidateIdentity(game,candidate);if(identity!=null)generationSessionSet(game,day).add(identity);return identity
 }
-function queenCanonicalSignature(reg){
-  // The 8 symmetries of a square: 4 rotations + their mirrored forms.
-  let signatures=[];
-  for(let k=0;k<8;k++)signatures.push(queenRegionSignature(transformGrid(reg,k)));
-  signatures.sort();
-  return signatures[0]
-}
-function queenSessionSet(day=localDay()){
-  // The requirement is per day; if the app remains open across midnight,
-  // yesterday's set is no longer useful and can be released.
-  for(let d of [...queenGeneratedSessionByDay.keys()])if(d!==day)queenGeneratedSessionByDay.delete(d);
-  if(!queenGeneratedSessionByDay.has(day))queenGeneratedSessionByDay.set(day,new Set());
-  return queenGeneratedSessionByDay.get(day)
-}
-function queenWasGeneratedThisSession(reg,day=localDay()){
-  return queenSessionSet(day).has(queenCanonicalSignature(reg))
-}
-function rememberQueenGeneratedThisSession(reg,day=localDay()){
-  queenSessionSet(day).add(queenCanonicalSignature(reg))
-}
-function queenCandidateForDisplay(diff,dailyRequest=false,day=localDay()){
-  let g=null;
-  if(dailyRequest)g=queenCandidate(diff);
-  else{
-    let seen=queenSessionSet(day);
-    for(let tries=0;tries<40;tries++){
-      let x=queenCandidate(diff),sig=queenCanonicalSignature(x.reg);
-      if(seen.has(sig))continue;g=x;break
-    }
-    if(!g)throw new Error(lang()==='fr'?'Aucune nouvelle grille Couronnes conforme au profil logique n’a pu être générée.':'No fresh Crowns grid matching the logical profile could be generated.')
+function normalLaunchCandidate(game,diff,day=localDay()){
+  let candidate=takePrecomputed(game,diff,day);if(candidate)return candidate;
+  if(!GameRegistry.hasCapability(game,'generationIdentity'))return generateRegisteredCandidate(game,diff);
+  let seen=generationSessionSet(game,day);
+  for(let tries=0;tries<40;tries++){
+    let next=generateRegisteredCandidate(game,diff),identity=generatedCandidateIdentity(game,next);
+    if(seen.has(identity))continue;rememberGeneratedCandidateThisSession(game,next,day);return next
   }
-  rememberQueenGeneratedThisSession(g.reg,day);return g
+  throw new Error(lang()==='fr'?'Aucune nouvelle grille Couronnes conforme au profil logique n’a pu être générée.':'No fresh Crowns grid matching the logical profile could be generated.')
 }
-
-function queenCandidate(diff){return generateQueensPuzzle(diff)}
-function tangoCandidate(diff){return generateTangoPuzzle(diff)}
-const sudokuCertifiedTemplatesV223=Object.freeze({
-  easy:Object.freeze([{state:[[0,5,0,0,0,0],[0,0,0,0,3,4],[4,1,0,0,0,0],[6,0,2,0,0,0],[0,0,0,4,0,3],[2,0,0,0,0,0]],sol:[[3,5,4,2,1,6],[1,2,6,5,3,4],[4,1,5,3,6,2],[6,3,2,1,4,5],[5,6,1,4,2,3],[2,4,3,6,5,1]]}]),
-  medium:Object.freeze([{state:[[0,0,0,0,0,0],[0,0,0,6,1,3],[1,0,0,0,5,0],[2,0,0,4,0,0],[6,0,2,0,0,0],[0,3,1,0,0,0]],sol:[[3,1,6,5,2,4],[4,2,5,6,1,3],[1,6,4,3,5,2],[2,5,3,4,6,1],[6,4,2,1,3,5],[5,3,1,2,4,6]]}]),
-  hard:Object.freeze([{state:[[0,0,0,0,0,0],[4,0,0,0,6,2],[0,1,5,2,0,0],[0,0,0,0,0,0],[0,4,0,0,0,0],[0,0,0,6,3,0]],sol:[[5,2,6,4,1,3],[4,3,1,5,6,2],[3,1,5,2,4,6],[2,6,4,3,5,1],[6,4,3,1,2,5],[1,5,2,6,3,4]]}]),
-  expert:Object.freeze([{state:[[0,0,0,6,0,0],[0,0,0,0,3,4],[0,0,4,0,0,1],[5,0,0,0,6,0],[0,0,1,0,0,0],[2,0,0,0,0,5]],sol:[[3,4,5,6,1,2],[1,2,6,5,3,4],[6,3,4,2,5,1],[5,1,2,4,6,3],[4,5,1,3,2,6],[2,6,3,1,4,5]]}])
-});
-const sudokuCertifiedGenerationConfigV223=Object.freeze({
-  easy:Object.freeze({holeTarget:16,randomAttempts:4,templateAttempts:4,strategy:'random+certified-template'}),
-  medium:Object.freeze({holeTarget:22,randomAttempts:2,templateAttempts:4,strategy:'heuristic-random+certified-template'}),
-  hard:Object.freeze({holeTarget:27,randomAttempts:2,templateAttempts:4,strategy:'heuristic-random+certified-template'}),
-  expert:Object.freeze({holeTarget:27,randomAttempts:0,templateAttempts:4,strategy:'certified-template-transform'})
-});
-function sudokuGenerationStatsV223(diff,cfg){return {generatorVersion:typeof DifficultyRating!=='undefined'?DifficultyRating.GENERATOR_VERSION:1,targetDifficulty:diff,strategy:cfg.strategy,holeTarget:cfg.holeTarget,attempts:0,randomAttempts:0,templateAttempts:0,rejected:{structure:0,uniqueness:0,ratingMismatch:0,budgetExhausted:0,invalid:0},fallbackUsed:false}}
-function sudokuStateFromCandidateV223(candidate){return candidate.sol.map((r,ri)=>r.map((v,c)=>candidate.empty.has(ri*6+c)?0:v))}
-function sudokuRateGeneratedV223(candidate){if(typeof SudokuDifficulty==='undefined'||typeof DifficultyRating==='undefined')throw new Error('Grille 6 certified rating dependencies unavailable');return SudokuDifficulty.ratePuzzle({game:'sudoku',n:6,state:sudokuStateFromCandidateV223(candidate)})}
-function sudokuExactDifficultyMatchV223(rate,diff){return !!rate&&rate.profile?.status==='solved'&&rate.profile?.difficulty===diff&&rate.profile?.minimumRequiredTier===DifficultyRating.tierIndex(diff)&&!rate.profile?.budgetHit}
-function sudokuRecordRatingRejectionV223(stats,rate){if(rate?.profile?.status==='budget-exhausted'||rate?.profile?.budgetHit)stats.rejected.budgetExhausted++;else if(rate?.profile?.status==='invalid'||rate?.profile?.status==='contradictory')stats.rejected.invalid++;else stats.rejected.ratingMismatch++}
-function sudokuSolutionValidV223(candidate){let sol=candidate?.sol;if(!Array.isArray(sol)||sol.length!==6||sol.some(r=>!Array.isArray(r)||r.length!==6))return false;let sig='1,2,3,4,5,6';for(let r=0;r<6;r++)if([...sol[r]].sort((a,b)=>a-b).join(',')!==sig)return false;for(let c=0;c<6;c++)if(sol.map(r=>r[c]).sort((a,b)=>a-b).join(',')!==sig)return false;for(let br=0;br<6;br+=2)for(let bc=0;bc<6;bc+=3){let vals=[];for(let r=br;r<br+2;r++)for(let c=bc;c<bc+3;c++)vals.push(sol[r][c]);if(vals.sort((a,b)=>a-b).join(',')!==sig)return false}for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(!candidate.empty.has(r*6+c)&&candidate.state&&candidate.state[r][c]!==sol[r][c])return false;return true}
-function sudokuRandomStructuralCandidateV223(holeTarget){let sol=randomSudokuSolution(),empty=makeSudokuHoles(sol,holeTarget);return {sol,empty,state:sol.map((r,ri)=>r.map((v,c)=>empty.has(ri*6+c)?0:v))}}
-function sudokuTransformTemplateV223(base){let bands=shuffle([[0,1],[2,3],[4,5]]),rows=bands.flatMap(b=>shuffle([...b])),stacks=shuffle([[0,1,2],[3,4,5]]),cols=stacks.flatMap(st=>shuffle([...st])),digits=shuffle([1,2,3,4,5,6]);let map=v=>v?digits[v-1]:0,state=rows.map(r=>cols.map(c=>map(base.state[r][c]))),sol=rows.map(r=>cols.map(c=>map(base.sol[r][c]))),empty=new Set();for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(state[r][c]===0)empty.add(r*6+c);return {sol,empty,state}}
-function sudokuTemplateCandidateV223(diff,forcedIndex=null){let pool=sudokuCertifiedTemplatesV223[diff];if(!pool?.length)return null;let base=pool[forcedIndex==null?Math.floor(Math.random()*pool.length):forcedIndex%pool.length];return sudokuTransformTemplateV223(base)}
-function sudokuCertifiedResultV223(candidate,rate,stats){let profile=JSON.parse(JSON.stringify(rate.profile));stats.fingerprint=profile.fingerprint;stats.minimumRequiredTier=profile.minimumRequiredTier;stats.totalLogicalSteps=profile.totalLogicalSteps;stats.holeCount=candidate.empty.size;return {sol:candidate.sol.map(r=>[...r]),empty:new Set(candidate.empty),difficultyProfile:profile,generationStats:JSON.parse(JSON.stringify(stats))}}
-function generateSudokuPuzzle(diff){let cfg=sudokuCertifiedGenerationConfigV223[diff];if(!cfg)throw new Error('Unknown Grille 6 difficulty');let stats=sudokuGenerationStatsV223(diff,cfg);for(let t=0;t<cfg.randomAttempts;t++){stats.attempts++;stats.randomAttempts++;let candidate=sudokuRandomStructuralCandidateV223(cfg.holeTarget);if(!candidate||!sudokuSolutionValidV223(candidate)){stats.rejected.structure++;continue}if(countMiniSudoku(candidate.state.map(r=>[...r]),2)!==1){stats.rejected.uniqueness++;continue}let rate=sudokuRateGeneratedV223(candidate);if(!sudokuExactDifficultyMatchV223(rate,diff)){sudokuRecordRatingRejectionV223(stats,rate);continue}return sudokuCertifiedResultV223(candidate,rate,stats)}for(let t=0;t<cfg.templateAttempts;t++){stats.attempts++;stats.templateAttempts++;let candidate=sudokuTemplateCandidateV223(diff);if(!candidate||!sudokuSolutionValidV223(candidate)){stats.rejected.structure++;continue}if(countMiniSudoku(candidate.state.map(r=>[...r]),2)!==1){stats.rejected.uniqueness++;continue}let rate=sudokuRateGeneratedV223(candidate);if(!sudokuExactDifficultyMatchV223(rate,diff)){sudokuRecordRatingRejectionV223(stats,rate);continue}stats.fallbackUsed=cfg.randomAttempts>0;return sudokuCertifiedResultV223(candidate,rate,stats)}stats.fallbackUsed=true;stats.attempts++;stats.templateAttempts++;let fallback=sudokuTemplateCandidateV223(diff,0);if(!fallback||!sudokuSolutionValidV223(fallback))throw new Error(`Grille 6 certified fallback structure mismatch (${diff})`);if(countMiniSudoku(fallback.state.map(r=>[...r]),2)!==1)throw new Error(`Grille 6 certified fallback uniqueness mismatch (${diff})`);let rate=sudokuRateGeneratedV223(fallback);if(!sudokuExactDifficultyMatchV223(rate,diff))throw new Error(`Grille 6 certified generation failed exact difficulty match (${diff})`);return sudokuCertifiedResultV223(fallback,rate,stats)}
-function sudokuCandidate(diff){return generateSudokuPuzzle(diff)}
-function patchesCandidate(diff){return generatePatchesPuzzle(diff)}
-function queens(diff){let dailyRequest=!!current?.daily,day=current?.dailyDay||localDay(),g=!dailyRequest?takePrecomputed('queens',diff,day):null;if(!g)g=queenCandidateForDisplay(diff,dailyRequest,day);current={game:'queens',diff,n:g.n,reg:g.reg,sol:g.sol,difficultyProfile:g.difficultyProfile,generationStats:g.generationStats,state:Array.from({length:g.n},()=>Array(g.n).fill(0)),generated:true,unique:true,completed:false};renderQueens(current)}
-function tango(diff){let dailyRequest=!!current?.daily,g=!dailyRequest?takePrecomputed('tango',diff):null;if(!g)g=tangoCandidate(diff);let state=Array.from({length:6},()=>Array(6).fill(-1));for(let i of g.givens)state[Math.floor(i/6)][i%6]=g.sol[Math.floor(i/6)][i%6];current={game:'tango',diff,n:6,sol:g.sol,givens:g.givens,edges:g.edges,difficultyProfile:g.difficultyProfile,generationStats:g.generationStats,state,tangoDerivedRelations:[],generated:true,unique:true,completed:false};renderTango(current)}
-function sudoku(diff){let dailyRequest=!!current?.daily,g=!dailyRequest?takePrecomputed('sudoku',diff):null;if(!g)g=sudokuCandidate(diff);let sol=g.sol,empty=g.empty;current={game:'sudoku',diff,n:6,sol,empty,difficultyProfile:g.difficultyProfile,generationStats:g.generationStats,state:sol.map((r,ri)=>r.map((v,c)=>empty.has(ri*6+c)?0:v)),sel:null,generated:true,unique:true,completed:false};renderSudoku(current)}
-function patches(diff){let dailyRequest=!!current?.daily,g=!dailyRequest?takePrecomputed('patches',diff):null;if(!g)g=patchesCandidate(diff);const pal=['#f3c6a8','#b9d9c1','#c6d4ed','#e2c3df','#f0dc9d','#c7e0e3','#d5ceb8','#d4e3b4','#edbfc1','#c8c4e8','#e5d0a4','#b7d7d1'];current={game:'patches',diff,n:g.n,reg:g.reg,ids:g.ids,cellsBy:g.cellsBy,clues:g.clues,difficultyProfile:g.difficultyProfile,generationStats:g.generationStats,pal,active:g.ids[0],paint:Array.from({length:g.n},()=>Array(g.n).fill(null)),patchSelectedRects:{},patchLogicEvidence:patchEmptyEvidence(),generated:true,unique:true,completed:false};renderPatches(current)}

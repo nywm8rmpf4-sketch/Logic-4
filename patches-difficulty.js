@@ -26,7 +26,36 @@ const TIER_POLICY=Object.freeze([
 ]);
 
 function copy(value){return value==null?value:JSON.parse(JSON.stringify(value))}
-function canonicalPatches(puzzle){let source=puzzle;if(Array.isArray(puzzle?.clues)){let clues={};puzzle.clues.forEach((clue,id)=>{clues[id]=copy(clue)});source={game:'patches',n:puzzle.n,ids:puzzle.clues.map((_,i)=>i),clues}}let p=DR.canonicalizePublicPuzzle({...source,game:'patches'});if(p.game!=='patches')throw new Error('Rectangles difficulty requires a Rectangles puzzle');return p}
+function assertObject(value,message){if(!value||typeof value!=='object'||Array.isArray(value))throw new Error(message)}
+function assertCell(cell,n,message){if(!Array.isArray(cell)||cell.length!==2||!cell.every(Number.isInteger)||cell[0]<0||cell[0]>=n||cell[1]<0||cell[1]>=n)throw new Error(message)}
+function compareScalar(a,b){return typeof a==='number'&&typeof b==='number'?a-b:String(a).localeCompare(String(b))}
+function normalizeShape(shape){
+  if(shape==null)return null;
+  if(shape==='square'||shape==='carré'||shape==='□')return 'square';
+  if(shape==='vertical'||shape==='▯')return 'vertical';
+  if(shape==='horizontal'||shape==='▭')return 'horizontal';
+  throw new Error('Invalid Rectangles public clue shape');
+}
+function canonicalizePatchesPublicPuzzle(puzzle){
+  let n=Number(puzzle?.n);if(!Number.isInteger(n)||n<5||n>10)throw new Error('Invalid Rectangles public puzzle size');
+  if(Array.isArray(puzzle?.clues)){let clues={};puzzle.clues.forEach((clue,id)=>{clues[id]=copy(clue)});return canonicalizePatchesPublicPuzzle({n,ids:puzzle.clues.map((_,id)=>id),clues})}
+  assertObject(puzzle?.clues,'Rectangles public clues are required');
+  let ids=Array.isArray(puzzle.ids)?puzzle.ids.slice():Object.keys(puzzle.clues).map(x=>Number.isNaN(Number(x))?x:Number(x));
+  if(!ids.length)throw new Error('Rectangles public clues are required');
+  ids.sort(compareScalar);
+  let seen=new Set(),clues=ids.map(id=>{
+    let raw=puzzle.clues[id];assertObject(raw,'Invalid Rectangles public clue');assertCell(raw.pos,n,'Invalid Rectangles public clue position');
+    let cell=raw.pos[0]+','+raw.pos[1];if(seen.has(cell))throw new Error('Two Rectangles public clues cannot share a cell');seen.add(cell);
+    let mode=raw.mode??'both';if(!['both','size','shape','none'].includes(mode))throw new Error('Invalid Rectangles public clue mode');
+    let out={pos:raw.pos.slice(),mode};
+    if(mode==='both'||mode==='size'){let size=Number(raw.size??raw.area);if(!Number.isInteger(size)||size<1||size>n*n)throw new Error('Invalid Rectangles public clue size');out.size=size}
+    if(mode==='both'||mode==='shape'){let shape=normalizeShape(raw.shape);if(!shape)throw new Error('Invalid Rectangles public clue shape');out.shape=shape}
+    return out;
+  });
+  clues.sort((a,b)=>a.pos[0]-b.pos[0]||a.pos[1]-b.pos[1]||a.mode.localeCompare(b.mode));
+  return {schema:DR.SCHEMA_VERSION,game:'patches',n,clues};
+}
+function canonicalPatches(puzzle){return canonicalizePatchesPublicPuzzle(puzzle)}
 function initialBoard(puzzle){
   let p=canonicalPatches(puzzle),ids=p.clues.map((_,i)=>i),clues={};
   p.clues.forEach((clue,id)=>{clues[id]={pos:clue.pos.slice(),mode:clue.mode};if(clue.size!=null)clues[id].size=clue.size;if(clue.shape!=null)clues[id].shape=clue.shape});
@@ -87,6 +116,6 @@ function ratePuzzle(puzzle,options={}){
   return {...run,profile};
 }
 
-root.PatchesDifficulty={VERSION:1,RULE_TIER,TIER_POLICY,solveTier:solvePatchesTier,createAdapter,ratePuzzle,_test:{canonicalPatches,initialBoard,solved,directCandidates,nextAllowedDeduction,sessionMetrics}};
+root.PatchesDifficulty={VERSION:1,RULE_TIER,TIER_POLICY,canonicalizePublicPuzzle:canonicalizePatchesPublicPuzzle,solveTier:solvePatchesTier,createAdapter,ratePuzzle,_test:{canonicalPatches,initialBoard,solved,directCandidates,nextAllowedDeduction,sessionMetrics}};
 if(typeof module!=='undefined'&&module.exports)module.exports=root.PatchesDifficulty;
 })(typeof globalThis!=='undefined'?globalThis:this);

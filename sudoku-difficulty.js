@@ -33,11 +33,17 @@ const TIER_POLICY=Object.freeze([
 ]);
 
 function copy(value){return value==null?value:JSON.parse(JSON.stringify(value))}
-function canonicalSudoku(puzzle){
-  let publicPuzzle=DR.canonicalizePublicPuzzle({...puzzle,game:'sudoku'});
-  if(publicPuzzle.game!=='sudoku')throw new Error('Grille 6 difficulty requires a Sudoku puzzle');
-  return publicPuzzle;
+function assertGrid(grid,n,valid,message){
+  if(!Array.isArray(grid)||grid.length!==n||grid.some(row=>!Array.isArray(row)||row.length!==n))throw new Error(message);
+  for(const row of grid)for(const value of row)if(!valid(value))throw new Error(message);
 }
+function canonicalizeSudokuPublicPuzzle(puzzle){
+  let state=puzzle?.initialState??puzzle?.state,n=Number(puzzle?.n??state?.length);
+  if(n!==6)throw new Error('Invalid Grille 6 public puzzle size');
+  assertGrid(state,n,value=>Number.isInteger(value)&&value>=0&&value<=6,'Invalid Grille 6 public state');
+  return {schema:DR.SCHEMA_VERSION,game:'sudoku',n,state:state.map(row=>row.slice())};
+}
+function canonicalSudoku(puzzle){return canonicalizeSudokuPublicPuzzle(puzzle)}
 function initialBoard(puzzle){let p=canonicalSudoku(puzzle);return {state:p.state.map(row=>row.slice())}}
 function solved(session){return !session.state.flat().includes(0)&&!session.diagnose()}
 function policyTierForRule(rule){let tier=RULE_TIER[rule];return Number.isInteger(tier)?tier:null}
@@ -131,6 +137,6 @@ function ratePuzzle(puzzle,options={}){
   return {...run,profile};
 }
 
-root.SudokuDifficulty={VERSION:1,RULE_TIER,TIER_POLICY,solveTier:solveSudokuTier,createAdapter,ratePuzzle,_test:{canonicalSudoku,initialBoard,solved,directCandidates,nextAllowedDeduction,policyTierForRule,sessionMetrics}};
+root.SudokuDifficulty={VERSION:1,RULE_TIER,TIER_POLICY,canonicalizePublicPuzzle:canonicalizeSudokuPublicPuzzle,solveTier:solveSudokuTier,createAdapter,ratePuzzle,_test:{canonicalSudoku,initialBoard,solved,directCandidates,nextAllowedDeduction,policyTierForRule,sessionMetrics}};
 if(typeof module!=='undefined'&&module.exports)module.exports=root.SudokuDifficulty;
 })(typeof globalThis!=='undefined'?globalThis:this);

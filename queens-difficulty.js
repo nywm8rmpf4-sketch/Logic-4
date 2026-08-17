@@ -21,9 +21,23 @@ const TIER_POLICY=Object.freeze([
 
 function copy(value){return value==null?value:JSON.parse(JSON.stringify(value))}
 function compareScalar(a,b){if(typeof a==='number'&&typeof b==='number')return a-b;return String(a).localeCompare(String(b))}
+function assertGrid(grid,n,valid,message){
+  if(!Array.isArray(grid)||grid.length!==n||grid.some(row=>!Array.isArray(row)||row.length!==n))throw new Error(message);
+  for(const row of grid)for(const value of row)if(!valid(value))throw new Error(message);
+}
+function normalizeRegionLabels(reg){
+  let labels=new Map(),next=0;
+  return reg.map(row=>row.map(value=>{let key=typeof value+':'+String(value);if(!labels.has(key))labels.set(key,next++);return labels.get(key)}));
+}
+function canonicalizeQueensPublicPuzzle(puzzle){
+  let n=Number(puzzle?.n);
+  if(!Number.isInteger(n)||n<2)throw new Error('Invalid Queens public puzzle size');
+  let reg=puzzle.reg??puzzle.regions;
+  assertGrid(reg,n,value=>Number.isInteger(value)||typeof value==='string','Invalid Queens public regions');
+  return {schema:DR.SCHEMA_VERSION,game:'queens',n,reg:normalizeRegionLabels(reg)};
+}
 function canonicalQueens(puzzle){
-  let publicPuzzle=DR.canonicalizePublicPuzzle({...puzzle,game:'queens'});
-  if(publicPuzzle.game!=='queens')throw new Error('Couronnes difficulty requires a Queens puzzle');
+  let publicPuzzle=canonicalizeQueensPublicPuzzle(puzzle);
   let ids=[...new Set(publicPuzzle.reg.flat())].sort(compareScalar);
   if(ids.length!==publicPuzzle.n)throw new Error('Couronnes puzzle must contain exactly n regions');
   return publicPuzzle;
@@ -116,6 +130,6 @@ function ratePuzzle(puzzle,options={}){
   return {...run,profile};
 }
 
-root.QueensDifficulty={VERSION:1,TIER_POLICY,solveTier:solveQueensTier,createAdapter,ratePuzzle,_test:{canonicalQueens,initialBoard,solved,directCandidates,nextAllowedDeduction,sessionMetrics}};
+root.QueensDifficulty={VERSION:1,TIER_POLICY,canonicalizePublicPuzzle:canonicalizeQueensPublicPuzzle,solveTier:solveQueensTier,createAdapter,ratePuzzle,_test:{canonicalQueens,initialBoard,solved,directCandidates,nextAllowedDeduction,sessionMetrics}};
 if(typeof module!=='undefined'&&module.exports)module.exports=root.QueensDifficulty;
 })(typeof globalThis!=='undefined'?globalThis:this);

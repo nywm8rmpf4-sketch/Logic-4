@@ -32,11 +32,25 @@ const TIER_POLICY=Object.freeze([
 ]);
 
 function copy(value){return value==null?value:JSON.parse(JSON.stringify(value))}
-function canonicalTango(puzzle){
-  let publicPuzzle=DR.canonicalizePublicPuzzle({...puzzle,game:'tango'});
-  if(publicPuzzle.game!=='tango')throw new Error('Soleil/Lune difficulty requires a Tango puzzle');
-  return publicPuzzle;
+function assertGrid(grid,n,valid,message){
+  if(!Array.isArray(grid)||grid.length!==n||grid.some(row=>!Array.isArray(row)||row.length!==n))throw new Error(message);
+  for(const row of grid)for(const value of row)if(!valid(value))throw new Error(message);
 }
+function assertCell(cell,n,message){if(!Array.isArray(cell)||cell.length!==2||!cell.every(Number.isInteger)||cell[0]<0||cell[0]>=n||cell[1]<0||cell[1]>=n)throw new Error(message)}
+function canonicalizeTangoPublicPuzzle(puzzle){
+  let state=puzzle?.initialState??puzzle?.state,n=Number(puzzle?.n??state?.length);
+  if(!Number.isInteger(n)||n<2||n%2)throw new Error('Invalid Soleil/Lune public puzzle size');
+  assertGrid(state,n,value=>value===-1||value===0||value===1,'Invalid Soleil/Lune public state');
+  let edges=Array.isArray(puzzle?.edges)?puzzle.edges.map(edge=>{
+    if(!Array.isArray(edge)||edge.length!==4)throw new Error('Invalid Soleil/Lune public relation');
+    let [r,c,dir,rel]=edge;if(!Number.isInteger(r)||!Number.isInteger(c)||(dir!=='r'&&dir!=='d')||(rel!=='='&&rel!=='×'))throw new Error('Invalid Soleil/Lune public relation');
+    let other=dir==='r'?[r,c+1]:[r+1,c];assertCell([r,c],n,'Invalid Soleil/Lune public relation');assertCell(other,n,'Invalid Soleil/Lune public relation');
+    return [r,c,dir,rel];
+  }):[];
+  edges.sort((a,b)=>a[0]-b[0]||a[1]-b[1]||a[2].localeCompare(b[2])||a[3].localeCompare(b[3]));
+  return {schema:DR.SCHEMA_VERSION,game:'tango',n,state:state.map(row=>row.slice()),edges};
+}
+function canonicalTango(puzzle){return canonicalizeTangoPublicPuzzle(puzzle)}
 function initialBoard(puzzle){let p=canonicalTango(puzzle);return {n:p.n,state:p.state.map(r=>r.slice()),edges:copy(p.edges)}}
 function solved(session){return !session.state.some(row=>row.includes(VALUE_EMPTY))&&!session.diagnose()}
 function allowedSet(tierIndex){return new Set(TIER_POLICY[tierIndex].allowedRules)}
@@ -108,6 +122,6 @@ function ratePuzzle(puzzle,options={}){
   return {...run,profile};
 }
 
-root.TangoDifficulty={VERSION:1,RULE_TIER,TIER_POLICY,solveTier:solveTangoTier,createAdapter,ratePuzzle,_test:{canonicalTango,initialBoard,solved,directCandidates,nextAllowedDeduction,policyTierForRule,sessionMetrics}};
+root.TangoDifficulty={VERSION:1,RULE_TIER,TIER_POLICY,canonicalizePublicPuzzle:canonicalizeTangoPublicPuzzle,solveTier:solveTangoTier,createAdapter,ratePuzzle,_test:{canonicalTango,initialBoard,solved,directCandidates,nextAllowedDeduction,policyTierForRule,sessionMetrics}};
 if(typeof module!=='undefined'&&module.exports)module.exports=root.TangoDifficulty;
 })(typeof globalThis!=='undefined'?globalThis:this);

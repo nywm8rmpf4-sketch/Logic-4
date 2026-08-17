@@ -21,79 +21,22 @@ const TIER_DEFINITIONS=Object.freeze([
 ]);
 const TIER_KEYS=Object.freeze(TIER_DEFINITIONS.map(x=>x.key));
 const STATUSES=Object.freeze(['solved','blocked','contradictory','budget-exhausted','invalid']);
-const GAMES=Object.freeze(['queens','tango','sudoku','patches']);
+const GAME_REGISTRY=(typeof module!=='undefined'&&module.exports)?require('./game-registry.js'):root.QuadludGameRegistry;
+if(!GAME_REGISTRY)throw new Error('QUADLUD game registry unavailable');
+const GAMES=GAME_REGISTRY.IDS;
 
 function copy(value){return value==null?value:JSON.parse(JSON.stringify(value))}
 function assertObject(value,message){if(!value||typeof value!=='object'||Array.isArray(value))throw new Error(message)}
 function assertGame(game){if(!GAMES.includes(game))throw new Error('Unknown difficulty-rating game')}
-function assertGrid(grid,n,valid,message){
-  if(!Array.isArray(grid)||grid.length!==n||grid.some(row=>!Array.isArray(row)||row.length!==n))throw new Error(message);
-  for(const row of grid)for(const value of row)if(!valid(value))throw new Error(message);
-}
-function assertCell(cell,n,message){if(!Array.isArray(cell)||cell.length!==2||!cell.every(Number.isInteger)||cell[0]<0||cell[0]>=n||cell[1]<0||cell[1]>=n)throw new Error(message)}
-function compareScalar(a,b){return typeof a==='number'&&typeof b==='number'?a-b:String(a).localeCompare(String(b))}
-function normalizeRegionLabels(reg){
-  let labels=new Map(),next=0;
-  return reg.map(row=>row.map(value=>{let key=typeof value+':'+String(value);if(!labels.has(key))labels.set(key,next++);return labels.get(key)}));
-}
-function canonicalQueens(puzzle){
-  let n=Number(puzzle.n);
-  if(!Number.isInteger(n)||n<2)throw new Error('Invalid Queens public puzzle size');
-  let reg=puzzle.reg??puzzle.regions;
-  assertGrid(reg,n,value=>Number.isInteger(value)||typeof value==='string','Invalid Queens public regions');
-  return {schema:SCHEMA_VERSION,game:'queens',n,reg:normalizeRegionLabels(reg)};
-}
-function canonicalTango(puzzle){
-  let state=puzzle.initialState??puzzle.state,n=Number(puzzle.n??state?.length);
-  if(!Number.isInteger(n)||n<2||n%2)throw new Error('Invalid Soleil/Lune public puzzle size');
-  assertGrid(state,n,value=>value===-1||value===0||value===1,'Invalid Soleil/Lune public state');
-  let edges=Array.isArray(puzzle.edges)?puzzle.edges.map(edge=>{
-    if(!Array.isArray(edge)||edge.length!==4)throw new Error('Invalid Soleil/Lune public relation');
-    let [r,c,dir,rel]=edge;if(!Number.isInteger(r)||!Number.isInteger(c)||(dir!=='r'&&dir!=='d')||(rel!=='='&&rel!=='×'))throw new Error('Invalid Soleil/Lune public relation');
-    let other=dir==='r'?[r,c+1]:[r+1,c];assertCell([r,c],n,'Invalid Soleil/Lune public relation');assertCell(other,n,'Invalid Soleil/Lune public relation');
-    return [r,c,dir,rel];
-  }):[];
-  edges.sort((a,b)=>a[0]-b[0]||a[1]-b[1]||a[2].localeCompare(b[2])||a[3].localeCompare(b[3]));
-  return {schema:SCHEMA_VERSION,game:'tango',n,state:state.map(row=>row.slice()),edges};
-}
-function canonicalSudoku(puzzle){
-  let state=puzzle.initialState??puzzle.state,n=Number(puzzle.n??state?.length);
-  if(n!==6)throw new Error('Invalid Grille 6 public puzzle size');
-  assertGrid(state,n,value=>Number.isInteger(value)&&value>=0&&value<=6,'Invalid Grille 6 public state');
-  return {schema:SCHEMA_VERSION,game:'sudoku',n,state:state.map(row=>row.slice())};
-}
-function normalizeShape(shape){
-  if(shape==null)return null;
-  if(shape==='square'||shape==='carré'||shape==='□')return 'square';
-  if(shape==='vertical'||shape==='▯')return 'vertical';
-  if(shape==='horizontal'||shape==='▭')return 'horizontal';
-  throw new Error('Invalid Rectangles public clue shape');
-}
-function canonicalPatches(puzzle){
-  let n=Number(puzzle.n);if(!Number.isInteger(n)||n<5||n>10)throw new Error('Invalid Rectangles public puzzle size');
-  if(Array.isArray(puzzle.clues)){let clues={};puzzle.clues.forEach((clue,id)=>{clues[id]=copy(clue)});return canonicalPatches({n,ids:puzzle.clues.map((_,id)=>id),clues})}
-  assertObject(puzzle.clues,'Rectangles public clues are required');
-  let ids=Array.isArray(puzzle.ids)?puzzle.ids.slice():Object.keys(puzzle.clues).map(x=>Number.isNaN(Number(x))?x:Number(x));
-  if(!ids.length)throw new Error('Rectangles public clues are required');
-  ids.sort(compareScalar);
-  let seen=new Set(),clues=ids.map(id=>{
-    let raw=puzzle.clues[id];assertObject(raw,'Invalid Rectangles public clue');assertCell(raw.pos,n,'Invalid Rectangles public clue position');
-    let cell=raw.pos[0]+','+raw.pos[1];if(seen.has(cell))throw new Error('Two Rectangles public clues cannot share a cell');seen.add(cell);
-    let mode=raw.mode??'both';if(!['both','size','shape','none'].includes(mode))throw new Error('Invalid Rectangles public clue mode');
-    let out={pos:raw.pos.slice(),mode};
-    if(mode==='both'||mode==='size'){let size=Number(raw.size??raw.area);if(!Number.isInteger(size)||size<1||size>n*n)throw new Error('Invalid Rectangles public clue size');out.size=size}
-    if(mode==='both'||mode==='shape'){let shape=normalizeShape(raw.shape);if(!shape)throw new Error('Invalid Rectangles public clue shape');out.shape=shape}
-    return out;
-  });
-  clues.sort((a,b)=>a.pos[0]-b.pos[0]||a.pos[1]-b.pos[1]||a.mode.localeCompare(b.mode));
-  return {schema:SCHEMA_VERSION,game:'patches',n,clues};
-}
 function canonicalizePublicPuzzle(puzzle){
-  assertObject(puzzle,'Public puzzle is required');let game=String(puzzle.game||'');assertGame(game);
-  if(game==='queens')return canonicalQueens(puzzle);
-  if(game==='tango')return canonicalTango(puzzle);
-  if(game==='sudoku')return canonicalSudoku(puzzle);
-  return canonicalPatches(puzzle);
+  assertObject(puzzle,'Public puzzle is required');
+  let game=String(puzzle.game||'');assertGame(game);
+  return GAME_REGISTRY.requireCapability(game,'canonicalizePublicPuzzle')(puzzle);
+}
+function ratePuzzle(puzzle,options={}){
+  assertObject(puzzle,'Public puzzle is required');
+  let game=String(puzzle.game||'');assertGame(game);
+  return GAME_REGISTRY.requireCapability(game,'difficulty').ratePuzzle(puzzle,options);
 }
 function canonicalString(puzzle){return JSON.stringify(canonicalizePublicPuzzle(puzzle))}
 function fnv1a128(text){
@@ -230,7 +173,7 @@ function createDifficultyProfile(options){
 root.DifficultyRating={
   VERSION,SCHEMA_VERSION,RATING_VERSION,FINGERPRINT_VERSION,GENERATOR_VERSION,
   TIER_DEFINITIONS,TIER_KEYS,STATUSES,GAMES,
-  canonicalizePublicPuzzle,canonicalString,fingerprintPublicPuzzle,createDifficultyProfile,runMinimumRequiredTier,tierIndex,tierKey,
+  canonicalizePublicPuzzle,canonicalString,fingerprintPublicPuzzle,ratePuzzle,createDifficultyProfile,runMinimumRequiredTier,tierIndex,tierKey,
   createAvailabilityTracker,recordAvailableMoves,availabilityMetrics
 };
 if(typeof module!=='undefined'&&module.exports)module.exports=root.DifficultyRating;
