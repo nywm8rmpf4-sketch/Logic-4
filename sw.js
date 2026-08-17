@@ -3,8 +3,8 @@
  * Copyright © 2026 Serge Benoliel. All rights reserved.
  * Proprietary software. Copying, modification, redistribution or exploitation without prior written authorization is prohibited.
  */
-const CACHE='quadlud-v2.22.1';
-const ASSETS=['./','./index.html','./styles.css?v=2.22.1','./queens-logic.js?v=2.22.1','./tango-logic.js?v=2.22.1','./patches-logic.js?v=2.22.1','./sudoku-logic.js?v=2.22.1','./app.js?v=2.22.1','./precompute-worker.js?v=2.22.1','./manifest.webmanifest','./icon.svg','./icon-180.png','./icon-192.png','./icon-512.png','./build-info.json','./LICENSE'];
+const CACHE='quadlud-v2.23.0';
+const ASSETS=['./','./index.html','./styles.css?v=2.23.0','./queens-logic.js?v=2.23.0','./difficulty-rating.js?v=2.23.0','./queens-difficulty.js?v=2.23.0','./tango-logic.js?v=2.23.0','./tango-difficulty.js?v=2.23.0','./patches-logic.js?v=2.23.0','./patches-difficulty.js?v=2.23.0','./sudoku-logic.js?v=2.23.0','./sudoku-difficulty.js?v=2.23.0','./app.js?v=2.23.0','./precompute-worker.js?v=2.23.0','./manifest.webmanifest','./icon.svg','./icon-180.png','./icon-192.png','./icon-512.png','./build-info.json','./LICENSE'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{

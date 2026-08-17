@@ -37,10 +37,17 @@ self.setInterval=()=>0;
 self.clearInterval=__noop;
 
 // Load the pure Queens proof engine before the authoritative application code.
-importScripts('./queens-logic.js?v=2.22.1');
-importScripts('./tango-logic.js?v=2.22.1');
+importScripts('./queens-logic.js?v=2.23.0');
+importScripts('./difficulty-rating.js?v=2.23.0');
+importScripts('./queens-difficulty.js?v=2.23.0');
+importScripts('./tango-logic.js?v=2.23.0');
+importScripts('./tango-difficulty.js?v=2.23.0');
+importScripts('./sudoku-logic.js?v=2.23.0');
+importScripts('./sudoku-difficulty.js?v=2.23.0');
+importScripts('./patches-logic.js?v=2.23.0');
+importScripts('./patches-difficulty.js?v=2.23.0');
 // Use the exact same versioned generator implementation as the UI.
-importScripts('./app.js?v=2.22.1');
+importScripts('./app.js?v=2.23.0');
 
 function __queenBackgroundCandidate(diff,forbidden){
   let blocked=new Set(forbidden||[]);
@@ -52,17 +59,22 @@ function __queenBackgroundCandidate(diff,forbidden){
 }
 function __build(game,diff,forbiddenQueens){
   if(game==='queens')return __queenBackgroundCandidate(diff,forbiddenQueens);
-  if(game==='tango')return targetPick(collectCandidates(()=>tangoCandidate(diff),6),diff);
-  if(game==='sudoku')return targetPick(collectCandidates(()=>sudokuCandidate(diff),8),diff);
-  if(game==='patches')return targetPick(collectCandidates(()=>patchesCandidate(diff),diff==='hard'?5:4),diff);
+  if(game==='tango')return tangoCandidate(diff);
+  if(game==='sudoku')return sudokuCandidate(diff);
+  if(game==='patches')return patchesCandidate(diff);
   throw new Error('Unknown game')
+}
+function __buildCertified(game,diff,forbiddenQueens){
+  let candidate=__build(game,diff,forbiddenQueens);
+  if(typeof generatedCandidateCertified!=='function'||!generatedCandidateCertified(game,diff,candidate))throw new Error('Generated candidate failed certified difficulty validation');
+  return candidate
 }
 self.onmessage=e=>{
   let m=e.data||{};
   if(m.cmd!=='generate')return;
   let started=Date.now();
   try{
-    let candidate=__build(m.game,m.diff,m.forbiddenQueens||[]);
+    let candidate=__buildCertified(m.game,m.diff,m.forbiddenQueens||[]);
     self.postMessage({ok:true,id:m.id,game:m.game,diff:m.diff,day:m.day,candidate,ms:Date.now()-started})
   }catch(err){
     self.postMessage({ok:false,id:m.id,game:m.game,diff:m.diff,day:m.day,error:String(err?.message||err),ms:Date.now()-started})

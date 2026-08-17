@@ -43,8 +43,8 @@ class Session{
     if(!board||!Number.isInteger(board.n)||!Array.isArray(board.reg)||!Array.isArray(board.state))throw new Error('Invalid Queens board');
     this.n=board.n;this.reg=cloneGrid(board.reg);this.state=cloneGrid(board.state);
     if(this.reg.length!==this.n||this.state.length!==this.n||this.reg.some(r=>r.length!==this.n)||this.state.some(r=>r.length!==this.n))throw new Error('Invalid Queens dimensions');
-    this.options={maxHallSize:this.n,maxMixedHallSize:4,...options};
-    this.factSeq=0;this.dedSeq=0;this.facts=Array.from({length:this.n},()=>Array(this.n).fill(null));this.appliedDeductions=[];
+    this.options={maxHallSize:this.n,maxMixedHallSize:4,maxHypothesisSteps:12,...options};
+    this.factSeq=0;this.dedSeq=0;this.facts=Array.from({length:this.n},()=>Array(this.n).fill(null));this.appliedDeductions=[];this.candidatesCache=new Map();this.candidatePremiseCache=new Map();this.unresolvedUnitsCache=new Map();this.candidateCellsCache=null;this.diagnoseCacheValid=false;this.diagnoseCache=null;
     this.regionIds=[...new Set(this.reg.flat())].sort((a,b)=>a-b);
     this.unitsByFamily={row:[],column:[],region:[]};this.unitMap=new Map();
     this.buildUnits();this.seedFacts();this.propagateAllQueens();
@@ -66,7 +66,7 @@ class Session{
   }
   clone(){
     let x=Object.create(Session.prototype);x.n=this.n;x.reg=cloneGrid(this.reg);x.state=cloneGrid(this.state);x.options={...this.options};x.factSeq=this.factSeq;x.dedSeq=this.dedSeq;
-    x.facts=this.facts.map(row=>row.map(f=>f?{...f,cell:f.cell.slice()}:null));x.appliedDeductions=this.appliedDeductions.map(d=>JSON.parse(JSON.stringify(d)));
+    x.facts=this.facts.map(row=>row.map(f=>f?{...f,cell:f.cell.slice()}:null));x.appliedDeductions=this.appliedDeductions.map(d=>JSON.parse(JSON.stringify(d)));x.candidatesCache=new Map();x.candidatePremiseCache=new Map();x.unresolvedUnitsCache=new Map();x.candidateCellsCache=null;x.diagnoseCacheValid=false;x.diagnoseCache=null;
     x.regionIds=this.regionIds.slice();x.unitsByFamily={row:[],column:[],region:[]};x.unitMap=new Map();x.buildUnits();return x
   }
   snapshot(){return {state:cloneGrid(this.state)}}
@@ -75,20 +75,21 @@ class Session{
     let [r,c]=cell,existing=this.facts[r][c];
     if(existing){return existing.value===value?existing:null}
     if(this.state[r][c]!==VALUE_EMPTY&&this.state[r][c]!==value)return null;
-    this.state[r][c]=value;let f={id:'F'+(++this.factSeq),cell:[r,c],value,rank:Math.max(0,Number(meta.rank)||0),source:meta.source||'deduction',deductionId:meta.deductionId||null,hypothesis:!!meta.hypothesis};this.facts[r][c]=f;return f
+    this.state[r][c]=value;this.candidatesCache.clear();this.candidatePremiseCache.clear();this.unresolvedUnitsCache.clear();this.candidateCellsCache=null;this.diagnoseCacheValid=false;this.diagnoseCache=null;let f={id:'F'+(++this.factSeq),cell:[r,c],value,rank:Math.max(0,Number(meta.rank)||0),source:meta.source||'deduction',deductionId:meta.deductionId||null,hypothesis:!!meta.hypothesis};this.facts[r][c]=f;return f
   }
   hasQueen(unit){return unit.cells.some(([r,c])=>this.state[r][c]===VALUE_QUEEN)}
   queens(unit){return unit.cells.filter(([r,c])=>this.state[r][c]===VALUE_QUEEN)}
-  candidates(unit){if(this.hasQueen(unit))return [];return unit.cells.filter(([r,c])=>this.state[r][c]===VALUE_EMPTY)}
-  candidateCells(){let out=[];for(let r=0;r<this.n;r++)for(let c=0;c<this.n;c++)if(this.state[r][c]===VALUE_EMPTY)out.push([r,c]);return out}
-  unresolvedUnits(family){return this.unitsByFamily[family].filter(u=>!this.hasQueen(u))}
+  candidates(unit){let cached=this.candidatesCache.get(unit.key);if(cached)return cached;if(this.hasQueen(unit)){this.candidatesCache.set(unit.key,[]);return []}let out=unit.cells.filter(([r,c])=>this.state[r][c]===VALUE_EMPTY);this.candidatesCache.set(unit.key,out);return out}
+  candidateCells(){if(this.candidateCellsCache)return this.candidateCellsCache;let out=[];for(let r=0;r<this.n;r++)for(let c=0;c<this.n;c++)if(this.state[r][c]===VALUE_EMPTY)out.push([r,c]);this.candidateCellsCache=out;return out}
+  unresolvedUnits(family){let cached=this.unresolvedUnitsCache.get(family);if(cached)return cached;let out=this.unitsByFamily[family].filter(u=>!this.hasQueen(u));this.unresolvedUnitsCache.set(family,out);return out}
   factPremise(f,kind='fact'){
     if(!f)return null;return {kind,factId:f.id,cell:f.cell.slice(),value:f.value,rank:f.hypothesis?0:f.rank,hypothesis:!!f.hypothesis,dependencies:f.hypothesis?[]:(f.deductionId?[f.deductionId]:[])}
   }
   candidateSetPremise(unit){
-    let candidates=this.candidates(unit).sort(compareCells),excluded=[],deps=[],ranks=[];
+    let cached=this.candidatePremiseCache.get(unit.key);if(cached)return cached;
+    let candidates=this.candidates(unit).slice().sort(compareCells),excluded=[],deps=[],ranks=[];
     for(const cell of unit.cells){if(candidates.some(x=>x[0]===cell[0]&&x[1]===cell[1]))continue;let f=this.factAt(cell);if(f&&f.value===VALUE_X){excluded.push(this.factPremise(f));if(!f.hypothesis){ranks.push(f.rank);if(f.deductionId)deps.push(f.deductionId)}}}
-    return {kind:'candidate_set',unit:unitRef(unit.family,unit.id),candidates:candidates.map(c=>c.slice()),excluded,rank:max0(ranks),dependencies:uniqStrings(deps)}
+    let premise={kind:'candidate_set',unit:unitRef(unit.family,unit.id),candidates:candidates.map(c=>c.slice()),excluded,rank:max0(ranks),dependencies:uniqStrings(deps)};this.candidatePremiseCache.set(unit.key,premise);return premise
   }
   queenPremise(cell){let f=this.factAt(cell);return f?this.factPremise(f,'queen'):null}
   makeDeduction(rule,techniqueLevel,premises,focusCells,focusUnits,conclusions,explanationData={},priority=50,clarity=50,automatic=false){
@@ -150,7 +151,7 @@ class Session{
       }
     }}return out
   }
-  diagnoseLogical(){return this.directViolations()[0]||this.unitContradictions()[0]||this.hallDeficiencies(this.n)[0]||this.capacityWitnesses(true)[0]||null}
+  diagnoseLogical(){if(this.diagnoseCacheValid)return this.diagnoseCache;let result=this.directViolations()[0]||this.unitContradictions()[0]||this.hallDeficiencies(this.n)[0]||this.capacityWitnesses(true)[0]||null;this.diagnoseCache=result;this.diagnoseCacheValid=true;return result}
   findSingletons(){
     let out=[];for(const family of FAMILY_ORDER)for(const u of this.unresolvedUnits(family)){let cs=this.candidates(u);if(cs.length!==1)continue;let p=this.candidateSetPremise(u),cell=cs[0];out.push(this.makeDeduction('SINGLETON',0,[p],u.cells,[u],[{cell,value:VALUE_QUEEN}],{unit:unitRef(family,u.id),candidate:cell.slice(),candidateSet:cs},10,10))}return out
   }
@@ -226,13 +227,17 @@ class Session{
     for(let N=4;N<=this.n;N++){add(this.hallDeductions([N]));b=best();if(b?.rank===1&&b.techniqueLevel<=2)return b}
     add(this.findMixedHall());return best()
   }
-  hypothesisContradiction(cell,value){
-    let fork=this.clone();if(!fork.assume(cell,value))return null;let trace=[];let close=fork.closeSingletons();trace.push(...close.trace);if(close.bad)return {witness:close.bad,trace};
-    for(let guard=0;guard<Math.min(12,this.n*this.n);guard++){
-      let bad=fork.diagnoseLogical();if(bad)return {witness:bad,trace};let d=fork.hypothesisDirect();if(!d)break;let a=fork.applyDeduction(d);trace.push(a.deduction,...a.automatic);close=fork.closeSingletons();trace.push(...close.trace);if(close.bad)return {witness:close.bad,trace}
+  hypothesisEvaluation(cell,value,reportBudget=true){
+    let fork=this.clone();if(!fork.assume(cell,value))return {status:'blocked',trace:[]};let trace=[];let close=fork.closeSingletons();trace.push(...close.trace);if(close.bad)return {status:'contradictory',witness:close.bad,trace};
+    let limit=Math.min(Math.max(0,Number(this.options.maxHypothesisSteps)||0),this.n*this.n),guard=0;
+    for(;guard<limit;guard++){
+      let bad=fork.diagnoseLogical();if(bad)return {status:'contradictory',witness:bad,trace};let d=fork.hypothesisDirect();if(!d)return {status:'blocked',trace};let a=fork.applyDeduction(d);trace.push(a.deduction,...a.automatic);close=fork.closeSingletons();trace.push(...close.trace);if(close.bad)return {status:'contradictory',witness:close.bad,trace}
     }
-    let bad=fork.diagnoseLogical();return bad?{witness:bad,trace}:null
+    let bad=fork.diagnoseLogical();if(bad)return {status:'contradictory',witness:bad,trace};
+    if(!reportBudget)return {status:'blocked',trace};
+    return fork.hypothesisDirect()?{status:'budget-exhausted',trace}:{status:'blocked',trace}
   }
+  hypothesisContradiction(cell,value){let result=this.hypothesisEvaluation(cell,value,false);return result.status==='contradictory'?{witness:result.witness,trace:result.trace}:null}
   contradictionDeduction(cell,assumption,result){
     if(!result)return null;let witness=result.witness,conclusion=assumption===VALUE_QUEEN?VALUE_X:VALUE_QUEEN;
     let ps=[{kind:'assumption',cell:cell.slice(),value:assumption,rank:0,hypothesis:true,dependencies:[]}].concat((witness.premises||[]).filter(Boolean));
@@ -244,9 +249,10 @@ class Session{
     for(const p of d.premises||[])p.dependencies=(p.dependencies||[]).filter(id=>realIds.has(id));
     d.dependencies=uniqStrings((d.premises||[]).flatMap(p=>p.dependencies||[]));return d
   }
-  findContradictions(limit=2){
-    let out=[];for(const cell of this.candidateCells())for(const assumption of [VALUE_QUEEN,VALUE_X]){let result=this.hypothesisContradiction(cell,assumption);if(!result)continue;out.push(this.contradictionDeduction(cell,assumption,result));if(out.length>=limit)return out}return out
+  findContradictionsDetailed(limit=2){
+    let deductions=[],budgetHit=false;for(const cell of this.candidateCells())for(const assumption of [VALUE_QUEEN,VALUE_X]){let evaluation=this.hypothesisEvaluation(cell,assumption);if(evaluation.status==='budget-exhausted'){budgetHit=true;continue}if(evaluation.status!=='contradictory')continue;deductions.push(this.contradictionDeduction(cell,assumption,{witness:evaluation.witness,trace:evaluation.trace}));if(deductions.length>=limit)return {deductions,budgetHit}}return {deductions,budgetHit}
   }
+  findContradictions(limit=2){return this.findContradictionsDetailed(limit).deductions}
   nextDeduction(){
     let contradiction=this.diagnoseLogical();if(contradiction)return {contradiction};
     let best=this.bestDirect();if(best&&best.rank<=2)return {deduction:best};
@@ -287,4 +293,5 @@ root.QueensLogic={
   deductionComparator,
   _test:{Session,combinations}
 };
+if(typeof module!=='undefined'&&module.exports)module.exports=root.QueensLogic;
 })(typeof globalThis!=='undefined'?globalThis:this);
