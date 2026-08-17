@@ -1151,3 +1151,6 @@ html{scroll-padding-top:82px;scroll-padding-bottom:110px}
 .hint-notice-text{max-height:min(58vh,460px);overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding-inline-end:2px}
 .walkthrough-explanation .sudoku-proof-steps{margin-top:5px}
 @media(max-width:520px){.hint-notice-text{max-height:50vh}.sudoku-proof-steps{padding-inline-start:20px}}
+
+/* v2.24 stage 24.4 — local data privacy/portability */
+.data-actions,.modal-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.btn.danger{border-color:color-mix(in srgb,var(--danger) 55%,var(--line));color:var(--danger)}.modal-actions{margin-top:18px}.data-setting-row{align-items:flex-start}.data-setting-row>span{min-width:0}.data-setting-row .data-actions{max-width:58%}@media(max-width:520px){.data-setting-row{display:grid}.data-setting-row .data-actions{max-width:none;width:100%;justify-content:flex-start}.data-setting-row .data-actions .btn{flex:1 1 auto}}

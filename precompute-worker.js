@@ -37,17 +37,20 @@ self.setInterval=()=>0;
 self.clearInterval=__noop;
 
 // Load the pure Queens proof engine before the authoritative application code.
-importScripts('./queens-logic.js?v=2.23.0');
-importScripts('./difficulty-rating.js?v=2.23.0');
-importScripts('./queens-difficulty.js?v=2.23.0');
-importScripts('./tango-logic.js?v=2.23.0');
-importScripts('./tango-difficulty.js?v=2.23.0');
-importScripts('./sudoku-logic.js?v=2.23.0');
-importScripts('./sudoku-difficulty.js?v=2.23.0');
-importScripts('./patches-logic.js?v=2.23.0');
-importScripts('./patches-difficulty.js?v=2.23.0');
+importScripts('./queens-logic.js?v=2.24.0');
+importScripts('./difficulty-rating.js?v=2.24.0');
+importScripts('./queens-difficulty.js?v=2.24.0');
+importScripts('./tango-logic.js?v=2.24.0');
+importScripts('./tango-difficulty.js?v=2.24.0');
+importScripts('./sudoku-logic.js?v=2.24.0');
+importScripts('./sudoku-difficulty.js?v=2.24.0');
+importScripts('./patches-logic.js?v=2.24.0');
+importScripts('./patches-difficulty.js?v=2.24.0');
+importScripts('./web-storage.js?v=2.24.0');
+importScripts('./data-serialization.js?v=2.24.0');
+importScripts('./persistence-services.js?v=2.24.0');
 // Use the exact same versioned generator implementation as the UI.
-importScripts('./app.js?v=2.23.0');
+importScripts('./app.js?v=2.24.0');
 
 function __queenBackgroundCandidate(diff,forbidden){
   let blocked=new Set(forbidden||[]);

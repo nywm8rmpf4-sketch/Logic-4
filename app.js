@@ -5,8 +5,11 @@
  */
 'use strict';
 const $=s=>document.querySelector(s), app=$('#app'), toast=$('#toast'), timerEl=$('#timer');
-const VERSION='2.23.0', PERSISTENCE_BASELINE='v2.23', SAVE_SCHEMA=2, SAVE_KEY='logic4-save-v2';
-const LEGACY_PERSISTENCE_KEYS=Object.freeze(['logic4-save-v1','logic4-stats-v1','logic4-daily-v1']);
+const VERSION='2.24.0';
+const DataSerialization=QuadludDataSerialization;
+const PersistentData=globalThis.QuadludPersistentDataServices||QuadludPersistenceServices.createServices({storage:QuadludWebStorage.getLocalStorageAdapter(),serialization:DataSerialization});
+const PERSISTENCE_BASELINE=PersistentData.baseline, SAVE_SCHEMA=PersistentData.schemas.save, SAVE_KEY=PersistentData.keys.save;
+const LEGACY_PERSISTENCE_KEYS=PersistentData.legacyKeys;
 let current=null, tick=null, startedAt=0, elapsedBase=0, paused=false;
 const I18N={
 fr:{
@@ -19,6 +22,7 @@ fr:{
  settingsSaved:'Réglages enregistrés sur cet appareil.',language:'Langue',languageSub:'Français ou English',theme:'Thème',themeSub:'Automatique, clair ou sombre',auto:'Automatique',light:'Clair',dark:'Sombre',
  sounds:'Sons discrets',soundsSub:'Victoire et retours ponctuels',on:'Activés',off:'Désactivés',data:'Données',dataSub:'Statistiques, défis et préférences restent locales.',info:'Info',
  localDataTitle:'Données locales',localData:'QUADLUD ne nécessite aucun compte. Les parties, statistiques, défis quotidiens et préférences sont stockés dans le navigateur de cet appareil.',
+ dataManage:'Confidentialité & portabilité',dataManageSub:'Exporter, importer ou effacer vos données locales.',privacy:'Confidentialité',exportData:'Exporter',importData:'Importer',eraseData:'Effacer',privacyTitle:'Confidentialité des données',privacyText:'QUADLUD ne nécessite aucun compte. Les parties, statistiques, défis quotidiens et préférences restent dans le navigateur de cet appareil.',privacyPrivateExport:'Le fichier exporté est destiné à votre portabilité privée. Il peut contenir la solution interne de la partie sauvegardée : ne le publiez pas et ne l’utilisez pas comme format de partage de puzzle.',privacyEraseScope:'Effacer les données supprime la sauvegarde, les statistiques, l’historique Daily et les préférences. Le cache technique hors ligne de la PWA n’est pas une donnée utilisateur et n’est pas supprimé.',exportDone:'Données exportées.',exportFailed:'Impossible d’exporter les données.',importDone:'Données importées. Vous pouvez reprendre la partie sauvegardée depuis l’accueil.',importFailed:'Impossible d’enregistrer les données importées sur cet appareil.',importInvalid:'Fichier QUADLUD incompatible ou corrompu. Aucune donnée n’a été modifiée.',importTooLarge:'Le fichier est trop volumineux pour être importé.',eraseTitle:'Effacer les données locales',eraseConfirm:'Cette action supprime la sauvegarde, les statistiques, l’historique Daily et les préférences de cet appareil. Elle est irréversible sauf si vous avez d’abord exporté vos données.',eraseConfirmButton:'Effacer définitivement',eraseDone:'Données locales effacées.',eraseFailed:'Certaines données locales n’ont pas pu être effacées.',cancel:'Annuler',privateExportNote:'Export privé — ne pas partager publiquement.',
  dailyLast:'28 derniers jours',dailyNote:'Chaque date produit les mêmes quatre grilles sur tous les appareils utilisant cette version. Difficulté quotidienne : Moyen.',finished:'terminés',
  statsLocal:'Progression enregistrée uniquement sur cet appareil.',solved:'résolues',success:'réussite',avgTime:'temps moyen',streak:'série de jours',byGame:'Par jeu',history:'Historique récent',record:'record',average:'moyen',none:'Aucune partie terminée pour le moment.',
  solvedStatus:'Résolu',revealedStatus:'Solution vue',abandonedStatus:'Abandonné',finishedStatus:'Terminé',
@@ -37,6 +41,7 @@ en:{
  settingsSaved:'Settings saved on this device.',language:'Language',languageSub:'Français or English',theme:'Theme',themeSub:'Automatic, light or dark',auto:'Automatic',light:'Light',dark:'Dark',
  sounds:'Subtle sounds',soundsSub:'Victory and occasional feedback',on:'On',off:'Off',data:'Data',dataSub:'Statistics, challenges and preferences stay local.',info:'Info',
  localDataTitle:'Local data',localData:'QUADLUD requires no account. Games, statistics, daily challenges and preferences are stored in this device browser.',
+ dataManage:'Privacy & portability',dataManageSub:'Export, import or erase your local data.',privacy:'Privacy',exportData:'Export',importData:'Import',eraseData:'Erase',privacyTitle:'Data privacy',privacyText:'QUADLUD requires no account. Games, statistics, daily challenges and preferences stay in this device browser.',privacyPrivateExport:'The exported file is for private portability. It may contain the internal solution of the saved game: do not publish it or use it as a public puzzle-sharing format.',privacyEraseScope:'Erasing data removes the saved game, statistics, Daily history and preferences. The technical offline PWA cache is not user data and is not erased.',exportDone:'Data exported.',exportFailed:'Unable to export data.',importDone:'Data imported. You can resume the saved game from Home.',importFailed:'Unable to store the imported data on this device.',importInvalid:'Incompatible or corrupted QUADLUD file. No data was changed.',importTooLarge:'The file is too large to import.',eraseTitle:'Erase local data',eraseConfirm:'This removes the saved game, statistics, Daily history and preferences from this device. It cannot be undone unless you exported your data first.',eraseConfirmButton:'Erase permanently',eraseDone:'Local data erased.',eraseFailed:'Some local data could not be erased.',cancel:'Cancel',privateExportNote:'Private export — do not share publicly.',
  dailyLast:'Last 28 days',dailyNote:'Each date produces the same four grids on all devices using this version. Daily difficulty: Medium.',finished:'completed',
  statsLocal:'Progress is stored only on this device.',solved:'solved',success:'success',avgTime:'average time',streak:'day streak',byGame:'By game',history:'Recent history',record:'record',average:'average',none:'No completed game yet.',
  solvedStatus:'Solved',revealedStatus:'Solution viewed',abandonedStatus:'Abandoned',finishedStatus:'Finished',
@@ -792,11 +797,11 @@ Object.assign(GAME_RULES.sudoku,{"bg":"<b>Цел:</b> попълни мрежа�
 Object.assign(GAME_RULES.patches,{"bg":"<b>Цел:</b> раздели цялата мрежа на неприпокриващи се правоъгълници или квадрати.<br><br><b>Управление:</b> плъзни от единия ъгъл до противоположния, за да начертаеш или промениш правоъгълник; докосни го за изтриване.<br><br><b>Подсказки:</b> всяка област съдържа точно една клетка-подсказка.<br><br><b>Валидност:</b> всяка клетка принадлежи на една свързана правоъгълна област и никоя област не може да съдържа две подсказки.","hr":"<b>Cilj:</b> podijeli cijelu mrežu u pravokutnike ili kvadrate bez preklapanja.<br><br><b>Upravljanje:</b> povuci iz jednog kuta u suprotni za crtanje ili promjenu pravokutnika; dodirni ga za uklanjanje.<br><br><b>Tragovi:</b> svako područje sadrži točno jedno polje s tragom.<br><br><b>Valjanost:</b> svako polje pripada jednom povezanom pravokutnom području i nijedno područje ne smije sadržavati dva traga.","cs":"<b>Cíl:</b> rozděl celou mřížku na nepřekrývající se obdélníky nebo čtverce.<br><br><b>Ovládání:</b> táhni z jednoho rohu do protějšího pro nakreslení nebo změnu obdélníku; klepnutím ho odstraníš.<br><br><b>Nápovědy:</b> každá oblast obsahuje právě jedno pole s nápovědou.<br><br><b>Platnost:</b> každé pole patří právě do jedné souvislé obdélníkové oblasti a oblast nesmí obsahovat dvě nápovědy.","da":"<b>Mål:</b> opdel hele gitteret i rektangler eller kvadrater uden overlap.<br><br><b>Betjening:</b> træk fra et hjørne til det modsatte for at tegne eller ændre et rektangel; tryk for at fjerne det.<br><br><b>Hints:</b> hver region indeholder præcis ét hintfelt.<br><br><b>Gyldighed:</b> hvert felt tilhører præcis én sammenhængende rektangulær region, og ingen region må indeholde to hints.","nl":"<b>Doel:</b> verdeel het hele raster zonder overlap in rechthoeken of vierkanten.<br><br><b>Bediening:</b> sleep van een hoek naar de tegenoverliggende om een rechthoek te tekenen of te wijzigen; tik erop om hem te verwijderen.<br><br><b>Aanwijzingen:</b> elke regio bevat precies één aanwijzingsvak.<br><br><b>Geldigheid:</b> elk vak hoort bij precies één aaneengesloten rechthoekige regio en een regio mag geen twee aanwijzingen bevatten.","et":"<b>Eesmärk:</b> jaga kogu ruudustik kattumatuteks ristkülikuteks või ruutudeks.<br><br><b>Juhtimine:</b> lohista ühest nurgast vastasnurka, et ristkülikut joonistada või muuta; eemaldamiseks puuduta seda.<br><br><b>Vihjed:</b> igas piirkonnas on täpselt üks vihjeruut.<br><br><b>Kehtivus:</b> iga ruut kuulub täpselt ühte ühendatud ristkülikukujulisse piirkonda ja piirkonnas ei tohi olla kahte vihjet.","fi":"<b>Tavoite:</b> jaa koko ruudukko päällekkäisyydettömiin suorakulmioihin tai neliöihin.<br><br><b>Ohjaus:</b> vedä kulmasta vastakkaiseen kulmaan piirtääksesi tai muuttaaksesi suorakulmiota; poista se napauttamalla.<br><br><b>Vihjeet:</b> jokaisella alueella on täsmälleen yksi vihjeruutu.<br><br><b>Kelvollisuus:</b> jokainen ruutu kuuluu yhteen yhtenäiseen suorakulmaiseen alueeseen eikä alueella saa olla kahta vihjettä.","de":"<b>Ziel:</b> Teile das gesamte Gitter ohne Überlappung in Rechtecke oder Quadrate.<br><br><b>Steuerung:</b> Ziehe von einer Ecke zur gegenüberliegenden, um ein Rechteck zu zeichnen oder zu ändern; tippe darauf, um es zu löschen.<br><br><b>Hinweise:</b> Jede Region enthält genau ein Hinweisfeld.<br><br><b>Gültigkeit:</b> Jedes Feld gehört zu genau einer zusammenhängenden rechteckigen Region, und keine Region darf zwei Hinweise enthalten.","el":"<b>Στόχος:</b> χώρισε όλο το πλέγμα σε μη επικαλυπτόμενα ορθογώνια ή τετράγωνα.<br><br><b>Χειρισμός:</b> σύρε από μία γωνία στην απέναντι για να σχεδιάσεις ή να αλλάξεις ορθογώνιο· άγγιξέ το για διαγραφή.<br><br><b>Ενδείξεις:</b> κάθε περιοχή περιέχει ακριβώς ένα κελί-ένδειξη.<br><br><b>Εγκυρότητα:</b> κάθε κελί ανήκει σε μία συνδεδεμένη ορθογώνια περιοχή και καμία περιοχή δεν μπορεί να περιέχει δύο ενδείξεις.","hu":"<b>Cél:</b> oszd fel az egész rácsot átfedés nélküli téglalapokra vagy négyzetekre.<br><br><b>Irányítás:</b> húzd az egyik saroktól az átellenesig téglalap rajzolásához vagy módosításához; érintsd meg a törléshez.<br><br><b>Nyomok:</b> minden régió pontosan egy nyommezőt tartalmaz.<br><br><b>Érvényesség:</b> minden mező egy összefüggő téglalap alakú régióhoz tartozik, és egy régió nem tartalmazhat két nyomot.","ga":"<b>Sprioc:</b> roinn an ghreille iomlán ina dhronuilleoga nó cearnóga gan forluí.<br><br><b>Rialú:</b> tarraing ó chúinne go dtí an cúinne os coinne chun dronuilleog a tharraingt nó a athrú; tapáil í chun í a bhaint.<br><br><b>Leideanna:</b> tá cill leide amháin go díreach i ngach réigiún.<br><br><b>Bailíocht:</b> baineann gach cill le réigiún dronuilleogach ceangailte amháin agus ní féidir dhá leid a bheith in aon réigiún.","it":"<b>Obiettivo:</b> dividi tutta la griglia in rettangoli o quadrati senza sovrapposizioni.<br><br><b>Controlli:</b> trascina da un angolo a quello opposto per disegnare o ridimensionare un rettangolo; toccalo per eliminarlo.<br><br><b>Indizi:</b> ogni regione contiene esattamente una casella-indizio.<br><br><b>Validità:</b> ogni casella appartiene a una sola regione connessa e rettangolare e nessuna regione può contenere due indizi.","lv":"<b>Mērķis:</b> sadali visu režģi nepārklājošos taisnstūros vai kvadrātos.<br><br><b>Vadība:</b> velc no viena stūra uz pretējo, lai zīmētu vai mainītu taisnstūri; pieskaries, lai to dzēstu.<br><br><b>Pavedieni:</b> katrā reģionā ir tieši viena pavediena šūna.<br><br><b>Derīgums:</b> katra šūna pieder vienam savienotam taisnstūrveida reģionam, un reģionā nedrīkst būt divi pavedieni.","lt":"<b>Tikslas:</b> padalink visą tinklelį į nepersidengiančius stačiakampius ar kvadratus.<br><br><b>Valdymas:</b> brauk nuo vieno kampo iki priešingo, kad nubrėžtum ar pakeistum stačiakampį; bakstelėk, kad jį pašalintum.<br><br><b>Užuominos:</b> kiekvienoje srityje yra tiksliai vienas užuominos langelis.<br><br><b>Teisingumas:</b> kiekvienas langelis priklauso vienai vientisai stačiakampei sričiai, o srityje negali būti dviejų užuominų.","mt":"<b>Għan:</b> aqsam il-grilja kollha f’rettangoli jew kwadri mingħajr sovrappożizzjoni.<br><br><b>Kontroll:</b> iġbed minn rokna għall-opposta biex tiġbed jew tbiddel rettangolu; tektek biex tneħħih.<br><br><b>Ħjiel:</b> kull reġjun fih eżattament ċella waħda tal-ħjiel.<br><br><b>Validità:</b> kull ċella tappartjeni għal reġjun rettangolari konness wieħed u l-ebda reġjun ma jista’ jkollu żewġ ħjiel.","pl":"<b>Cel:</b> podziel całą siatkę na niepokrywające się prostokąty lub kwadraty.<br><br><b>Sterowanie:</b> przeciągnij od rogu do przeciwnego, aby narysować lub zmienić prostokąt; dotknij go, aby usunąć.<br><br><b>Wskazówki:</b> każdy region zawiera dokładnie jedno pole ze wskazówką.<br><br><b>Poprawność:</b> każde pole należy do jednego spójnego prostokątnego regionu, a region nie może mieć dwóch wskazówek.","ro":"<b>Scop:</b> împarte întreaga grilă în dreptunghiuri sau pătrate fără suprapunere.<br><br><b>Control:</b> glisează dintr-un colț în cel opus pentru a desena sau redimensiona un dreptunghi; atinge-l pentru a-l șterge.<br><br><b>Indicii:</b> fiecare regiune conține exact o celulă-indiciu.<br><br><b>Validitate:</b> fiecare celulă aparține unei singure regiuni conectate și dreptunghiulare, iar o regiune nu poate conține două indicii.","sk":"<b>Cieľ:</b> rozdeľ celú mriežku na neprekrývajúce sa obdĺžniky alebo štvorce.<br><br><b>Ovládanie:</b> potiahni z jedného rohu do protiľahlého, aby si obdĺžnik nakreslil alebo zmenil; ťuknutím ho odstrániš.<br><br><b>Pomôcky:</b> každá oblasť obsahuje presne jedno políčko s pomôckou.<br><br><b>Platnosť:</b> každé políčko patrí presne do jednej súvislej obdĺžnikovej oblasti a oblasť nesmie obsahovať dve pomôcky.","sl":"<b>Cilj:</b> razdeli celotno mrežo na pravokotnike ali kvadrate brez prekrivanja.<br><br><b>Upravljanje:</b> povleci iz kota v nasprotni kot za risanje ali spreminjanje pravokotnika; tapni ga za odstranitev.<br><br><b>Namigi:</b> vsako območje vsebuje natanko eno polje z namigom.<br><br><b>Veljavnost:</b> vsako polje pripada natanko enemu povezanemu pravokotnemu območju in območje ne sme vsebovati dveh namigov.","sv":"<b>Mål:</b> dela hela rutnätet i rektanglar eller kvadrater utan överlappning.<br><br><b>Kontroller:</b> dra från ett hörn till det motsatta för att rita eller ändra en rektangel; tryck för att ta bort den.<br><br><b>Ledtrådar:</b> varje region innehåller exakt en ledtrådsruta.<br><br><b>Giltighet:</b> varje ruta tillhör exakt en sammanhängande rektangulär region och ingen region får innehålla två ledtrådar."});
 function gameRules(g){return GAME_RULES[g]?.[lang()]||GAME_RULES[g]?.en||''}
 
-const PREF_KEY='logic4-prefs-v1';
+const PREF_KEY=PersistentData.keys.preferences;
 function detectedLang(){try{let xs=[...(navigator.languages||[]),navigator.language].filter(Boolean);for(let x of xs){let c=String(x).toLowerCase().split('-')[0];if(c==='zh')return 'zh';if(SUPPORTED_LANGS.includes(c))return c}}catch(_){}return 'fr'}
-function prefs(){try{let p=JSON.parse(localStorage.getItem(PREF_KEY)||'{}');return {theme:['auto','light','dark'].includes(p.theme)?p.theme:'auto',sound:p.sound!==false,queenAutoCross:p.queenAutoCross===true,lang:SUPPORTED_LANGS.includes(p.lang)?p.lang:detectedLang(),coachMode:['minimal','normal','pedagogical'].includes(p.coachMode)?p.coachMode:'normal',notifyIllegal:p.notifyIllegal!==false,notifyUnjustified:p.notifyUnjustified!==false}}catch(_){return {theme:'auto',sound:true,queenAutoCross:false,lang:detectedLang(),coachMode:'normal',notifyIllegal:true,notifyUnjustified:true}}}
+function prefs(){return PersistentData.preferences.read({defaultLang:detectedLang(),supportedLangs:SUPPORTED_LANGS})}
 function languageOptionsHtml(selected){return LANGUAGE_OPTIONS.map(([code,name])=>`<option value="${code}" ${selected===code?'selected':''}>${name}</option>`).join('')}
-function savePrefs(p){try{localStorage.setItem(PREF_KEY,JSON.stringify(p))}catch(_){}applyPrefs()}
+function savePrefs(p){PersistentData.preferences.write(p);applyPrefs()}
 function resolvedTheme(){let p=prefs();return p.theme==='auto'?(window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'):p.theme}
 function applyPrefs(){let p=prefs(),theme=resolvedTheme();document.documentElement.dataset.theme=theme;document.documentElement.dataset.themeMode=p.theme;let meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.content=theme==='dark'?'#171916':'#f4f1e9';let b=$('#themeBtn');if(b){b.textContent=theme==='dark'?'☾':'☀︎';b.setAttribute('aria-label',`${tr('themeLabel')} : ${p.theme}`)}}
 function cycleTheme(){let p=prefs(),m={auto:'light',light:'dark',dark:'auto'};p.theme=m[p.theme];savePrefs(p);showToast(`${tr('themeLabel')} : ${{auto:tr('auto'),light:tr('light'),dark:tr('dark')}[p.theme]}`)}
@@ -811,8 +816,8 @@ function settingsView(){
   <div class="setting-row"><span><b>${tr('coachMode')}</b><small>${tr('coachModeSub')}</small></span><select id="coachModeSelect" class="difficulty" aria-label="${tr('coachMode')}"><option value="minimal" ${p.coachMode==='minimal'?'selected':''}>${tr('coachMinimal')}</option><option value="normal" ${p.coachMode==='normal'?'selected':''}>${tr('coachNormal')} · ${tr('recommended')}</option><option value="pedagogical" ${p.coachMode==='pedagogical'?'selected':''}>${tr('coachPedagogical')}</option></select></div>
   <div class="setting-row"><span><b>${tr('illegalAlerts')}</b><small>${tr('illegalAlertsSub')}</small></span><button class="btn" id="illegalAlertsToggle" aria-pressed="${p.notifyIllegal?'true':'false'}">${p.notifyIllegal?tr('on'):tr('off')}</button></div>
   <div class="setting-row"><span><b>${tr('unjustifiedAlerts')}</b><small>${tr('unjustifiedAlertsSub')}</small></span><button class="btn" id="unjustifiedAlertsToggle" aria-pressed="${p.notifyUnjustified?'true':'false'}">${p.notifyUnjustified?tr('on'):tr('off')}</button></div>
-  <div class="setting-row"><span><b>${tr('data')}</b><small>${tr('dataSub')}</small></span><button class="btn" id="storageInfo">${tr('info')}</button></div></section>`;
-  $('#settingsBack').onclick=home;$('#langSelect').onchange=e=>{let q=prefs();q.lang=e.target.value;savePrefs(q);updateI18n();settingsView()};$('#themeSelect').onchange=e=>{let q=prefs();q.theme=e.target.value;savePrefs(q)};$('#soundToggle').onclick=()=>{let on=toggleSound(),b=$('#soundToggle');b.textContent=on?tr('on'):tr('off');b.setAttribute('aria-pressed',String(on))};$('#coachModeSelect').onchange=e=>{let q=prefs();q.coachMode=e.target.value;savePrefs(q)};$('#illegalAlertsToggle').onclick=()=>{let q=prefs();q.notifyIllegal=!q.notifyIllegal;savePrefs(q);let b=$('#illegalAlertsToggle');b.textContent=q.notifyIllegal?tr('on'):tr('off');b.setAttribute('aria-pressed',String(q.notifyIllegal))};$('#unjustifiedAlertsToggle').onclick=()=>{let q=prefs();q.notifyUnjustified=!q.notifyUnjustified;savePrefs(q);let b=$('#unjustifiedAlertsToggle');b.textContent=q.notifyUnjustified?tr('on'):tr('off');b.setAttribute('aria-pressed',String(q.notifyUnjustified))};$('#storageInfo').onclick=()=>modal(tr('localDataTitle'),tr('localData'));app.querySelectorAll('button').forEach(pressFeedback)
+  <div class="setting-row data-setting-row"><span><b>${tr('dataManage')}</b><small>${tr('dataManageSub')}</small></span><div class="data-actions"><button class="btn" id="storageInfo">${tr('privacy')}</button><button class="btn" id="dataExportBtn">${tr('exportData')}</button><button class="btn" id="dataImportBtn">${tr('importData')}</button><button class="btn danger" id="dataEraseBtn">${tr('eraseData')}</button></div><input class="sr-only" id="dataImportFile" type="file" accept="application/json,.json" /></div></section>`;
+  $('#settingsBack').onclick=home;$('#langSelect').onchange=e=>{let q=prefs();q.lang=e.target.value;savePrefs(q);updateI18n();settingsView()};$('#themeSelect').onchange=e=>{let q=prefs();q.theme=e.target.value;savePrefs(q)};$('#soundToggle').onclick=()=>{let on=toggleSound(),b=$('#soundToggle');b.textContent=on?tr('on'):tr('off');b.setAttribute('aria-pressed',String(on))};$('#coachModeSelect').onchange=e=>{let q=prefs();q.coachMode=e.target.value;savePrefs(q)};$('#illegalAlertsToggle').onclick=()=>{let q=prefs();q.notifyIllegal=!q.notifyIllegal;savePrefs(q);let b=$('#illegalAlertsToggle');b.textContent=q.notifyIllegal?tr('on'):tr('off');b.setAttribute('aria-pressed',String(q.notifyIllegal))};$('#unjustifiedAlertsToggle').onclick=()=>{let q=prefs();q.notifyUnjustified=!q.notifyUnjustified;savePrefs(q);let b=$('#unjustifiedAlertsToggle');b.textContent=q.notifyUnjustified?tr('on'):tr('off');b.setAttribute('aria-pressed',String(q.notifyUnjustified))};$('#storageInfo').onclick=privacyInfoModal;$('#dataExportBtn').onclick=downloadUserDataExport;$('#dataImportBtn').onclick=()=>$('#dataImportFile').click();$('#dataImportFile').onchange=handleUserDataFileImport;$('#dataEraseBtn').onclick=confirmEraseUserData;app.querySelectorAll('button').forEach(pressFeedback)
 }
 function aboutView(){
  if(current&&!current.completed)saveCurrent();stopTimer();timerEl.textContent='00:00';current=null;
@@ -852,27 +857,10 @@ function victoryOverlay(c,seconds){
   root.onclick=e=>{if(e.target===root)a11yCloseDialog(root)};a11yOpenDialog(root,'#closeVictory');playTone('win');haptic(28)
 }
 
-const STATS_SCHEMA=5,STATS_KEY='logic4-stats-v2', HISTORY_LIMIT=200;
+const STATS_SCHEMA=PersistentData.schemas.stats,STATS_KEY=PersistentData.keys.stats,HISTORY_LIMIT=200;
 function blankStats(){return {schema:STATS_SCHEMA,baseline:PERSISTENCE_BASELINE,started:0,solved:0,revealed:0,totalSolvedSeconds:0,byGame:{},history:[],mastery:{schema:1,byTechnique:{},updatedAt:null},training:{schema:1,byTechnique:{}},learning:{schema:1,byTechnique:{}}}}
-function safeStats(){
-  let s=blankStats();
-  try{
-    let raw=JSON.parse(localStorage.getItem(STATS_KEY)||'null');
-    if(raw&&typeof raw==='object'&&raw.schema===STATS_SCHEMA&&raw.baseline===PERSISTENCE_BASELINE){
-      s.started=Math.max(0,Number(raw.started)||0);s.solved=Math.max(0,Number(raw.solved)||0);
-      s.revealed=Math.max(0,Number(raw.revealed)||0);s.totalSolvedSeconds=Math.max(0,Number(raw.totalSolvedSeconds)||0);
-      s.byGame=raw.byGame&&typeof raw.byGame==='object'?raw.byGame:{};
-      s.history=Array.isArray(raw.history)?raw.history.filter(x=>x&&['queens','tango','sudoku','patches'].includes(x.game)&&['easy','medium','hard','expert'].includes(x.diff)).slice(0,HISTORY_LIMIT):[];
-      if(raw.mastery&&typeof raw.mastery==='object'){
-        s.mastery={schema:1,byTechnique:raw.mastery.byTechnique&&typeof raw.mastery.byTechnique==='object'?raw.mastery.byTechnique:{},updatedAt:raw.mastery.updatedAt||null}
-      }
-      if(raw.training&&typeof raw.training==='object')s.training={schema:1,byTechnique:raw.training.byTechnique&&typeof raw.training.byTechnique==='object'?raw.training.byTechnique:{}}
-      if(raw.learning&&typeof raw.learning==='object')s.learning={schema:1,byTechnique:raw.learning.byTechnique&&typeof raw.learning.byTechnique==='object'?raw.learning.byTechnique:{}}
-    }
-  }catch(_){}
-  return s
-}
-function writeStats(s){try{localStorage.setItem(STATS_KEY,JSON.stringify(s))}catch(_){}}
+function safeStats(){return PersistentData.stats.read(blankStats(),{schema:STATS_SCHEMA,baseline:PERSISTENCE_BASELINE,historyLimit:HISTORY_LIMIT,validGames:['queens','tango','sudoku','patches'],validDifficulties:['easy','medium','hard','expert']})}
+function writeStats(s){PersistentData.stats.write(s)}
 function statBucket(s,g,d){
   if(!s.byGame||typeof s.byGame!=='object')s.byGame={};
   if(!s.byGame[g]||typeof s.byGame[g]!=='object')s.byGame[g]={};
@@ -1344,15 +1332,15 @@ function challengeFromHash(){
 }
 function initialView(){let ch=challengeFromHash();if(ch)return challengeView(ch,true);home()}
 
-const DAILY_KEY='logic4-daily-v2';
+const DAILY_KEY=PersistentData.keys.daily;
 const DAILY_SCHEMA=2,DAILY_GENERATOR=1,DAILY_NAMESPACE='quadlud-daily-v2.23',DAILY_DIFFICULTY='medium';
 const DAILY_GAMES=['queens','tango','sudoku','patches'];
 const DAILY_LOGIC_POINTS={0:100,1:90,2:75,3:55,4:25};
 function hash32(s){let h=2166136261>>>0;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296}}
 function withSeed(seed,fn){let old=Math.random;Math.random=mulberry32(hash32(seed));try{return fn()}finally{Math.random=old}}
-function dailyState(){try{let x=JSON.parse(localStorage.getItem(DAILY_KEY)||'{}');return x&&typeof x==='object'?x:{}}catch(_){return {}}}
-function saveDailyState(x){try{localStorage.setItem(DAILY_KEY,JSON.stringify(x))}catch(_){}}
+function dailyState(){return PersistentData.daily.read()}
+function saveDailyState(x){PersistentData.daily.write(x)}
 function dailyKey(day,game){return `${day}:${game}`}
 function dailyRecord(day,game,state=dailyState()){return state[dailyKey(day,game)]||null}
 function dailySeedString(day,game){
@@ -1494,6 +1482,7 @@ function rotGrid(grid){const n=grid.length;return Array.from({length:n},(_,r)=>A
 function flipGrid(grid){return grid.map(r=>[...r].reverse())}
 function transformGrid(grid,k){let g=grid.map(r=>[...r]);for(let i=0;i<k%4;i++)g=rotGrid(g);if(k>=4)g=flipGrid(g);return g}
 function modal(title,html){let old=$('#modal');if(old)a11yCloseDialog(old,false);document.body.insertAdjacentHTML('beforeend',`<div class="modal" id="modal"><div class="sheet"><h2>${title}</h2>${html}<button class="btn primary" id="modalClose">${tr('closeHint')}</button></div></div>`);let root=$('#modal');$('#modalClose').onclick=()=>a11yCloseDialog(root);root.onclick=e=>{if(e.target===root)a11yCloseDialog(root)};a11yOpenDialog(root,'#modalClose')}
+function confirmActionModal(title,html,confirmLabel,onConfirm){let old=$('#modal');if(old)a11yCloseDialog(old,false);document.body.insertAdjacentHTML('beforeend',`<div class="modal" id="modal"><div class="sheet"><h2>${title}</h2>${html}<div class="modal-actions"><button class="btn" id="modalCancel">${tr('cancel')}</button><button class="btn danger" id="modalConfirm">${confirmLabel}</button></div></div></div>`);let root=$('#modal');$('#modalCancel').onclick=()=>a11yCloseDialog(root);$('#modalConfirm').onclick=()=>{a11yCloseDialog(root,false);onConfirm?.()};root.onclick=e=>{if(e.target===root)a11yCloseDialog(root)};a11yOpenDialog(root,'#modalCancel')}
 
 // ===== v2.11.0 — structured Logic Coach reasoning + branching move history =====
 
@@ -2771,8 +2760,8 @@ document.addEventListener('keydown',e=>{
   if(e.shiftKey)redoMoves(1);else undoMoves(1)
 });
 
-function plainCurrent(){if(!current)return null;let o={...current};for(let k of ['givens','empty'])if(o[k] instanceof Set)o[k]=[...o[k]];return o}
-function discardLegacyPersistence(){try{for(const key of LEGACY_PERSISTENCE_KEYS)localStorage.removeItem(key)}catch(_){}}
+function plainCurrent(){return DataSerialization.serializeCurrentState(current)}
+function discardLegacyPersistence(){PersistentData.save.discardLegacy()}
 function persistenceContract(){let d=typeof DifficultyRating!=='undefined'?DifficultyRating:null;return {difficultySchema:d?.SCHEMA_VERSION??1,ratingVersion:d?.RATING_VERSION??1,fingerprintVersion:d?.FINGERPRINT_VERSION??1,generatorVersion:d?.GENERATOR_VERSION??1}}
 function persistenceSnapshot(c){
   if(!c)return null;
@@ -2810,9 +2799,81 @@ function persistencePayloadValid(x){
   let fingerprint=persistenceFingerprint(c);if((x.puzzleFingerprint||null)!==(fingerprint||null)||!persistenceCertifiedProfileValid(c,fingerprint))return false;
   return Number.isFinite(Number(x.elapsed))&&Number(x.elapsed)>=0&&typeof x.paused==='boolean'
 }
-function saveCurrent(){if(!current||current.completed||current.trainingCompleted)return;try{let c=plainCurrent();if(!persistenceHistoryValid(c))return;let fingerprint=persistenceFingerprint(c);if(!persistenceCertifiedProfileValid(c,fingerprint))return;localStorage.setItem(SAVE_KEY,JSON.stringify({schema:SAVE_SCHEMA,baseline:PERSISTENCE_BASELINE,version:VERSION,contract:persistenceContract(),puzzleFingerprint:fingerprint,current:c,elapsed:timerSeconds(),paused:!!paused,savedAt:Date.now()}))}catch(_){}}
-function getSaved(){discardLegacyPersistence();try{let raw=localStorage.getItem(SAVE_KEY);if(!raw)return null;let x=JSON.parse(raw);if(!persistencePayloadValid(x)){localStorage.removeItem(SAVE_KEY);return null}return x}catch(_){try{localStorage.removeItem(SAVE_KEY)}catch(__){}return null}}
-function clearSaved(){try{localStorage.removeItem(SAVE_KEY)}catch(_){}}
+function saveCurrent(){if(!current||current.completed||current.trainingCompleted)return;try{let c=plainCurrent();if(!persistenceHistoryValid(c))return;let fingerprint=persistenceFingerprint(c);if(!persistenceCertifiedProfileValid(c,fingerprint))return;let payload=DataSerialization.createSaveEnvelope({schema:SAVE_SCHEMA,baseline:PERSISTENCE_BASELINE,version:VERSION,contract:persistenceContract(),puzzleFingerprint:fingerprint,current:c,elapsed:timerSeconds(),paused:!!paused,savedAt:Date.now()});PersistentData.save.write(payload)}catch(_){}}
+function getSaved(){return PersistentData.save.read({validate:persistencePayloadValid})}
+function clearSaved(){PersistentData.save.clear()}
+
+
+const PORTABLE_GAMES=['queens','tango','sudoku','patches'],PORTABLE_DIFFS=['easy','medium','hard','expert'],USER_DATA_MAX_BYTES=5*1024*1024,USER_DATA_MAX_DAILY_RECORDS=5000;
+function portableJsonEqual(a,b){try{return JSON.stringify(a)===JSON.stringify(b)}catch(_){return false}}
+function portableFiniteNonNegative(v){return typeof v==='number'&&Number.isFinite(v)&&v>=0}
+function portablePreferencesValid(raw){if(!raw||typeof raw!=='object'||Array.isArray(raw))return false;let n=DataSerialization.normalizePreferences(raw,{defaultLang:'en',supportedLangs:SUPPORTED_LANGS});return portableJsonEqual(n,raw)}
+function portableStatsValid(raw){
+  if(!raw||typeof raw!=='object'||Array.isArray(raw)||raw.schema!==STATS_SCHEMA||raw.baseline!==PERSISTENCE_BASELINE)return false;
+  let n=DataSerialization.normalizeStats(raw,blankStats(),{schema:STATS_SCHEMA,baseline:PERSISTENCE_BASELINE,historyLimit:HISTORY_LIMIT,validGames:PORTABLE_GAMES,validDifficulties:PORTABLE_DIFFS});
+  if(!portableJsonEqual(n,raw))return false;
+  for(const key of ['started','solved','revealed','totalSolvedSeconds'])if(!portableFiniteNonNegative(raw[key]))return false;
+  if(!raw.byGame||typeof raw.byGame!=='object'||Array.isArray(raw.byGame))return false;
+  for(const [game,diffs] of Object.entries(raw.byGame)){
+    if(!PORTABLE_GAMES.includes(game)||!diffs||typeof diffs!=='object'||Array.isArray(diffs))return false;
+    for(const [diff,b] of Object.entries(diffs)){
+      if(!PORTABLE_DIFFS.includes(diff)||!b||typeof b!=='object'||Array.isArray(b))return false;
+      for(const key of ['started','solved','revealed','totalSeconds'])if(!portableFiniteNonNegative(b[key]))return false;
+      if(b.best!=null&&!portableFiniteNonNegative(b.best))return false
+    }
+  }
+  if(!Array.isArray(raw.history)||raw.history.length>HISTORY_LIMIT)return false;
+  for(const h of raw.history){if(!h||typeof h!=='object'||!PORTABLE_GAMES.includes(h.game)||!PORTABLE_DIFFS.includes(h.diff)||!portableFiniteNonNegative(h.seconds)||!portableFiniteNonNegative(h.ts)||!['solved','revealed','abandoned','finished'].includes(h.outcome))return false}
+  for(const name of ['mastery','training','learning']){let x=raw[name];if(!x||typeof x!=='object'||x.schema!==1||!x.byTechnique||typeof x.byTechnique!=='object'||Array.isArray(x.byTechnique))return false}
+  return true
+}
+function portableDailyValid(raw){
+  if(!raw||typeof raw!=='object'||Array.isArray(raw))return false;let entries=Object.entries(raw);if(entries.length>USER_DATA_MAX_DAILY_RECORDS)return false;
+  for(const [key,r] of entries){
+    if(!r||typeof r!=='object'||Array.isArray(r)||!/^\d{4}-\d{2}-\d{2}:(queens|tango|sudoku|patches)$/.test(key))return false;
+    let [day,game]=key.split(':');if(r.day!==day||r.game!==game||r.dailySchema!==DAILY_SCHEMA||r.dailyGenerator!==DAILY_GENERATOR||!['solved','revealed','abandoned'].includes(r.outcome))return false;
+    if(!portableFiniteNonNegative(r.seconds)||!portableFiniteNonNegative(r.completedAt)||r.best!=null&&!portableFiniteNonNegative(r.best))return false;
+    if(r.fingerprint!=null&&(typeof r.fingerprint!=='string'||!/^qfp1-[0-9a-f]{32}$/.test(r.fingerprint)))return false;
+    if(r.outcome==='solved'&&r.official===true){if(!portableFiniteNonNegative(r.logicScore)||r.logicScore>100||!Number.isInteger(r.helpStage)||r.helpStage<0||r.helpStage>4)return false}
+    for(const key2 of ['lastSeconds','lastCompletedAt'])if(r[key2]!=null&&!portableFiniteNonNegative(r[key2]))return false
+  }
+  return true
+}
+function portableImportBundle(pkg){
+  let u=DataSerialization.unpackUserDataPackage(pkg);
+  if(u.source?.persistenceBaseline!==PERSISTENCE_BASELINE||typeof u.source?.version!=='string'||!u.source.version)throw new Error('Unsupported QUADLUD persistence baseline');
+  if(u.save!=null&&!persistencePayloadValid(u.save))throw new Error('Invalid QUADLUD save section');
+  if(u.stats!=null&&!portableStatsValid(u.stats))throw new Error('Invalid QUADLUD stats section');
+  if(u.daily!=null&&!portableDailyValid(u.daily))throw new Error('Invalid QUADLUD Daily section');
+  if(u.preferences!=null&&!portablePreferencesValid(u.preferences))throw new Error('Invalid QUADLUD preferences section');
+  return u
+}
+function userDataSnapshot(){return {save:getSaved(),stats:safeStats(),daily:dailyState(),preferences:prefs()}}
+function writePortableSection(service,value){return value==null?service.clear():service.write(value)}
+function replacePortableData(bundle){
+  let old=userDataSnapshot(),ok=false;
+  try{
+    ok=writePortableSection(PersistentData.save,bundle.save)&&writePortableSection(PersistentData.stats,bundle.stats)&&writePortableSection(PersistentData.daily,bundle.daily)&&writePortableSection(PersistentData.preferences,bundle.preferences);
+    if(!ok)throw new Error('Persistent write failed');discardLegacyPersistence();return true
+  }catch(err){
+    try{writePortableSection(PersistentData.save,old.save);writePortableSection(PersistentData.stats,old.stats);writePortableSection(PersistentData.daily,old.daily);writePortableSection(PersistentData.preferences,old.preferences)}catch(_){}
+    throw err
+  }
+}
+function createUserDataExport(){
+  if(current&&!current.completed)saveCurrent();let data=userDataSnapshot();
+  return DataSerialization.createUserDataPackage({sourceVersion:VERSION,persistenceBaseline:PERSISTENCE_BASELINE,exportedAt:new Date().toISOString(),...data})
+}
+function importUserDataPackage(pkg){let bundle=portableImportBundle(pkg);replacePortableData(bundle);stopTimer();timerEl.textContent='00:00';current=null;paused=false;elapsedBase=0;startedAt=0;applyPrefs();updateI18n();return bundle}
+function eraseAllUserData(){let results=[PersistentData.save.clear(),PersistentData.stats.clear(),PersistentData.daily.clear(),PersistentData.preferences.clear()];discardLegacyPersistence();stopTimer();timerEl.textContent='00:00';current=null;paused=false;elapsedBase=0;startedAt=0;applyPrefs();updateI18n();return results.every(Boolean)}
+function privacyInfoModal(){modal(tr('privacyTitle'),`<p>${tr('privacyText')}</p><p><b>${tr('privateExportNote')}</b> ${tr('privacyPrivateExport')}</p><p>${tr('privacyEraseScope')}</p>`)}
+function downloadUserDataExport(){
+  try{let pkg=createUserDataExport(),text=DataSerialization.stringify(pkg),blob=new Blob([text],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a'),day=new Date().toISOString().slice(0,10);a.href=url;a.download=`QUADLUD-user-data-${day}.json`;a.style.display='none';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),0);showToast(tr('exportDone'));return pkg}catch(_){showToast(tr('exportFailed'));return null}
+}
+function readPortableFileText(file){if(file&&typeof file.text==='function')return file.text();return new Promise((resolve,reject)=>{try{let r=new FileReader();r.onload=()=>resolve(String(r.result||''));r.onerror=()=>reject(r.error||new Error('read-failed'));r.readAsText(file)}catch(err){reject(err)}})}
+async function handleUserDataFileImport(e){let input=e?.target||$('#dataImportFile'),file=input?.files?.[0];if(!file)return;try{if(file.size>USER_DATA_MAX_BYTES)throw new Error('too-large');let text=await readPortableFileText(file);if(text.length>USER_DATA_MAX_BYTES)throw new Error('too-large');let pkg=DataSerialization.parse(text);importUserDataPackage(pkg);settingsView();showToast(tr('importDone'))}catch(err){showToast(err?.message==='too-large'?tr('importTooLarge'):err?.message==='Persistent write failed'?tr('importFailed'):tr('importInvalid'))}finally{if(input)input.value=''}}
+function confirmEraseUserData(){confirmActionModal(tr('eraseTitle'),`<p>${tr('eraseConfirm')}</p>`,tr('eraseConfirmButton'),()=>{let ok=eraseAllUserData();settingsView();showToast(ok?tr('eraseDone'):tr('eraseFailed'))})}
+globalThis.QuadludUserData=Object.freeze({createExport:createUserDataExport,validateImport:portableImportBundle,importPackage:importUserDataPackage,erase:eraseAllUserData});
 $('#homeBtn').onclick=home;$('#themeBtn').onclick=cycleTheme;
 
 function statsView(){
@@ -3103,7 +3164,7 @@ function ensurePrecomputeWorker(){
   if(precomputeWorker)return precomputeWorker;
   if(typeof Worker==='undefined')return null;
   try{
-    let w=new Worker('./precompute-worker.js?v=2.23.0');
+    let w=new Worker('./precompute-worker.js?v=2.24.0');
     w.onmessage=e=>{
       let m=e.data||{};precomputeBusy=false;
       if(m.ok&&m.day===precomputeDay&&m.candidate&&precomputeCandidateCertified(m.game,m.diff,m.candidate)){
@@ -3176,7 +3237,7 @@ function precomputeStatus(){
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&precomputeStarted)setTimeout(()=>schedulePrecompute(),150)});
 
 function launch(game,diff){closePreviousAttempt();clearSaved();stopTimer();paused=false;setBusy(true);current={game,diff};requestAnimationFrame(()=>{try{if(game==='queens')queens(diff);if(game==='tango')tango(diff);if(game==='sudoku')sudoku(diff);if(game==='patches')patches(diff);historyInit(true);updateHistoryButtons();statsStart(current);startTimer(true,0,false);saveCurrent();haptic(8)}finally{setBusy(false);startBackgroundPrecompute(game,diff)}})}
-function resumeSaved(){let s=getSaved();if(!s)return home();stopTimer();let c=s.current;c.givens=c.givens?new Set(c.givens):c.givens;c.empty=c.empty?new Set(c.empty):c.empty;current=c;historyInit(false);if(c.game==='queens')renderQueens(c);if(c.game==='tango')renderTango(c);if(c.game==='sudoku')renderSudoku(c);if(c.game==='patches')renderPatches(c);startTimer(true,s.elapsed||0,!!s.paused);updatePauseButton();refreshExplorationPanel();showToast(tr('restored'));if(!c.training)startBackgroundPrecompute(c.game,c.diff)}
+function resumeSaved(){let s=getSaved();if(!s)return home();stopTimer();let c=DataSerialization.deserializeCurrentState(s.current);current=c;historyInit(false);if(c.game==='queens')renderQueens(c);if(c.game==='tango')renderTango(c);if(c.game==='sudoku')renderSudoku(c);if(c.game==='patches')renderPatches(c);startTimer(true,s.elapsed||0,!!s.paused);updatePauseButton();refreshExplorationPanel();showToast(tr('restored'));if(!c.training)startBackgroundPrecompute(c.game,c.diff)}
 
 
 function sudokuCandidatesAt(r,c){
