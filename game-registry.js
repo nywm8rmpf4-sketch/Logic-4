@@ -15,9 +15,18 @@
 
   if(!contract)throw new Error('QUADLUD game contract unavailable');
 
-  const VERSION=1;
+  const VERSION=2;
   function moduleCapability(globalName,nodePath,property=null){
     return ()=>{let module=resolveModule(globalName,nodePath);return property==null?module:module[property]};
+  }
+  function lazyModuleObjectCapability(globalName,nodePath,methods){
+    const proxy={};
+    for(const method of methods)proxy[method]=(...args)=>{
+      const module=resolveModule(globalName,nodePath),fn=module?.[method];
+      if(typeof fn!=='function')throw new Error(`QUADLUD game capability dependency unavailable: ${globalName}.${method}`);
+      return fn(...args)
+    };
+    const frozen=Object.freeze(proxy);return ()=>frozen
   }
   const CATALOG=Object.freeze([
     Object.freeze({
@@ -30,6 +39,8 @@
         publicPuzzleFromCandidate:moduleCapability('QuadludQueensGenerator','./queens-generator.js','publicPuzzleFromCandidate'),
         publicPuzzleFromSession:moduleCapability('QuadludQueensGenerator','./queens-generator.js','publicPuzzleFromSession'),
         sessionLifecycle:moduleCapability('QuadludGameSessionAdapters','./game-session-adapters.js','queens'),
+        uiLifecycle:lazyModuleObjectCapability('QuadludQueensUI','./queens-ui.js',['createAdapter']),
+        pedagogyLifecycle:lazyModuleObjectCapability('QuadludQueensPedagogy','./queens-pedagogy.js',['createAdapter','dependencyNames']),
         generationIdentity:moduleCapability('QuadludQueensGenerator','./queens-generator.js','generationIdentity')
       })
     }),
@@ -42,7 +53,9 @@
         canonicalizePublicPuzzle:moduleCapability('TangoDifficulty','./tango-difficulty.js','canonicalizePublicPuzzle'),
         publicPuzzleFromCandidate:moduleCapability('QuadludTangoGenerator','./tango-generator.js','publicPuzzleFromCandidate'),
         publicPuzzleFromSession:moduleCapability('QuadludTangoGenerator','./tango-generator.js','publicPuzzleFromSession'),
-        sessionLifecycle:moduleCapability('QuadludGameSessionAdapters','./game-session-adapters.js','tango')
+        sessionLifecycle:moduleCapability('QuadludGameSessionAdapters','./game-session-adapters.js','tango'),
+        uiLifecycle:lazyModuleObjectCapability('QuadludTangoUI','./tango-ui.js',['createAdapter']),
+        pedagogyLifecycle:lazyModuleObjectCapability('QuadludTangoPedagogy','./tango-pedagogy.js',['createAdapter','dependencyNames'])
       })
     }),
     Object.freeze({
@@ -54,7 +67,9 @@
         canonicalizePublicPuzzle:moduleCapability('SudokuDifficulty','./sudoku-difficulty.js','canonicalizePublicPuzzle'),
         publicPuzzleFromCandidate:moduleCapability('QuadludSudokuGenerator','./sudoku-generator.js','publicPuzzleFromCandidate'),
         publicPuzzleFromSession:moduleCapability('QuadludSudokuGenerator','./sudoku-generator.js','publicPuzzleFromSession'),
-        sessionLifecycle:moduleCapability('QuadludGameSessionAdapters','./game-session-adapters.js','sudoku')
+        sessionLifecycle:moduleCapability('QuadludGameSessionAdapters','./game-session-adapters.js','sudoku'),
+        uiLifecycle:lazyModuleObjectCapability('QuadludSudokuUI','./sudoku-ui.js',['createAdapter']),
+        pedagogyLifecycle:lazyModuleObjectCapability('QuadludSudokuPedagogy','./sudoku-pedagogy.js',['createAdapter','dependencyNames'])
       })
     }),
     Object.freeze({
@@ -66,7 +81,9 @@
         canonicalizePublicPuzzle:moduleCapability('PatchesDifficulty','./patches-difficulty.js','canonicalizePublicPuzzle'),
         publicPuzzleFromCandidate:moduleCapability('QuadludPatchesGenerator','./patches-generator.js','publicPuzzleFromCandidate'),
         publicPuzzleFromSession:moduleCapability('QuadludPatchesGenerator','./patches-generator.js','publicPuzzleFromSession'),
-        sessionLifecycle:moduleCapability('QuadludGameSessionAdapters','./game-session-adapters.js','patches')
+        sessionLifecycle:moduleCapability('QuadludGameSessionAdapters','./game-session-adapters.js','patches'),
+        uiLifecycle:lazyModuleObjectCapability('QuadludPatchesUI','./patches-ui.js',['createAdapter']),
+        pedagogyLifecycle:lazyModuleObjectCapability('QuadludPatchesPedagogy','./patches-pedagogy.js',['createAdapter','dependencyNames'])
       })
     })
   ]);

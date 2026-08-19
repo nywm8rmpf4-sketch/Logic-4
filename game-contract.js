@@ -11,7 +11,7 @@
 })(typeof globalThis!=='undefined'?globalThis:this,function(){
   'use strict';
 
-  const VERSION=1;
+  const VERSION=4;
   const ID_PATTERN=/^[a-z][a-z0-9-]*$/;
   const METADATA_FIELDS=Object.freeze({
     labelKey:Object.freeze({required:true,type:'string'}),
@@ -26,7 +26,9 @@
     publicPuzzleFromCandidate:Object.freeze({required:false,type:'function'}),
     generationIdentity:Object.freeze({required:false,type:'function'}),
     publicPuzzleFromSession:Object.freeze({required:false,type:'function'}),
-    sessionLifecycle:Object.freeze({required:false,type:'object',methods:Object.freeze(['createGeneratedSession','validateVictory'])})
+    sessionLifecycle:Object.freeze({required:false,type:'object',methods:Object.freeze(['createGeneratedSession','snapshot','applySnapshot','hasProgress','resetState','historyChanges','normalizeHistoryAction','validateVictory'])}),
+    uiLifecycle:Object.freeze({required:false,type:'object',methods:Object.freeze(['createAdapter'])}),
+    pedagogyLifecycle:Object.freeze({required:false,type:'object',methods:Object.freeze(['createAdapter'])})
   });
   const REQUIRED_CAPABILITIES=Object.freeze(Object.keys(CAPABILITY_FIELDS).filter(name=>CAPABILITY_FIELDS[name].required));
   const OPTIONAL_CAPABILITIES=Object.freeze(Object.keys(CAPABILITY_FIELDS).filter(name=>!CAPABILITY_FIELDS[name].required));

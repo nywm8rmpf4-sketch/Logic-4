@@ -9,22 +9,22 @@
 /* v2.25/25.2: pure shared worker path.
    Load only the authoritative logic, rating and generation modules required to
    produce certified candidates. Application orchestration stays on the main thread. */
-importScripts('./game-contract.js?v=2.26.0');
-importScripts('./game-registry.js?v=2.26.0');
-importScripts('./queens-logic.js?v=2.26.0');
-importScripts('./difficulty-rating.js?v=2.26.0');
-importScripts('./queens-difficulty.js?v=2.26.0');
-importScripts('./tango-logic.js?v=2.26.0');
-importScripts('./tango-difficulty.js?v=2.26.0');
-importScripts('./sudoku-logic.js?v=2.26.0');
-importScripts('./sudoku-difficulty.js?v=2.26.0');
-importScripts('./patches-logic.js?v=2.26.0');
-importScripts('./patches-difficulty.js?v=2.26.0');
-importScripts('./generation-common.js?v=2.26.0');
-importScripts('./queens-generator.js?v=2.26.0');
-importScripts('./tango-generator.js?v=2.26.0');
-importScripts('./sudoku-generator.js?v=2.26.0');
-importScripts('./patches-generator.js?v=2.26.0');
+importScripts('./game-contract.js?v=2.30.0');
+importScripts('./game-registry.js?v=2.30.0');
+importScripts('./queens-logic.js?v=2.30.0');
+importScripts('./difficulty-rating.js?v=2.30.0');
+importScripts('./queens-difficulty.js?v=2.30.0');
+importScripts('./tango-logic.js?v=2.30.0');
+importScripts('./tango-difficulty.js?v=2.30.0');
+importScripts('./sudoku-logic.js?v=2.30.0');
+importScripts('./sudoku-difficulty.js?v=2.30.0');
+importScripts('./patches-logic.js?v=2.30.0');
+importScripts('./patches-difficulty.js?v=2.30.0');
+importScripts('./generation-common.js?v=2.30.0');
+importScripts('./queens-generator.js?v=2.30.0');
+importScripts('./tango-generator.js?v=2.30.0');
+importScripts('./sudoku-generator.js?v=2.30.0');
+importScripts('./patches-generator.js?v=2.30.0');
 
 function __build(game,diff,forbiddenKeys){
   let registry=self.QuadludGameRegistry;if(!registry)throw new Error('QUADLUD game registry unavailable');
