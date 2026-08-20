@@ -5,15 +5,15 @@
  * without prior written authorization is prohibited.
  */
 (function(root,factory){
-  const api=factory();
+  const api=factory(root);
   if(typeof module==='object'&&module.exports)module.exports=api;
   if(root)root.QuadludSudokuUI=api;
-})(typeof globalThis!=='undefined'?globalThis:this,function(){
+})(typeof globalThis!=='undefined'?globalThis:this,function(root){
   'use strict';
 
   const REQUIRED=[
     'document','query','shell','gameLabel','tr','gameRules','getCurrent','isPaused','touchSave',
-    'markBacktrack','haptic','updateScoreFlags','maybeAutoFinish','a11ySetupGrid','a11yCoord','a11ySetCell','sudokuIllegalCells',
+    'markBacktrack','haptic','updateScoreFlags','maybeAutoFinish','a11ySetupGrid','a11yCoord','a11ySetCell',
     'applyConfiguredIllegalClasses','applyUnjustifiedHighlights','checkVictory','hint','finish',
     'historySnapshotKey','closeHintNotice','clearHintFocus','historyRecord','saveCurrent'
   ];
@@ -24,10 +24,11 @@
 
     const {
       document,query,shell,gameLabel,tr,gameRules,getCurrent,isPaused,touchSave,markBacktrack,haptic,
-      updateScoreFlags,maybeAutoFinish,a11ySetupGrid,a11yCoord,a11ySetCell,sudokuIllegalCells,applyConfiguredIllegalClasses,
+      updateScoreFlags,maybeAutoFinish,a11ySetupGrid,a11yCoord,a11ySetCell,applyConfiguredIllegalClasses,
       applyUnjustifiedHighlights,checkVictory,hint,finish,historySnapshotKey,
       closeHintNotice,clearHintFocus,historyRecord,saveCurrent
     }=deps;
+    const sudokuIllegalCells=deps.sudokuIllegalCells||root?.sudokuIllegalCells;if(typeof sudokuIllegalCells!=='function')throw new Error('QUADLUD Grille 6 UI dependency unavailable: sudokuIllegalCells');
 
     function syncAccessibility(){
       const current=getCurrent(),board=query('#sboard');

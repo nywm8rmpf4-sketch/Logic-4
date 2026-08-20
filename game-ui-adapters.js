@@ -11,8 +11,9 @@
 })(typeof globalThis!=='undefined'?globalThis:this,function(){
   'use strict';
 
-  const VERSION=2;
+  const VERSION=3;
   const REQUIRED_METHODS=Object.freeze(['render','draw','reset']);
+  const ENTITY_METHODS=Object.freeze(['resolveEntity','focusEntities']);
 
   function normalizeId(id){
     if(typeof id!=='string'||!id.trim())throw new TypeError('QUADLUD Web UI adapter id must be a non-empty string');
@@ -21,6 +22,7 @@
   function validateAdapter(id,adapter){
     if(!adapter||(typeof adapter!=='object'&&typeof adapter!=='function'))throw new TypeError(`QUADLUD Web UI adapter unavailable: ${id}`);
     for(const method of REQUIRED_METHODS)if(typeof adapter[method]!=='function')throw new TypeError(`QUADLUD Web UI adapter "${id}" must expose ${method}()`);
+    for(const method of ENTITY_METHODS)if(Object.prototype.hasOwnProperty.call(adapter,method)&&typeof adapter[method]!=='function')throw new TypeError(`QUADLUD Web UI adapter "${id}" optional ${method} must be a function`);
     return adapter
   }
   function createCollection(ids,resolver){
@@ -41,8 +43,10 @@
       const adapter=validateAdapter(key,resolver(key));
       cache.set(key,adapter);return adapter
     }
-    return Object.freeze({ids:frozenIds,has,require:requireAdapter})
+    function resolveEntity(id,entity){const adapter=requireAdapter(id);if(typeof adapter.resolveEntity!=='function')throw new Error(`QUADLUD Web UI adapter "${id}" does not support EntityRef resolution`);return adapter.resolveEntity(entity)}
+    function focusEntities(id,focus){const adapter=requireAdapter(id);if(typeof adapter.focusEntities!=='function')throw new Error(`QUADLUD Web UI adapter "${id}" does not support EntityRef focus`);return adapter.focusEntities(focus)}
+    return Object.freeze({ids:frozenIds,has,require:requireAdapter,resolveEntity,focusEntities})
   }
 
-  return Object.freeze({VERSION,REQUIRED_METHODS,createCollection})
+  return Object.freeze({VERSION,REQUIRED_METHODS,ENTITY_METHODS,createCollection})
 });

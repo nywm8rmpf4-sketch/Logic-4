@@ -5,16 +5,16 @@
  * without prior written authorization is prohibited.
  */
 (function(root,factory){
-  const api=factory();
+  const api=factory(root);
   if(typeof module==='object'&&module.exports)module.exports=api;
   if(root)root.QuadludTangoUI=api;
-})(typeof globalThis!=='undefined'?globalThis:this,function(){
+})(typeof globalThis!=='undefined'?globalThis:this,function(root){
   'use strict';
 
   const REQUIRED=[
     'document','query','shell','gameLabel','tr','gameRules','getCurrent','isPaused','touchSave',
     'markBacktrack','haptic','updateScoreFlags','maybeAutoFinish','a11ySetupGrid','a11yCoord','a11ySetCell','keyCell',
-    'tangoIllegalCells','applyConfiguredIllegalClasses','applyUnjustifiedHighlights',
+    'applyConfiguredIllegalClasses','applyUnjustifiedHighlights',
     'checkVictory','hint','finish'
   ];
 
@@ -24,9 +24,10 @@
 
     const {
       document,query,shell,gameLabel,tr,gameRules,getCurrent,isPaused,touchSave,markBacktrack,
-      haptic,updateScoreFlags,maybeAutoFinish,a11ySetupGrid,a11yCoord,a11ySetCell,keyCell,tangoIllegalCells,
+      haptic,updateScoreFlags,maybeAutoFinish,a11ySetupGrid,a11yCoord,a11ySetCell,keyCell,
       applyConfiguredIllegalClasses,applyUnjustifiedHighlights,checkVictory,hint,finish
     }=deps;
+    const tangoIllegalCells=deps.tangoIllegalCells||root?.tangoIllegalCells;if(typeof tangoIllegalCells!=='function')throw new Error('QUADLUD Soleil-Lune UI dependency unavailable: tangoIllegalCells');
 
     function a11yRelations(current,r,c){
       const out=[];

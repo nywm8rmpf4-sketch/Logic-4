@@ -11,12 +11,12 @@
 })(typeof globalThis!=='undefined'?globalThis:this,function(){
   'use strict';
 
-  const VERSION=1;
+  const VERSION=2;
   const EVIDENCE_SCHEMA=1;
   const PRESENTATION_SCHEMA=1;
   const EVIDENCE_KIND='engine-deduction';
   const DERIVED_FIELDS=Object.freeze(['technique','focus','explanation','action']);
-  const FORBIDDEN_EVIDENCE_KEYS=Object.freeze(new Set(['sol','solution','hiddenSolution','solutionGrid','answerGrid']));
+  const FORBIDDEN_EVIDENCE_KEYS=Object.freeze(new Set(['sol','solution','hiddenSolution','solutionGrid','answerGrid','hiddenState','validationState']));
 
   function fail(message){throw new TypeError(`Invalid QUADLUD reasoning presentation: ${message}`)}
   function isPlainObject(value){
@@ -67,7 +67,23 @@
     if(Object.prototype.hasOwnProperty.call(source,'conclusions')&&!Array.isArray(source.conclusions))fail(`${path}.conclusions must be an array when present`);
     return frozenClone(source);
   }
+  function normalizeEntityRef(source,path){
+    if(!isPlainObject(source))fail(`${path} must be an EntityRef object`);
+    const keys=Object.keys(source);if(keys.some(key=>key!=='kind'&&key!=='id'))fail(`${path} may contain only kind and id`);
+    assertNonEmptyString(source.kind,`${path}.kind`);assertNonEmptyString(source.id,`${path}.id`);
+    return deepFreeze({kind:source.kind.trim(),id:source.id.trim()})
+  }
+  function normalizeGenericFocus(source,path='focus'){
+    if(!Array.isArray(source))fail(`${path} must be an array`);
+    return deepFreeze(source.map((item,index)=>{
+      if(!isPlainObject(item))fail(`${path}[${index}] must be a plain object`);
+      const keys=Object.keys(item);if(keys.some(key=>key!=='entity'&&key!=='role'))fail(`${path}[${index}] may contain only entity and role`);
+      assertNonEmptyString(item.role,`${path}[${index}].role`);
+      return deepFreeze({entity:normalizeEntityRef(item.entity,`${path}[${index}].entity`),role:item.role.trim()})
+    }))
+  }
   function normalizedFocus(primary){
+    if(Object.prototype.hasOwnProperty.call(primary,'focus'))return normalizeGenericFocus(primary.focus,'primary.focus');
     const out={};
     for(const field of ['focusCells','focusUnits','focusRelations','focusClues','focusRectangles']){
       if(Object.prototype.hasOwnProperty.call(primary,field))out[field]=primary[field];
@@ -132,7 +148,8 @@
   }
   function defaultFocusDerivation(primary){
     const refs=[];
-    for(const field of ['focusCells','focusUnits','focusRelations','focusClues','focusRectangles'])if(Object.prototype.hasOwnProperty.call(primary,field))refs.push(`primary.${field}`);
+    if(Object.prototype.hasOwnProperty.call(primary,'focus'))refs.push('primary.focus');
+    else for(const field of ['focusCells','focusUnits','focusRelations','focusClues','focusRectangles'])if(Object.prototype.hasOwnProperty.call(primary,field))refs.push(`primary.${field}`);
     return refs.length?refs:['primary.rule'];
   }
   function defineReasoningPresentation(source){
@@ -155,6 +172,7 @@
     };
     for(const field of DERIVED_FIELDS){
       assertSafeJson(supplied[field],field);
+      if(field==='focus'&&Array.isArray(supplied[field]))supplied.focus=normalizeGenericFocus(supplied.focus,'focus');
       const explicitlySupplied=Object.prototype.hasOwnProperty.call(source,field);
       if(explicitlySupplied&&supplied[field]!==null&&!Object.prototype.hasOwnProperty.call(derivation,field))fail(`${field} requires explicit evidence derivation paths`);
     }

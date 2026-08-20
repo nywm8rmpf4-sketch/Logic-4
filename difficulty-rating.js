@@ -104,7 +104,8 @@ function runMinimumRequiredTier(options){
   assertObject(options,'Minimum-tier runner options are required');
   assertObject(options.adapter,'Difficulty tier adapter is required');
   if(typeof options.adapter.solveTier!=='function')throw new Error('Difficulty tier adapter must expose solveTier()');
-  let initialPuzzle=canonicalizePublicPuzzle(options.puzzle),attempts=[];
+  let canonicalizer=typeof options.canonicalizePublicPuzzle==='function'?options.canonicalizePublicPuzzle:canonicalizePublicPuzzle;
+  let initialPuzzle=canonicalizer(options.puzzle),attempts=[];
   for(const tier of TIER_DEFINITIONS){
     let attemptPuzzle=copy(initialPuzzle);
     let raw=options.adapter.solveTier({puzzle:attemptPuzzle,tier:tier.key,tierIndex:tier.index});
@@ -117,7 +118,7 @@ function runMinimumRequiredTier(options){
         minimumRequiredTier:tier.index,
         attempts:copy(attempts),
         winningAttempt:copy(attempt),
-        profile:createDifficultyProfile({puzzle:initialPuzzle,status:'solved',difficulty:tier.key,minimumRequiredTier:tier.index,budgetHit:attempt.budgetHit,...profileMetricsFromResult(attempt.result)})
+        profile:createDifficultyProfileFromCanonical({puzzle:initialPuzzle,status:'solved',difficulty:tier.key,minimumRequiredTier:tier.index,budgetHit:attempt.budgetHit,...profileMetricsFromResult(attempt.result)})
       };
     }
     if(attempt.status==='blocked')continue;
@@ -127,7 +128,7 @@ function runMinimumRequiredTier(options){
       minimumRequiredTier:null,
       attempts:copy(attempts),
       winningAttempt:null,
-      profile:createDifficultyProfile({puzzle:initialPuzzle,status:attempt.status,budgetHit:attempt.budgetHit,...profileMetricsFromResult(attempt.result)})
+      profile:createDifficultyProfileFromCanonical({puzzle:initialPuzzle,status:attempt.status,budgetHit:attempt.budgetHit,...profileMetricsFromResult(attempt.result)})
     };
   }
   return {
@@ -136,13 +137,14 @@ function runMinimumRequiredTier(options){
     minimumRequiredTier:null,
     attempts:copy(attempts),
     winningAttempt:null,
-    profile:createDifficultyProfile({puzzle:initialPuzzle,status:'blocked',...profileMetricsFromResult(attempts[attempts.length-1]?.result)})
+    profile:createDifficultyProfileFromCanonical({puzzle:initialPuzzle,status:'blocked',...profileMetricsFromResult(attempts[attempts.length-1]?.result)})
   };
 }
 
-function createDifficultyProfile(options){
+function createDifficultyProfileFromCanonical(options){
   assertObject(options,'DifficultyProfile options are required');
-  let puzzle=options.puzzle,publicPuzzle=canonicalizePublicPuzzle(puzzle),status=options.status??'blocked';if(!STATUSES.includes(status))throw new Error('Invalid difficulty status');
+  let publicPuzzle=copy(options.puzzle);assertObject(publicPuzzle,'Canonical public puzzle is required');if(!String(publicPuzzle.game||''))throw new Error('Canonical public puzzle game is required');
+  let status=options.status??'blocked';if(!STATUSES.includes(status))throw new Error('Invalid difficulty status');
   let minimumRequiredTier=tierIndex(options.minimumRequiredTier),difficulty=options.difficulty==null?tierKey(minimumRequiredTier):tierKey(options.difficulty);
   if(minimumRequiredTier!=null&&difficulty!=null&&tierKey(minimumRequiredTier)!==difficulty)throw new Error('Difficulty and minimumRequiredTier disagree');
   let limitingTechniqueLevel=options.limitingTechniqueLevel==null?null:Number(options.limitingTechniqueLevel);if(limitingTechniqueLevel!=null&&(!Number.isInteger(limitingTechniqueLevel)||limitingTechniqueLevel<0))throw new Error('Invalid limiting technique level');
@@ -169,11 +171,15 @@ function createDifficultyProfile(options){
     fingerprint:fingerprintCanonical(publicPuzzle)
   };
 }
+function createDifficultyProfile(options){
+  assertObject(options,'DifficultyProfile options are required');
+  return createDifficultyProfileFromCanonical({...options,puzzle:canonicalizePublicPuzzle(options.puzzle)});
+}
 
 root.DifficultyRating={
   VERSION,SCHEMA_VERSION,RATING_VERSION,FINGERPRINT_VERSION,GENERATOR_VERSION,
   TIER_DEFINITIONS,TIER_KEYS,STATUSES,GAMES,
-  canonicalizePublicPuzzle,canonicalString,fingerprintPublicPuzzle,ratePuzzle,createDifficultyProfile,runMinimumRequiredTier,tierIndex,tierKey,
+  canonicalizePublicPuzzle,canonicalString,fingerprintCanonical,fingerprintPublicPuzzle,ratePuzzle,createDifficultyProfile,createDifficultyProfileFromCanonical,runMinimumRequiredTier,tierIndex,tierKey,
   createAvailabilityTracker,recordAvailableMoves,availabilityMetrics
 };
 if(typeof module!=='undefined'&&module.exports)module.exports=root.DifficultyRating;

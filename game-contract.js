@@ -11,12 +11,14 @@
 })(typeof globalThis!=='undefined'?globalThis:this,function(){
   'use strict';
 
-  const VERSION=4;
+  const VERSION=7;
   const ID_PATTERN=/^[a-z][a-z0-9-]*$/;
   const METADATA_FIELDS=Object.freeze({
     labelKey:Object.freeze({required:true,type:'string'}),
     descriptionKey:Object.freeze({required:false,type:'string'}),
-    challengeCode:Object.freeze({required:false,type:'string',pattern:/^[A-Z]$/})
+    challengeCode:Object.freeze({required:false,type:'string',pattern:/^[A-Z]$/}),
+    icon:Object.freeze({required:false,type:'string'}),
+    victoryClass:Object.freeze({required:false,type:'string'})
   });
   const CAPABILITY_FIELDS=Object.freeze({
     logic:Object.freeze({required:true,type:'object',methods:Object.freeze(['createSession'])}),
@@ -26,9 +28,11 @@
     publicPuzzleFromCandidate:Object.freeze({required:false,type:'function'}),
     generationIdentity:Object.freeze({required:false,type:'function'}),
     publicPuzzleFromSession:Object.freeze({required:false,type:'function'}),
-    sessionLifecycle:Object.freeze({required:false,type:'object',methods:Object.freeze(['createGeneratedSession','snapshot','applySnapshot','hasProgress','resetState','historyChanges','normalizeHistoryAction','validateVictory'])}),
+    sessionLifecycle:Object.freeze({required:false,type:'object',methods:Object.freeze(['createGeneratedSession','snapshot','applySnapshot','hasProgress','resetState','historyChanges','normalizeHistoryAction','validateVictory']),optionalMethods:Object.freeze(['reasoningView','applyLogicalMove'])}),
     uiLifecycle:Object.freeze({required:false,type:'object',methods:Object.freeze(['createAdapter'])}),
-    pedagogyLifecycle:Object.freeze({required:false,type:'object',methods:Object.freeze(['createAdapter'])})
+    pedagogyLifecycle:Object.freeze({required:false,type:'object',methods:Object.freeze(['createAdapter'])}),
+    reasoningLifecycle:Object.freeze({required:false,type:'object',methods:Object.freeze(['createPresenter'])}),
+    i18n:Object.freeze({required:false,type:'object',methods:Object.freeze([])})
   });
   const REQUIRED_CAPABILITIES=Object.freeze(Object.keys(CAPABILITY_FIELDS).filter(name=>CAPABILITY_FIELDS[name].required));
   const OPTIONAL_CAPABILITIES=Object.freeze(Object.keys(CAPABILITY_FIELDS).filter(name=>!CAPABILITY_FIELDS[name].required));
@@ -51,6 +55,7 @@
     if(spec.type==='object'){
       if(!value||typeof value!=='object'&&typeof value!=='function')fail(`capability "${name}" must be an object`);
       for(const method of spec.methods||[])if(typeof value[method]!=='function')fail(`capability "${name}" must expose ${method}()`);
+      for(const method of spec.optionalMethods||[])if(Object.prototype.hasOwnProperty.call(value,method)&&typeof value[method]!=='function')fail(`capability "${name}" optional method ${method} must be a function`);
       return;
     }
     fail(`unsupported capability contract for "${name}"`);

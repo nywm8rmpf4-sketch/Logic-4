@@ -10,7 +10,7 @@
   if(root)root.QuadludPedagogyMetadata=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(){
   'use strict';
-  const VERSION=1,CATALOG_SCHEMA=1,RULE_METADATA_SCHEMA=1;
+  const VERSION=2,CATALOG_SCHEMA=1,RULE_METADATA_SCHEMA=1;
   const freeze=v=>{if(!v||typeof v!=='object'||Object.isFrozen(v))return v;for(const x of Object.values(v))freeze(x);return Object.freeze(v)};
   const clone=v=>v==null?v:JSON.parse(JSON.stringify(v));
 
@@ -46,7 +46,14 @@
     P_MANDATORY_CELL:{game:'patches',rank:0,kind:'mandatoryCell'},
     P_SINGLE_RECTANGLE:{game:'patches',rank:0,kind:'singleRectangle'},
     P_CONTRADICTION_R1:{game:'patches',rank:1,kind:'contradiction'},
-    P_CONTRADICTION_R2:{game:'patches',rank:2,kind:'contradiction'}
+    P_CONTRADICTION_R2:{game:'patches',rank:2,kind:'contradiction'},
+
+    N_EMPTY_LINE:{game:'nonogram',rank:0,kind:'emptyLine'},
+    N_EXACT_FIT:{game:'nonogram',rank:0,kind:'exactFit'},
+    N_OVERLAP:{game:'nonogram',rank:1,kind:'overlap'},
+    N_BLOCK_EXTENSION:{game:'nonogram',rank:2,kind:'blockExtension'},
+    N_BLOCK_BOUNDARY:{game:'nonogram',rank:2,kind:'blockBoundary'},
+    N_FORCED_EMPTY:{game:'nonogram',rank:3,kind:'forcedEmpty'}
   });
 
   // Engine-facing IDs that existed in the v2.27 presenter mapping but were not curriculum cards.
@@ -57,7 +64,8 @@
     S_HIDDEN_PAIR:{game:'sudoku',listed:false,tracked:false,statsKey:null},
     S_NAKED_TRIPLE:{game:'sudoku',listed:false,tracked:false,statsKey:null},
     S_HIDDEN_TRIPLE:{game:'sudoku',listed:false,tracked:false,statsKey:null},
-    S_COMMON_CONSEQUENCE:{game:'sudoku',listed:false,tracked:false,statsKey:null}
+    S_COMMON_CONSEQUENCE:{game:'sudoku',listed:false,tracked:false,statsKey:null},
+    N_CONTRADICTION:{game:'nonogram',listed:false,tracked:false,statsKey:null}
   });
 
   const TECHNIQUES=freeze(Object.fromEntries([
@@ -71,7 +79,8 @@
     queens:{direct:'Q_UNIQUE_REGION',contradiction:{1:'Q_CONTRADICTION_R1',2:'Q_CONTRADICTION_R2',3:'Q_CONTRADICTION_R3'}},
     tango:{direct:'T_NO_THREE',contradiction:{1:'T_CONTRADICTION_R1',2:'T_CONTRADICTION_R2'}},
     sudoku:{direct:'S_NAKED_SINGLE',contradiction:{1:'S_CONTRADICTION_R1',2:'S_CONTRADICTION_R2'}},
-    patches:{direct:'P_MANDATORY_CELL',contradiction:{1:'P_CONTRADICTION_R1',2:'P_CONTRADICTION_R2'}}
+    patches:{direct:'P_MANDATORY_CELL',contradiction:{1:'P_CONTRADICTION_R1',2:'P_CONTRADICTION_R2'}},
+    nonogram:{direct:'N_EXACT_FIT',contradiction:{}}
   });
 
   const RULES=freeze({
@@ -124,6 +133,15 @@
       LOCAL_DOMAIN_SUPPORT:{techniqueId:'P_CONTRADICTION_R1'},
       ASSUMPTION_CONTRADICTION:{techniqueId:'P_CONTRADICTION_R2'},
       COMMON_CONSEQUENCE:{techniqueId:'P_CONTRADICTION_R2'}
+    },
+    nonogram:{
+      N_EMPTY_LINE:{techniqueId:'N_EMPTY_LINE'},
+      N_EXACT_FIT:{techniqueId:'N_EXACT_FIT'},
+      N_OVERLAP:{techniqueId:'N_OVERLAP'},
+      N_BLOCK_EXTENSION:{techniqueId:'N_BLOCK_EXTENSION'},
+      N_BLOCK_BOUNDARY:{techniqueId:'N_BLOCK_BOUNDARY'},
+      N_FORCED_EMPTY:{techniqueId:'N_FORCED_EMPTY'},
+      N_CONTRADICTION:{techniqueId:null}
     }
   });
 

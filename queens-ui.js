@@ -5,16 +5,16 @@
  * without prior written authorization is prohibited.
  */
 (function(root,factory){
-  const api=factory();
+  const api=factory(root);
   if(typeof module==='object'&&module.exports)module.exports=api;
   if(root)root.QuadludQueensUI=api;
-})(typeof globalThis!=='undefined'?globalThis:this,function(){
+})(typeof globalThis!=='undefined'?globalThis:this,function(root){
   'use strict';
 
   const REQUIRED=[
-    'document','query','shell','gameLabel','difficultyLabel','tr','gameRules','regionColors','getCurrent','isPaused',
+    'document','query','shell','gameLabel','difficultyLabel','tr','gameRules','getCurrent','isPaused',
     'getPrefs','savePrefs','historySnapshotKey','historyRecord','saveCurrent','closeHintNotice','clearHintFocus',
-    'markBacktrack','haptic','maybeAutoFinish','a11ySetupGrid','a11yAnnounce','a11yCoord','a11ySetCell','queenIllegalCells',
+    'markBacktrack','haptic','maybeAutoFinish','a11ySetupGrid','a11yAnnounce','a11yCoord','a11ySetCell',
     'applyConfiguredIllegalClasses','applyUnjustifiedHighlights','updateScoreFlags',
     'checkVictory','hint','finish','showToast'
   ];
@@ -24,11 +24,13 @@
     for(const name of REQUIRED)if(deps[name]==null)throw new Error(`QUADLUD Couronnes UI dependency unavailable: ${name}`);
 
     const {
-      document,query,shell,gameLabel,difficultyLabel,tr,gameRules,regionColors,getCurrent,isPaused,getPrefs,savePrefs,
+      document,query,shell,gameLabel,difficultyLabel,tr,gameRules,getCurrent,isPaused,getPrefs,savePrefs,
       historySnapshotKey,historyRecord,saveCurrent,closeHintNotice,clearHintFocus,markBacktrack,haptic,maybeAutoFinish,
-      a11ySetupGrid,a11yAnnounce,a11yCoord,a11ySetCell,queenIllegalCells,applyConfiguredIllegalClasses,applyUnjustifiedHighlights,
+      a11ySetupGrid,a11yAnnounce,a11yCoord,a11ySetCell,applyConfiguredIllegalClasses,applyUnjustifiedHighlights,
       updateScoreFlags,checkVictory,hint,finish,showToast
     }=deps;
+    const regionColors=deps.regionColors||root?.QuadludQueensRuntime?.regionColors||['#f6d68a','#c9dca5','#b9d8e9','#d9c4e8','#f3b8ad','#b5dbc9','#e7c9a3','#c6c7e9','#c4dfd7'];
+    const queenIllegalCells=deps.queenIllegalCells||root?.queenIllegalCells;if(typeof queenIllegalCells!=='function')throw new Error('QUADLUD Couronnes UI dependency unavailable: queenIllegalCells');
 
     function autoCrossEnabled(){return getPrefs().queenAutoCross===true}
     function setAutoCross(value){const prefs=getPrefs();prefs.queenAutoCross=!!value;savePrefs(prefs)}

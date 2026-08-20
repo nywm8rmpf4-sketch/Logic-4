@@ -5,12 +5,13 @@
  */
 'use strict';
 const $=s=>document.querySelector(s), app=$('#app'), toast=$('#toast'), timerEl=$('#timer');
-const VERSION='2.30.0';
+const VERSION='2.32.0';
 const WebPlatform=QuadludWebPlatform.getWebPlatform();
 const DataSerialization=QuadludDataSerialization;
 const SessionCore=QuadludSessionCore;
 const GameRegistry=QuadludGameRegistry;
 const SessionHistory=SessionCore.createHistoryController(game=>gameSessionLifecycle(game));
+const LogicalTransactions=QuadludLogicalMove.createTransactionController({history:SessionHistory,resolveLifecycle:game=>gameSessionLifecycle(game)});
 const PedagogyMetadata=QuadludPedagogyMetadata;
 const GAME_IDS=GameRegistry.IDS;
 const PersistentData=globalThis.QuadludPersistentDataServices||QuadludPersistenceServices.createServices({storage:QuadludWebStorage.getLocalStorageAdapter(),serialization:DataSerialization});
@@ -143,47 +144,12 @@ function markHintUsed(){if(current&&!current.completed)current.hintUsed=true}
 function aidBadges(c,compact=false){let a=[];if(c?.backtrackUsed)a.push(`<span class="aid-badge backtrack" title="${tr('backtrackFlag')}">↶${compact?'':` ${tr('backtrackFlag')}`}</span>`);if(c?.hintUsed)a.push(`<span class="aid-badge hint-used" title="${tr('hintFlag')}">💡${compact?'':` ${tr('hintFlag')}`}</span>`);return a.join(' ')}
 function updateScoreFlags(){let m=document.querySelector('.difficulty-meter');if(!m||!current)return;let old=m.querySelector('.live-aids');if(old)old.remove();let h=document.createElement('span');h.className='live-aids';h.innerHTML=aidBadges(current,true);m.appendChild(h)}
 function keyCell(r,c){return r+','+c}
-function queenIllegalCells(){
-  let bad=new Set(),q=[];for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(current.state[r][c]===2)q.push([r,c]);
-  for(let i=0;i<q.length;i++)for(let j=i+1;j<q.length;j++){let [r,c]=q[i],[r2,c2]=q[j];if(r===r2||c===c2||current.reg[r][c]===current.reg[r2][c2]||(Math.abs(r-r2)<=1&&Math.abs(c-c2)<=1)){bad.add(keyCell(r,c));bad.add(keyCell(r2,c2))}}
-  return bad
-}
-function tangoIllegalCells(ignoreKey=null){
-  let bad=new Set(),n=6,s=current.state,hasIgnore=cells=>ignoreKey&&cells.some(x=>keyCell(...x)===ignoreKey);
-  for(let r=0;r<n;r++){
-    for(let v=0;v<=1;v++){let cells=[];for(let c=0;c<n;c++)if(s[r][c]===v)cells.push([r,c]);if(cells.length>3&&!hasIgnore(cells))cells.forEach(x=>bad.add(keyCell(...x)))}
-    for(let c=0;c<n-2;c++)if(s[r][c]!==-1&&s[r][c]===s[r][c+1]&&s[r][c]===s[r][c+2]){let cells=[[r,c],[r,c+1],[r,c+2]];if(!hasIgnore(cells))cells.forEach(x=>bad.add(keyCell(...x)))}
-  }
-  for(let c=0;c<n;c++){
-    for(let v=0;v<=1;v++){let cells=[];for(let r=0;r<n;r++)if(s[r][c]===v)cells.push([r,c]);if(cells.length>3&&!hasIgnore(cells))cells.forEach(x=>bad.add(keyCell(...x)))}
-    for(let r=0;r<n-2;r++)if(s[r][c]!==-1&&s[r][c]===s[r+1][c]&&s[r][c]===s[r+2][c]){let cells=[[r,c],[r+1,c],[r+2,c]];if(!hasIgnore(cells))cells.forEach(x=>bad.add(keyCell(...x)))}
-  }
-  for(let [r,c,d,rel] of current.edges){
-    let r2=d==='r'?r:r+1,c2=d==='r'?c+1:c,a=s[r][c],b=s[r2][c2],cells=[[r,c],[r2,c2]];
-    if(a!==-1&&b!==-1&&!hasIgnore(cells)&&((rel==='='&&a!==b)||(rel==='×'&&a===b)))cells.forEach(x=>bad.add(keyCell(...x)))
-  }
-  return bad
-}
-function sudokuIllegalCells(){
-  let bad=new Set(),s=current.state;
-  function dup(cells){let by={};for(let [r,c] of cells){let v=s[r][c];if(!v)continue;(by[v]??=[]).push([r,c])}for(let a of Object.values(by))if(a.length>1)a.forEach(x=>bad.add(keyCell(...x)))}
-  for(let r=0;r<6;r++)dup(Array.from({length:6},(_,c)=>[r,c]));for(let c=0;c<6;c++)dup(Array.from({length:6},(_,r)=>[r,c]));
-  for(let br=0;br<6;br+=2)for(let bc=0;bc<6;bc+=3){let a=[];for(let r=br;r<br+2;r++)for(let c=bc;c<bc+3;c++)a.push([r,c]);dup(a)}
-  return bad
-}
-function patchVisibleIssueForId(id){
-  let n=current.n,cells=[];for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.paint[r][c]===id)cells.push([r,c]);if(!cells.length)return null;
-  let cl=current.clues[id],own=cl.pos,foreign=[];for(const other of current.ids){let p=current.clues[other].pos;if(other!==id&&cells.some(([r,c])=>r===p[0]&&c===p[1]))foreign.push(p)}
-  if(foreign.length)return {rule:'P_TWO_CLUES',cells:[...cells,own,...foreign],target:foreign[0],region:id};
-  let rs=cells.map(x=>x[0]),cs=cells.map(x=>x[1]),h=Math.max(...rs)-Math.min(...rs)+1,w=Math.max(...cs)-Math.min(...cs)+1,selected=current.patchSelectedRects?.[id];
-  if((cl.mode==='size'||cl.mode==='both')&&(cells.length>cl.size||h*w>cl.size||(selected&&h*w!==cl.size)))return {rule:'P_SIZE',cells:[...cells,own],target:cells[cells.length-1],region:id};
-  if(selected&&(cl.mode==='shape'||cl.mode==='both')){let sh=h===w?'carré':h>w?'vertical':'horizontal';if(sh!==cl.shape)return {rule:'P_SHAPE',cells:[...cells,own],target:cells[cells.length-1],region:id}}
-  return null
-}
-function patchLogicVisibleContradiction(){if(!patchesLogicAvailable())return null;let w;try{w=patchesLogicSession().diagnoseBasic()}catch(_){return null}if(!w)return null;if(w.kind==='NO_COVER_FOR_CELL')return {rule:'P_NO_COVER',cells:[w.cell],target:w.cell,logicContradiction:w};if(w.kind==='NO_CANDIDATE_FOR_CLUE'||w.kind==='SHAPE_IMPOSSIBLE')return {rule:'P_NO_CANDIDATE',cells:[current.clues[w.clue].pos],target:current.clues[w.clue].pos,region:w.clue,logicContradiction:w};if(w.kind==='AREA_OVERFLOW')return {rule:'P_SIZE',cells:w.cells||[current.clues[w.clue].pos],target:current.clues[w.clue].pos,region:w.clue,logicContradiction:w};if(w.kind==='OWNER_CONFLICT')return {rule:'P_OWNER_CONFLICT',cells:w.cell?[w.cell]:[],target:w.cell||null,logicContradiction:w};if(w.kind==='SELECTED_OVERLAP')return {rule:'P_OVERLAP',cells:(w.rectangles||[]).flatMap(x=>PatchesLogic.helpers.rectCells(x)),target:null,logicContradiction:w};if(w.kind==='COVERAGE_DEFICIT'||w.kind==='NO_LOCAL_COMPLETION')return {rule:'P_LOGIC_CONTRADICTION',cells:w.cells||[],target:w.cell||null,logicContradiction:w};return null}
-function patchIllegalCells(){
-  let bad=new Set();for(const id of current.ids){let e=patchVisibleIssueForId(id);for(const [r,c] of e?.cells||[])bad.add(keyCell(r,c))}return bad
-}
+
+
+
+
+
+
 function applyIllegalClasses(board,bad,n){if(!board)return;[...board.children].forEach((d,i)=>d.classList.toggle('illegal',bad.has(keyCell(Math.floor(i/n),i%n))))}
 function illegalAlertsEnabled(){return prefs().notifyIllegal!==false}
 function unjustifiedAlertsEnabled(){return prefs().notifyUnjustified!==false}
@@ -203,66 +169,31 @@ function errorUsage(kind,technique=null){
   u[kind]=(u[kind]||0)+1;
   if(kind==='detected'&&technique&&PEDAGOGY_TECHNIQUES[technique])masteryRecord(technique,'errors')
 }
-function queenErrorFromAction(action){
-  for(let ch of changedTargets(action).filter(x=>x.to===2)){
-    let {row:r,column:c}=ch;
-    for(let rr=0;rr<current.n;rr++)for(let cc=0;cc<current.n;cc++)if((rr!==r||cc!==c)&&current.state[rr][cc]===2){
-      if(rr===r)return {rule:'Q_ROW',technique:'Q_EXCLUSION_ROW',cells:[[r,c],[rr,cc]],target:[r,c],other:[rr,cc]};
-      if(cc===c)return {rule:'Q_COLUMN',technique:'Q_EXCLUSION_COLUMN',cells:[[r,c],[rr,cc]],target:[r,c],other:[rr,cc]};
-      if(current.reg[rr][cc]===current.reg[r][c])return {rule:'Q_REGION',technique:'Q_EXCLUSION_REGION',cells:[[r,c],[rr,cc]],target:[r,c],other:[rr,cc],region:current.reg[r][c]};
-      if(Math.abs(rr-r)<=1&&Math.abs(cc-c)<=1)return {rule:'Q_ADJACENCY',technique:'Q_EXCLUSION_ADJACENCY',cells:[[r,c],[rr,cc]],target:[r,c],other:[rr,cc]}
-    }
-  }
-  return null
-}
-function tangoErrorFromAction(action){
-  let ignore=current.tangoPendingCell?keyCell(...current.tangoPendingCell):null,bad=tangoIllegalCells(ignore);
-  for(let ch of changedTargets(action)){
-    let r=ch.row,c=ch.column,v=current.state[r]?.[c];if(v==null||v===-1||!bad.has(keyCell(r,c)))continue;
-    let rowSame=[];for(let cc=0;cc<6;cc++)if(current.state[r][cc]===v)rowSame.push([r,cc]);
-    if(rowSame.length>3)return {rule:'T_BALANCE_ROW',technique:'T_BALANCE_ROW',cells:rowSame,target:[r,c],value:v};
-    let colSame=[];for(let rr=0;rr<6;rr++)if(current.state[rr][c]===v)colSame.push([rr,c]);
-    if(colSame.length>3)return {rule:'T_BALANCE_COLUMN',technique:'T_BALANCE_COLUMN',cells:colSame,target:[r,c],value:v};
-    for(let cc=Math.max(0,c-2);cc<=Math.min(c,3);cc++){
-      let cells=[[r,cc],[r,cc+1],[r,cc+2]],vals=cells.map(([rr,ccc])=>current.state[rr][ccc]);
-      if(vals[0]!==-1&&vals[0]===vals[1]&&vals[1]===vals[2])return {rule:'T_NO_THREE',technique:'T_NO_THREE',cells,target:[r,c],value:v}
-    }
-    for(let rr=Math.max(0,r-2);rr<=Math.min(r,3);rr++){
-      let cells=[[rr,c],[rr+1,c],[rr+2,c]],vals=cells.map(([rrr,cc])=>current.state[rrr][cc]);
-      if(vals[0]!==-1&&vals[0]===vals[1]&&vals[1]===vals[2])return {rule:'T_NO_THREE',technique:'T_NO_THREE',cells,target:[r,c],value:v}
-    }
-    for(let [er,ec,d,rel] of current.edges){
-      let r2=d==='r'?er:er+1,c2=d==='r'?ec+1:ec;
-      if(!((er===r&&ec===c)||(r2===r&&c2===c)))continue;
-      let a=current.state[er][ec],b=current.state[r2][c2];
-      if(a!==-1&&b!==-1&&((rel==='='&&a!==b)||(rel==='×'&&a===b))){
-        return {rule:rel==='='?'T_RELATION_EQUAL':'T_RELATION_OPPOSITE',technique:rel==='='?'T_RELATION_EQUAL':'T_RELATION_OPPOSITE',cells:[[er,ec],[r2,c2]],target:[r,c],relation:rel}
-      }
-    }
-  }
-  return null
-}
-function sudokuErrorFromAction(action){
-  let bad=sudokuIllegalCells();
-  for(let ch of changedTargets(action)){
-    let r=ch.row,c=ch.column,v=current.state[r]?.[c];if(!v||!bad.has(keyCell(r,c)))continue;
-    for(let cc=0;cc<6;cc++)if(cc!==c&&current.state[r][cc]===v)return {rule:'S_ROW_DUPLICATE',cells:[[r,c],[r,cc]],target:[r,c],other:[r,cc],value:v};
-    for(let rr=0;rr<6;rr++)if(rr!==r&&current.state[rr][c]===v)return {rule:'S_COLUMN_DUPLICATE',cells:[[r,c],[rr,c]],target:[r,c],other:[rr,c],value:v};
-    let br=Math.floor(r/2)*2,bc=Math.floor(c/3)*3;
-    for(let rr=br;rr<br+2;rr++)for(let cc=bc;cc<bc+3;cc++)if((rr!==r||cc!==c)&&current.state[rr][cc]===v)return {rule:'S_BOX_DUPLICATE',cells:[[r,c],[rr,cc]],target:[r,c],other:[rr,cc],value:v}
-  }
-  return null
-}
-function patchErrorFromAction(action){
-  let ids=new Set();if(action?.region!=null)ids.add(Number(action.region));for(const ch of changedTargets(action))if(ch.to!=null)ids.add(Number(ch.to));
-  for(const id of ids){if(!current.ids.includes(id))continue;let e=patchVisibleIssueForId(id);if(e)return e}
-  let logic=patchLogicVisibleContradiction();return logic||null
-}
 
-// 29.5B — registry-driven pedagogy/audit lifecycle. Generic orchestration never dispatches product game IDs.
-let gamePedagogyAdapterCollection=null;
+
+
+
+
+// 29.5B / REF-1 — registry-driven pedagogy/audit lifecycle + reasoning-visible boundary.
+let gamePedagogyAdapterCollection=null,sessionReasoningViewResolver=null;
+function reasoningViewForSession(session=current){
+  if(!session?.game)return null;
+  if(typeof QuadludReasoningView==='undefined')throw new Error('QUADLUD reasoning-view contract unavailable');
+  if(!sessionReasoningViewResolver)sessionReasoningViewResolver=QuadludReasoningView.createResolver({
+    resolveSessionLifecycle:game=>GameRegistry.requireCapability(game,'sessionLifecycle'),
+    resolvePublicPuzzleFromSession:game=>GameRegistry.requireCapability(game,'publicPuzzleFromSession')
+  });
+  return sessionReasoningViewResolver(session)
+}
 const PEDAGOGY_COMMON_SERVICES=Object.freeze({
   getCurrent:()=>current,
+  reasoningView:()=>reasoningViewForSession(current),
+  applyLogicalMove:move=>{
+    if(!current?.game)return false;
+    const lifecycle=GameRegistry.requireCapability(current.game,'sessionLifecycle');
+    if(typeof lifecycle.applyLogicalMove!=='function')return false;
+    lifecycle.applyLogicalMove(current,move);return true
+  },
   cloneGrid,
   drawGameUi,
   lang:()=>lang,
@@ -279,8 +210,10 @@ function bindPedagogyRuntimeDependencies(names=[]){
   return Object.freeze(out)
 }
 function gamePedagogyDependencies(game,lifecycle){
+  const sessionLifecycle=GameRegistry.requireCapability(game,'sessionLifecycle'),common={...PEDAGOGY_COMMON_SERVICES};
+  if(typeof sessionLifecycle.reasoningView==='function')delete common.getCurrent;
   return {
-    common:PEDAGOGY_COMMON_SERVICES,
+    common:Object.freeze(common),
     gameUi:()=>gameWebUi(game),
     runtime:bindPedagogyRuntimeDependencies(typeof lifecycle?.dependencyNames==='function'?lifecycle.dependencyNames():[])
   }
@@ -305,53 +238,13 @@ function errorSignature(e){
 function normalizeVisibleError(e){
   return e?{...e,schema:1,source:'visible-state',game:current?.game||e.game,at:WebPlatform.clock.nowMs(),canReturn:false}:null
 }
-function queenVisibleErrors(){
-  let out=[],q=[];for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(current.state[r][c]===2)q.push([r,c]);
-  for(let i=0;i<q.length;i++)for(let j=i+1;j<q.length;j++){
-    let [r,c]=q[i],[r2,c2]=q[j],e=null;
-    if(r===r2)e={rule:'Q_ROW',technique:'Q_EXCLUSION_ROW',cells:[[r,c],[r2,c2]],target:[r2,c2],other:[r,c]};
-    else if(c===c2)e={rule:'Q_COLUMN',technique:'Q_EXCLUSION_COLUMN',cells:[[r,c],[r2,c2]],target:[r2,c2],other:[r,c]};
-    else if(current.reg[r][c]===current.reg[r2][c2])e={rule:'Q_REGION',technique:'Q_EXCLUSION_REGION',cells:[[r,c],[r2,c2]],target:[r2,c2],other:[r,c],region:current.reg[r][c]};
-    else if(Math.abs(r-r2)<=1&&Math.abs(c-c2)<=1)e={rule:'Q_ADJACENCY',technique:'Q_EXCLUSION_ADJACENCY',cells:[[r,c],[r2,c2]],target:[r2,c2],other:[r,c]};
-    if(e)out.push(normalizeVisibleError(e))
-  }
-  return out
-}
-function tangoVisibleErrors(){
-  let out=[],s=current.state,n=6,ignore=current.tangoPendingCell?keyCell(...current.tangoPendingCell):null,hasIgnore=cells=>ignore&&cells.some(x=>keyCell(...x)===ignore);
-  for(let r=0;r<n;r++){
-    for(let v=0;v<=1;v++){let cells=[];for(let c=0;c<n;c++)if(s[r][c]===v)cells.push([r,c]);if(cells.length>3&&!hasIgnore(cells))out.push(normalizeVisibleError({rule:'T_BALANCE_ROW',technique:'T_BALANCE_ROW',cells,target:cells[cells.length-1],value:v}))}
-    for(let c=0;c<n-2;c++){let cells=[[r,c],[r,c+1],[r,c+2]];if(!hasIgnore(cells)&&s[r][c]!==-1&&s[r][c]===s[r][c+1]&&s[r][c]===s[r][c+2])out.push(normalizeVisibleError({rule:'T_NO_THREE',technique:'T_NO_THREE',cells,target:cells[2],value:s[r][c]}))}
-  }
-  for(let c=0;c<n;c++){
-    for(let v=0;v<=1;v++){let cells=[];for(let r=0;r<n;r++)if(s[r][c]===v)cells.push([r,c]);if(cells.length>3&&!hasIgnore(cells))out.push(normalizeVisibleError({rule:'T_BALANCE_COLUMN',technique:'T_BALANCE_COLUMN',cells,target:cells[cells.length-1],value:v}))}
-    for(let r=0;r<n-2;r++){let cells=[[r,c],[r+1,c],[r+2,c]];if(!hasIgnore(cells)&&s[r][c]!==-1&&s[r][c]===s[r+1][c]&&s[r][c]===s[r+2][c])out.push(normalizeVisibleError({rule:'T_NO_THREE',technique:'T_NO_THREE',cells,target:cells[2],value:s[r][c]}))}
-  }
-  for(let [r,c,d,rel] of current.edges){
-    let r2=d==='r'?r:r+1,c2=d==='r'?c+1:c,cells=[[r,c],[r2,c2]],a=s[r][c],b=s[r2][c2];
-    if(!hasIgnore(cells)&&a!==-1&&b!==-1&&((rel==='='&&a!==b)||(rel==='×'&&a===b)))out.push(normalizeVisibleError({rule:rel==='='?'T_RELATION_EQUAL':'T_RELATION_OPPOSITE',technique:rel==='='?'T_RELATION_EQUAL':'T_RELATION_OPPOSITE',cells,target:[r2,c2],other:[r,c],relation:rel}))
-  }
-  return out
-}
-function sudokuVisibleErrors(){
-  let out=[],s=current.state;
-  function duplicateErrors(cells,rule){
-    let by={};for(let [r,c] of cells){let v=s[r][c];if(!v)continue;(by[v]??=[]).push([r,c])}
-    for(let [v,a] of Object.entries(by))if(a.length>1)for(let i=1;i<a.length;i++)out.push(normalizeVisibleError({rule,cells:[a[0],a[i]],target:a[i],other:a[0],value:Number(v)}))
-  }
-  for(let r=0;r<6;r++)duplicateErrors(Array.from({length:6},(_,c)=>[r,c]),'S_ROW_DUPLICATE');
-  for(let c=0;c<6;c++)duplicateErrors(Array.from({length:6},(_,r)=>[r,c]),'S_COLUMN_DUPLICATE');
-  for(let br=0;br<6;br+=2)for(let bc=0;bc<6;bc+=3){let cells=[];for(let r=br;r<br+2;r++)for(let c=bc;c<bc+3;c++)cells.push([r,c]);duplicateErrors(cells,'S_BOX_DUPLICATE')}
-  return out
-}
-function patchVisibleErrors(){
-  let out=[];for(const id of current.ids){let e=patchVisibleIssueForId(id);if(e)out.push(normalizeVisibleError(e))}
-  if(!out.length){let e=patchLogicVisibleContradiction();if(e)out.push(normalizeVisibleError(e))}
-  return out
-}
+
+
+
+
 function currentVisibleErrors(){
   if(!current||current.completed)return [];
-  let list=gamePedagogy().visibleErrors();
+  let list=gamePedagogy().audit.visibleErrors();
   let seen=new Set(),out=[];for(let e of list){let k=errorSignature(e);if(!seen.has(k)){seen.add(k);out.push(e)}}
   if(!out.length&&current.lastError?.source==='visible-state'&&current.lastError.canReturn===false)out.push({...current.lastError,transient:true});
   return out
@@ -373,69 +266,16 @@ function showVisibleErrorsBeforeHint(){
 
 function analyzeCurrentError(action){
   if(!current||current.completed||action?.type==='COACH_APPLY')return null;
-  let e=gamePedagogy().errorFromAction(action);
+  let e=gamePedagogy().audit.errorFromAction(action);
   if(!e)return null;
   return {...e,schema:1,source:'visible-state',game:current.game,at:WebPlatform.clock.nowMs(),canReturn:true}
 }
 function errorRuleTitle(e){
   if(!e)return '';
   if(e.technique&&PEDAGOGY_TECHNIQUES[e.technique])return techniqueTitle(e.technique);
-  if(e.rule==='S_ROW_DUPLICATE')return `${tr('errorDuplicate')} · ${tr('rowLabel')}`;
-  if(e.rule==='S_COLUMN_DUPLICATE')return `${tr('errorDuplicate')} · ${tr('columnLabel')}`;
-  if(e.rule==='S_BOX_DUPLICATE')return `${tr('errorDuplicate')} · 2×3`;
-  if(e.rule==='P_TWO_CLUES')return tr('patchTwo');
-  if(e.rule==='P_SIZE')return tr('patchSize');
-  if(e.rule==='P_SHAPE')return tr('patchShape');
-  if(e.rule==='P_OVERLAP')return tr('errorOverlap');
-  if(e.rule==='P_CLUE')return tr('patchEach');
-  if(e.rule==='P_NO_COVER')return tr('patchAll');
-  if(e.rule==='P_NO_CANDIDATE')return tr('patchEach');
-  if(e.rule==='P_OWNER_CONFLICT'||e.rule==='P_LOGIC_CONTRADICTION')return tr('errorConflict');
-  return tr('errorRule')
+  return gamePedagogy(e.game||current?.game).audit.errorRuleTitle(e)
 }
-function errorDetailedMessage(e){
-  if(!e)return '';
-  let L=lang(),target=e.target?cellName(...e.target):'',other=e.other?cellName(...e.other):'';
-  if(L==='fr'){
-    if(e.rule==='Q_ROW')return `${target} et ${other} contiennent deux couronnes sur la même ligne.`;
-    if(e.rule==='Q_COLUMN')return `${target} et ${other} contiennent deux couronnes dans la même colonne.`;
-    if(e.rule==='Q_REGION')return `${target} et ${other} placent deux couronnes dans ${queenZoneBadge(e.region)}.`;
-    if(e.rule==='Q_ADJACENCY')return `Les couronnes en ${target} et ${other} se touchent : deux couronnes ne peuvent pas être adjacentes, même en diagonale.`;
-    if(e.rule==='T_BALANCE_ROW')return `Cette ligne contient maintenant plus de trois symboles identiques, alors qu’elle doit contenir exactement 3 soleils et 3 lunes.`;
-    if(e.rule==='T_BALANCE_COLUMN')return `Cette colonne contient maintenant plus de trois symboles identiques, alors qu’elle doit contenir exactement 3 soleils et 3 lunes.`;
-    if(e.rule==='T_NO_THREE')return `Ce coup crée trois symboles identiques consécutifs, ce qui est interdit.`;
-    if(e.rule==='T_RELATION_EQUAL')return `Les deux cases reliées par « = » doivent contenir le même symbole.`;
-    if(e.rule==='T_RELATION_OPPOSITE')return `Les deux cases reliées par « × » doivent contenir des symboles différents.`;
-    if(e.rule==='S_ROW_DUPLICATE')return `Le chiffre ${e.value} apparaît déjà dans la même ligne (${other}).`;
-    if(e.rule==='S_COLUMN_DUPLICATE')return `Le chiffre ${e.value} apparaît déjà dans la même colonne (${other}).`;
-    if(e.rule==='S_BOX_DUPLICATE')return `Le chiffre ${e.value} apparaît déjà dans le même bloc 2×3 (${other}).`;
-    if(e.rule==='P_TWO_CLUES')return `Le rectangle de la zone ${e.region+1} contient l’indice d’une autre zone.`;
-    if(e.rule==='P_SIZE')return `Le rectangle de la zone ${e.region+1} est déjà trop grand pour respecter son indice de taille.`;
-    if(e.rule==='P_SHAPE')return `La forme actuelle de la zone ${e.region+1} ne peut plus respecter son indice de forme.`;
-    if(e.rule==='P_CLUE')return `Un rectangle doit contenir exactement un indice de zone.`;
-    if(e.rule==='P_OVERLAP')return `Ce rectangle chevauche une zone déjà attribuée.`
-  }
-  if(L==='en'){
-    if(e.rule==='Q_ROW')return `${target} and ${other} contain two queens in the same row.`;
-    if(e.rule==='Q_COLUMN')return `${target} and ${other} contain two queens in the same column.`;
-    if(e.rule==='Q_REGION')return `${target} and ${other} place two queens in the same region.`;
-    if(e.rule==='Q_ADJACENCY')return `The queens at ${target} and ${other} touch; queens may not be adjacent, even diagonally.`;
-    if(e.rule==='T_BALANCE_ROW')return `This row now contains more than three identical symbols; it must contain exactly 3 suns and 3 moons.`;
-    if(e.rule==='T_BALANCE_COLUMN')return `This column now contains more than three identical symbols; it must contain exactly 3 suns and 3 moons.`;
-    if(e.rule==='T_NO_THREE')return `This move creates three identical consecutive symbols, which is forbidden.`;
-    if(e.rule==='T_RELATION_EQUAL')return `The two cells linked by “=” must contain the same symbol.`;
-    if(e.rule==='T_RELATION_OPPOSITE')return `The two cells linked by “×” must contain different symbols.`;
-    if(e.rule==='S_ROW_DUPLICATE')return `Digit ${e.value} already appears in the same row (${other}).`;
-    if(e.rule==='S_COLUMN_DUPLICATE')return `Digit ${e.value} already appears in the same column (${other}).`;
-    if(e.rule==='S_BOX_DUPLICATE')return `Digit ${e.value} already appears in the same 2×3 box (${other}).`;
-    if(e.rule==='P_TWO_CLUES')return `Region ${e.region+1}'s rectangle contains another region's clue.`;
-    if(e.rule==='P_SIZE')return `Region ${e.region+1}'s rectangle is already too large to satisfy its size clue.`;
-    if(e.rule==='P_SHAPE')return `Region ${e.region+1}'s current shape can no longer satisfy its shape clue.`;
-    if(e.rule==='P_CLUE')return `A rectangle must contain exactly one region clue.`;
-    if(e.rule==='P_OVERLAP')return `This rectangle overlaps an already assigned region.`
-  }
-  return tr('errorConflict')
-}
+function errorDetailedMessage(e){return e?gamePedagogy(e.game||current?.game).audit.errorDetailedMessage(e):''}
 function clearErrorFocus(){document.querySelectorAll('.error-focus').forEach(x=>x.classList.remove('error-focus'))}
 function focusErrorCells(e){
   clearErrorFocus();let board=document.querySelector('.board'),n=current?.n||6;if(!board||!e?.cells)return;
@@ -466,12 +306,7 @@ function returnBeforeLastError(){
   parent.preferred=node.id;h.cursor=parent.id;h.stats.undos=(h.stats.undos||0)+1;markBacktrack();errorUsage('returned');
   restorePuzzleSnapshot(parent.snapshot);syncErrorFromHistory();updateHistoryButtons();saveCurrent();showToast(tr('errorReturned'));haptic(7);return true
 }
-function captureRejectedPatchError(info){
-  if(!current||current.game!=='patches'||!info)return null;
-  let rule=info.reason==='MULTIPLE_CLUES'?'P_TWO_CLUES':info.reason==='OVERLAP'?'P_OVERLAP':'P_CLUE';
-  let e={schema:1,source:'visible-state',game:'patches',rule,at:WebPlatform.clock.nowMs(),canReturn:false,cells:info.rect?.cells||[],target:info.rect?.cells?.[0]||null,region:info.id};
-  current.lastError=e;errorUsage('rejected');clearErrorFocus();refreshErrorCoach();return e
-}
+
 
 function closePreviousAttempt(){
   let c=current&&current.attemptId&&!current.completed?current:null,saved=!c?getSaved():null;
@@ -536,7 +371,7 @@ function checkRegisteredVictory(){let result=validateRegisteredVictory(current);
 function challengeBuildCandidate(ch){
   if(!ch||ch.schema!==CHALLENGE_SCHEMA||ch.generator!==CHALLENGE_GENERATOR||!CHALLENGE_GAME_TO_CODE[ch.game]||!CHALLENGE_DIFF_TO_CODE[ch.diff])return null;
   return withSeed(challengeSeedString(ch),()=>{
-    let g=generateRegisteredCandidate(ch.game,ch.diff);
+    let g=generateRegisteredCandidate(ch.game,ch.diff,{protocolGeneration:1});
     if(!challengeCandidateCertified(ch,g))throw new Error('Challenge candidate is not certified at the requested difficulty');
     return g
   })
@@ -581,10 +416,10 @@ function challengeReadyHtml(ch,fromLink=false){
 }
 function challengeView(prefill=null,fromLink=false){
   if(current&&!current.completed)saveCurrent();stopTimer();timerEl.textContent='00:00';current=null;updateI18n();
-  let ch=typeof prefill==='string'?challengeParse(prefill):prefill,game=ch?.game||'queens',diff=ch?.diff||'medium';
+  let challengeGames=Object.keys(CHALLENGE_GAME_TO_CODE),ch=typeof prefill==='string'?challengeParse(prefill):prefill,game=ch?.game||challengeGames[0],diff=ch?.diff||'medium';
   app.innerHTML=`<section class="panel challenge-panel"><div class="stats-head"><div><h1>${tr('challenge')}</h1><p>${tr('challengeSub')}</p></div><button class="btn" id="challengeBack">${tr('back')}</button></div>
     <div class="challenge-columns">
-      <section class="challenge-box"><h2>${tr('createChallenge')}</h2><label>${tr('game')}<select class="difficulty" id="challengeGame">${GAME_IDS.map(g=>`<option value="${g}" ${g===game?'selected':''}>${gameLabel(g)}</option>`).join('')}</select></label><label>${tr('difficulty')}<select class="difficulty" id="challengeDiff">${challengeDiffOptions(game,diff)}</select></label><button class="btn primary" id="challengeGenerate">${tr('generateChallenge')}</button></section>
+      <section class="challenge-box"><h2>${tr('createChallenge')}</h2><label>${tr('game')}<select class="difficulty" id="challengeGame">${challengeGames.map(g=>`<option value="${g}" ${g===game?'selected':''}>${gameLabel(g)}</option>`).join('')}</select></label><label>${tr('difficulty')}<select class="difficulty" id="challengeDiff">${challengeDiffOptions(game,diff)}</select></label><button class="btn primary" id="challengeGenerate">${tr('generateChallenge')}</button></section>
       <section class="challenge-box"><h2>${tr('joinChallenge')}</h2><label>${tr('challengeCode')}<input id="challengeInput" class="challenge-input" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="QL21-QM-XXXXXXXX-XX" value="${ch?.code||''}"></label><button class="btn" id="challengeJoin">${tr('joinChallenge')}</button></section>
     </div>
     <div id="challengeReady">${ch?challengeReadyHtml(ch,fromLink):`<p class="challenge-note">${tr('challengeNoAccount')}</p>`}</div></section>`;
@@ -602,7 +437,7 @@ function initialView(){let ch=challengeFromHash();if(ch)return challengeView(ch,
 
 const DAILY_KEY=PersistentData.keys.daily;
 const DAILY_SCHEMA=2,DAILY_GENERATOR=1,DAILY_NAMESPACE='quadlud-daily-v2.23',DAILY_DIFFICULTY='medium';
-const DAILY_GAMES=GAME_IDS;
+const DAILY_GAMES=Object.freeze(GAME_IDS.filter(game=>QuadludGameManifest.getGame(game)?.daily!==false));
 const DAILY_LOGIC_POINTS={0:100,1:90,2:75,3:55,4:25};
 function dailyState(){return PersistentData.daily.read()}
 function saveDailyState(x){PersistentData.daily.write(x)}
@@ -615,7 +450,7 @@ function dailySeedString(day,game){
 function dailyBuildCandidate(day,game){
   let seed=dailySeedString(day,game);if(!seed)return null;
   return withSeed(seed,()=>{
-    let g=generateRegisteredCandidate(game,DAILY_DIFFICULTY);
+    let g=generateRegisteredCandidate(game,DAILY_DIFFICULTY,{protocolGeneration:1});
     if(!generatedCandidateCertified(game,DAILY_DIFFICULTY,g))throw new Error(`Daily candidate is not certified Medium (${game})`);
     return g
   })
@@ -656,10 +491,10 @@ function markDaily(c,outcome,seconds){
   s[k]=rec;saveDailyState(s)
 }
 function dailyProgress(day=localDay()){let s=dailyState();return DAILY_GAMES.map(g=>s[dailyKey(day,g)]).filter(x=>x?.outcome==='solved').length}
-function dailyHomeLine(day=localDay()){let s=dailyCircuitSummary(day);return `${s.completed}/4 · ${s.scoreKnown?`${s.totalScore}/400`:tr('dailyLogicScore')}`}
+function dailyHomeLine(day=localDay()){let s=dailyCircuitSummary(day);return `${s.completed}/${DAILY_GAMES.length} · ${s.scoreKnown?`${s.totalScore}/${DAILY_GAMES.length*100}`:tr('dailyLogicScore')}`}
 function dailyCircuitSummary(day=localDay(),state=dailyState()){
   let rows=DAILY_GAMES.map(game=>({game,record:dailyRecord(day,game,state)})),solved=rows.filter(x=>x.record?.outcome==='solved'),scored=solved.filter(x=>Number.isFinite(Number(x.record.logicScore)));
-  return {day,rows,completed:solved.length,totalScore:scored.reduce((a,x)=>a+Number(x.record.logicScore),0),scoredGames:scored.length,complete:solved.length===4,scoreKnown:solved.length===scored.length}
+  return {day,rows,completed:solved.length,totalScore:scored.reduce((a,x)=>a+Number(x.record.logicScore),0),scoredGames:scored.length,complete:solved.length===DAILY_GAMES.length,scoreKnown:solved.length===scored.length}
 }
 function dailyNextGame(day=localDay(),state=dailyState()){return DAILY_GAMES.find(g=>dailyRecord(day,g,state)?.outcome!=='solved')||null}
 function dailyCalendar(days=28){
@@ -669,23 +504,23 @@ function dailyCalendar(days=28){
 }
 function dailyCardHtml(g,r){
   let done=r?.outcome==='solved',score=done&&Number.isFinite(Number(r.logicScore))?`${r.logicScore}/100`:done?'—/100':'',help=done&&r.logicScore!=null?dailyHelpLabel(r.helpStage):done?tr('dailyUnscoredLegacy'):'';
-  return `<button class="daily-game ${done?'done':''}" data-daily="${g}"><span aria-hidden="true">${{queens:'♛',tango:'☀︎',sudoku:'✎',patches:'▦'}[g]}</span><b>${gameLabel(g)}</b><small>${done?`✓ ${score} · ${help} · ${fmt(r.best??r.seconds)}`:tr('play')}</small></button>`
+  return `<button class="daily-game ${done?'done':''}" data-daily="${g}"><span aria-hidden="true">${gameIcon(g)}</span><b>${gameLabel(g)}</b><small>${done?`✓ ${score} · ${help} · ${fmt(r.best??r.seconds)}`:tr('play')}</small></button>`
 }
 function dailyReportHtml(day,state=dailyState()){
   let sum=dailyCircuitSummary(day,state),rows=sum.rows.map(({game,record:r})=>{
     let done=r?.outcome==='solved',score=done&&r.logicScore!=null?`${r.logicScore}/100`:'—',help=done&&r.logicScore!=null?dailyHelpLabel(r.helpStage):done?tr('dailyUnscoredLegacy'):'—';
-    return `<div class="daily-report-row ${done?'done':''}"><span>${{queens:'♛',tango:'☀︎',sudoku:'✎',patches:'▦'}[game]}</span><b>${gameLabel(game)}</b><strong>${score}</strong><small>${help}</small><small>${tr('dailyErrorsCount')} ${r?.errors??0} · ${tr('dailyBacktracksCount')} ${r?.backtracks??0}</small></div>`
+    return `<div class="daily-report-row ${done?'done':''}"><span>${gameIcon(game)}</span><b>${gameLabel(game)}</b><strong>${score}</strong><small>${help}</small><small>${tr('dailyErrorsCount')} ${r?.errors??0} · ${tr('dailyBacktracksCount')} ${r?.backtracks??0}</small></div>`
   }).join('');
-  let score=sum.scoreKnown?`${sum.totalScore}/400`:`${sum.totalScore}/400*`;
-  return `<section class="daily-report"><div class="daily-report-score"><span>${tr('dailyLogicScore')}</span><strong>${score}</strong><small>${sum.complete?tr('dailyCompleteReport'):`${sum.completed}/4 ${tr('finished')}`}</small></div>${rows}<p>${tr('dailyScoreNote')}</p><p><small>${tr('dailyScoreLocked')}</small></p></section>`
+  let maxScore=DAILY_GAMES.length*100,score=sum.scoreKnown?`${sum.totalScore}/${maxScore}`:`${sum.totalScore}/${maxScore}*`;
+  return `<section class="daily-report"><div class="daily-report-score"><span>${tr('dailyLogicScore')}</span><strong>${score}</strong><small>${sum.complete?tr('dailyCompleteReport'):`${sum.completed}/${DAILY_GAMES.length} ${tr('finished')}`}</small></div>${rows}<p>${tr('dailyScoreNote')}</p><p><small>${tr('dailyScoreLocked')}</small></p></section>`
 }
 function dailyView(){
   if(current&&!current.completed)saveCurrent();stopTimer();timerEl.textContent='00:00';current=null;updateI18n();
   let day=localDay(),s=dailyState(),sum=dailyCircuitSummary(day,s),cards=DAILY_GAMES.map(g=>dailyCardHtml(g,dailyRecord(day,g,s))).join('');
-  let cal=dailyCalendar().reverse().map(x=>`<div class="day-dot level-${x.n}" title="${x.day} · ${x.n}/4${x.score==null?'':` · ${x.score}/400`}"><span>${new Date(x.day+'T12:00:00').getDate()}</span></div>`).join('');
+  let cal=dailyCalendar().reverse().map(x=>`<div class="day-dot level-${x.n}" title="${x.day} · ${x.n}/${DAILY_GAMES.length}${x.score==null?'':` · ${x.score}/${DAILY_GAMES.length*100}`}"><span>${new Date(x.day+'T12:00:00').getDate()}</span></div>`).join('');
   let circuitLabel=sum.complete?tr('dailyReport'):(sum.completed?tr('dailyResumeCircuit'):tr('dailyStartCircuit'));
   app.innerHTML=`<section class="panel daily-panel"><div class="stats-head"><div><h1>${tr('dailyCircuit')}</h1><p>${new Date(day+'T12:00:00').toLocaleDateString(dateLocale(),{weekday:'long',day:'numeric',month:'long'})} · ${tr('dailyCircuitSub')}</p></div><button class="btn" id="dailyBack">${tr('back')}</button></div>
-    <button class="btn primary daily-circuit-cta" id="dailyCircuitBtn">${sum.complete?`✓ ${circuitLabel}`:`◆ ${circuitLabel} · ${sum.completed}/4`}</button>
+    <button class="btn primary daily-circuit-cta" id="dailyCircuitBtn">${sum.complete?`✓ ${circuitLabel}`:`◆ ${circuitLabel} · ${sum.completed}/${DAILY_GAMES.length}`}</button>
     ${dailyReportHtml(day,s)}
     <div class="daily-games">${cards}</div><h2>${tr('dailyLast')}</h2><div class="daily-calendar">${cal}</div><p class="daily-note">${tr('dailyNote')}</p></section>`;
   $('#dailyBack').onclick=home;$('#dailyCircuitBtn').onclick=()=>sum.complete?dailyView():launchDailyCircuit(day);
@@ -753,7 +588,7 @@ function techniqueScope(scope){
 }
 function techniqueTitle(id){
   let x=PEDAGOGY_TECHNIQUES[id];if(!x)return id||techniqueTerm('technique');
-  let title=techniqueTerm(x.kind);
+  let direct=tr(id),title=direct!==id?direct:techniqueTerm(x.kind);
   if(x.scope)title+=` · ${techniqueScope(x.scope)}`;
   if(x.symbol)title+=` ${x.symbol}`;
   if(x.kind==='balance')title+=' 3/3';
@@ -768,6 +603,7 @@ function techniqueSummary(id){
   return tr('directReason')
 }
 function techniqueIdsForGame(game){return PedagogyMetadata.catalogIdsForGame(game)}
+function activeTechniqueIds(){return GAME_IDS.flatMap(techniqueIdsForGame)}
 function techniqueLibraryHtml(game){
   let ids=techniqueIdsForGame(game);
   return `<div class="technique-library">${ids.map(id=>{let x=PEDAGOGY_TECHNIQUES[id];return `<article class="technique-card"><div class="technique-card-head"><b>${techniqueTitle(id)}</b><code>${id}</code></div><small>R${x.rank}</small><p>${techniqueSummary(id)}</p></article>`}).join('')}</div>`
@@ -888,18 +724,17 @@ function masteryDirectHintFromSnapshot(beforeKey){
   if(!current||!beforeKey)return null;
   let s;try{s=JSON.parse(beforeKey)}catch(_){return null}
   if(!s||s.game!==current.game)return null;
-  let snap=current,clone={...current};
-  if(s.state)clone.state=cloneGrid(s.state);if(s.paint)clone.paint=cloneGrid(s.paint);if('patchSelectedRects' in s)clone.patchSelectedRects=JSON.parse(JSON.stringify(s.patchSelectedRects||{}));if('patchLogicEvidence' in s)clone.patchLogicEvidence=JSON.parse(JSON.stringify(s.patchLogicEvidence||patchEmptyEvidence()));
-  if('tangoPendingCell' in s)clone.tangoPendingCell=s.tangoPendingCell?[...s.tangoPendingCell]:null;if('tangoDerivedRelations' in s)clone.tangoDerivedRelations=JSON.parse(JSON.stringify(s.tangoDerivedRelations||[]));
+  let snap=current,clone=DataSerialization.deserializeCurrentState(DataSerialization.serializeCurrentState(current));
+  if(!SessionHistory.applyPuzzleSnapshot(clone,s))return null;
   current=clone;
   try{
-    let h=gamePedagogy(clone.game).masteryDirectHint();
+    let h=gamePedagogy(clone.game).learning.masteryDirectHint();
     return h&&h.technique&&PEDAGOGY_TECHNIQUES[h.technique]?h:null
   }catch(_){return null}finally{current=snap}
 }
 function masteryActionMatchesHint(h,action){
   if(!h||!action)return false;
-  if(action.type==='COACH_APPLY'||action.type==='QUEEN_DRAG'||action.type==='AUTO_CROSS_ENABLE'||action.type==='PATCH_REMOVE')return false;
+  if(action.type==='COACH_APPLY'||!gamePedagogy(current?.game).audit.masteryActionEligible(action))return false;
   let target=action.primaryTarget||action.target||null,expected=h.id!=null?h.id:h.v;
   if(target&&Array.isArray(target)){
     let [r,c]=target,ch=(action.changes||[]).find(x=>x.row===r&&x.column===c);
@@ -940,7 +775,7 @@ function masteryView(){
   let gm=games.map(g=>[g,masteryGameMetrics(g,all)]),globalCounts=emptyMasteryCounts();
   for(let [,m] of gm)globalCounts=masteryMergeCounts(globalCounts,m);
   let global=masteryMetrics(globalCounts),globalLv=masteryLevel(global),overall=global.score==null?'—':`${global.score}%`;
-  let gameNav=gm.map(([g,m])=>{let lv=masteryLevel(m),score=m.score==null?'—':`${m.score}%`;return `<a class="mastery-game-summary level-${lv.level}" href="#mastery-${g}"><span aria-hidden="true">${{queens:'♛',tango:'☀︎',sudoku:'✎',patches:'▦'}[g]}</span><b>${gameLabel(g)}</b><strong>${score}</strong><small>${tr(lv.key)} · ${m.samples} ${tr('masteryObserved').toLowerCase()}</small></a>`}).join('');
+  let gameNav=gm.map(([g,m])=>{let lv=masteryLevel(m),score=m.score==null?'—':`${m.score}%`;return `<a class="mastery-game-summary level-${lv.level}" href="#mastery-${g}"><span aria-hidden="true">${gameIcon(g)}</span><b>${gameLabel(g)}</b><strong>${score}</strong><small>${tr(lv.key)} · ${m.samples} ${tr('masteryObserved').toLowerCase()}</small></a>`}).join('');
   let sections=games.map(g=>`<section class="mastery-game" id="mastery-${g}"><h2>${gameLabel(g)}</h2><div class="mastery-techniques">${techniqueIdsForGame(g).map(id=>masteryTechniqueCard(id,all[id])).join('')}</div></section>`).join('');
   app.innerHTML=`<section class="panel mastery-panel"><div class="stats-head"><div><h1>${tr('mastery')}</h1><p>${tr('masterySub')}</p></div><button class="btn" id="masteryBack">${tr('back')}</button></div>
   <div class="mastery-overall"><div><span>${tr('masteryOverall')}</span><strong>${overall}</strong><small>${tr(globalLv.key)}</small></div><div class="mastery-bar"><i style="width:${global.score??0}%"></i></div><p>${tr('masteryObserved')} : <b>${global.encountered}</b> · ${tr('masterySolo')} : <b>${global.solo}</b> · ${tr('masteryConfidence')} : <b>${global.confidence}%</b></p></div>
@@ -967,7 +802,7 @@ function learningStatsMark(id,field,seconds=null){
   if(field==='independent')b.completed=Math.max(1,b.completed);writeStats(s);return b
 }
 function learningCompletedCount(stats=safeStats()){
-  return Object.keys(PEDAGOGY_TECHNIQUES).filter(id=>learningBucket(stats,id).completed>0).length
+  return activeTechniqueIds().filter(id=>learningBucket(stats,id).completed>0).length
 }
 function lessonMethodText(id){
   let x=PEDAGOGY_TECHNIQUES[id];return x?.kind==='contradiction'?tr('lessonContradictionMethod'):tr('lessonDirectMethod')
@@ -1000,10 +835,10 @@ function learningCard(id,stats){
 }
 function learningView(){
   if(current&&!current.completed)saveCurrent();stopTimer();timerEl.textContent='00:00';current=null;updateI18n();
-  let s=safeStats(),games=GAME_IDS,done=learningCompletedCount(s);
+  let s=safeStats(),games=GAME_IDS,done=learningCompletedCount(s),total=activeTechniqueIds().length;
   let sections=games.map(g=>`<section class="learning-game"><h2>${gameLabel(g)}</h2><div class="learning-grid">${techniqueIdsForGame(g).map(id=>learningCard(id,s)).join('')}</div></section>`).join('');
   app.innerHTML=`<section class="panel learning-panel"><div class="stats-head"><div><h1>${tr('learn')}</h1><p>${tr('learnSub')}</p></div><button class="btn" id="learningBack">${tr('back')}</button></div>
-    <div class="learning-overall"><b>${done}/27</b><span>${tr('lessonCompletedCount')}</span><div class="learning-mini-bar"><i style="width:${done/27*100}%"></i></div></div>${sections}</section>`;
+    <div class="learning-overall"><b>${done}/${total}</b><span>${tr('lessonCompletedCount')}</span><div class="learning-mini-bar"><i style="width:${total?done/total*100:0}%"></i></div></div>${sections}</section>`;
   $('#learningBack').onclick=home;app.querySelectorAll('[data-lesson]').forEach(b=>b.onclick=()=>lessonView(b.dataset.lesson));app.querySelectorAll('button').forEach(pressFeedback)
 }
 function lessonView(id){
@@ -1048,10 +883,10 @@ function launchLessonPhase(id,phase){
   }finally{setBusy(false)}})
 }
 function learningHintWhy(h){return h?.why!=null?h.why:h.rank===3?rank3Why(h):h.rank===2?rank2Why(h):h.rank===1?rank1Why(h):h.why}
-function learningMoveText(h){return gamePedagogy().learningMoveText(h)}
+function learningMoveText(h){return gamePedagogy().learning.moveText(h)}
 function learningApplyExpectedMove(actionType='LEARNING_GUIDED'){
   if(!current?.learning||!current.trainingTargetHint)return false;let h=current.trainingTargetHint,before=historySnapshotKey(),g=current.game;
-  gamePedagogy(g).applyLearningMove(h);historyRecord({type:actionType,reasoning:structuredReasoning(g,h),primaryTarget:[h.r,h.c]},before);saveCurrent();return true
+  gamePedagogy(g).learning.applyMove(h);historyRecord({type:actionType,reasoning:structuredReasoning(g,h),primaryTarget:[h.r,h.c]},before);saveCurrent();return true
 }
 function learningRevealGuidedMove(){return learningApplyExpectedMove('LEARNING_GUIDED')}
 function decorateLearningShell(){
@@ -1107,7 +942,7 @@ function trainingStatsFinish(c,seconds){
   c.trainingStatsClosed=true;writeStats(s)
 }
 function trainingRecommendedId(all=effectiveMasteryByTechnique(safeStats())){
-  let ids=Object.keys(PEDAGOGY_TECHNIQUES),best=null,bestKey=Infinity;
+  let ids=activeTechniqueIds(),best=null,bestKey=Infinity;
   for(let id of ids){let m=masteryMetrics(all[id]),rank=PEDAGOGY_TECHNIQUES[id].rank,key=(m.samples<3?35:(m.score??50))-Math.min(5,m.errors)*4+rank*2;if(key<bestKey){bestKey=key;best=id}}
   return best||ids[0]
 }
@@ -1123,96 +958,28 @@ function trainingView(){
   $('#trainingBack').onclick=home;app.querySelectorAll('[data-learn-from-training]').forEach(b=>b.onclick=()=>lessonView(b.dataset.learnFromTraining));app.querySelectorAll('[data-tech]').forEach(b=>b.onclick=()=>launchTraining(b.dataset.tech));app.querySelectorAll('button').forEach(pressFeedback)
 }
 function trainingDifficulty(id){let x=PEDAGOGY_TECHNIQUES[id];if(!x)return 'easy';return x.rank>=2?'hard':x.rank===1?'medium':'easy'}
-function trainingSetQueenBase(g,diff){current={game:'queens',diff,n:g.n,reg:g.reg,sol:g.sol,difficultyProfile:g.difficultyProfile,generationStats:g.generationStats,state:Array.from({length:g.n},()=>Array(g.n).fill(0)),generated:true,unique:true,completed:false,training:true}}
-function trainingSetTangoBase(g,diff,blank=true){let state=Array.from({length:6},()=>Array(6).fill(-1));if(!blank)for(let i of g.givens)state[Math.floor(i/6)][i%6]=g.sol[Math.floor(i/6)][i%6];current={game:'tango',diff,n:6,sol:g.sol,givens:new Set(blank?[]:g.givens),edges:blank?[]:g.edges,difficultyProfile:g.difficultyProfile,generationStats:g.generationStats,state,generated:true,unique:true,completed:false,training:true,tangoPendingCell:null}}
-function trainingSetSudokuBase(g,diff){current={game:'sudoku',diff,n:6,sol:g.sol,empty:new Set(Array.from({length:36},(_,i)=>i)),difficultyProfile:g.difficultyProfile,generationStats:g.generationStats,state:Array.from({length:6},()=>Array(6).fill(0)),sel:null,generated:true,unique:true,completed:false,training:true}}
-function trainingSetPatchBase(g,diff){const pal=['#f3c6a8','#b9d9c1','#c6d4ed','#e2c3df','#f0dc9d','#c7e0e3','#d5ceb8','#d4e3b4','#edbfc1','#c8c4e8','#e5d0a4','#b7d7d1'];current={game:'patches',diff,n:g.n,reg:g.reg,ids:g.ids,cellsBy:g.cellsBy,clues:g.clues,difficultyProfile:g.difficultyProfile,generationStats:g.generationStats,pal,active:g.ids[0],paint:Array.from({length:g.n},()=>Array(g.n).fill(null)),patchSelectedRects:{},patchLogicEvidence:patchEmptyEvidence(),generated:true,unique:true,completed:false,training:true}}
-function trainingSudokuDirectHint(id){
-  if(!current||current.game!=='sudoku')return null;
-  if(id==='S_NAKED_SINGLE'){
-    for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(current.empty.has(r*6+c)&&current.state[r][c]===0){let cand=sudokuCandidatesAt(r,c);if(cand.length===1)return {r,c,v:cand[0],rank:0,technique:id,why:lang()==='fr'?`après élimination par la ligne, la colonne et le bloc 2×3, seul ${cand[0]} reste possible.`:`after elimination by the row, column and 2×3 box, only ${cand[0]} remains possible.`}}
-    return null
-  }
-  let units=[];
-  if(id==='S_HIDDEN_ROW')for(let r=0;r<6;r++)units.push({cells:Array.from({length:6},(_,c)=>[r,c]),nameFr:`la ligne ${r+1}`,nameEn:`row ${r+1}`});
-  else if(id==='S_HIDDEN_COLUMN')for(let c=0;c<6;c++)units.push({cells:Array.from({length:6},(_,r)=>[r,c]),nameFr:`la colonne ${c+1}`,nameEn:`column ${c+1}`});
-  else if(id==='S_HIDDEN_BOX')for(let br=0;br<6;br+=2)for(let bc=0;bc<6;bc+=3){let cells=[];for(let r=br;r<br+2;r++)for(let c=bc;c<bc+3;c++)cells.push([r,c]);units.push({cells,nameFr:`le bloc ${Math.floor(br/2)+1}-${Math.floor(bc/3)+1}`,nameEn:`the 2×3 box at rows ${br+1}-${br+2}, columns ${bc+1}-${bc+3}`})}
-  for(let u of units)for(let v=1;v<=6;v++){let places=u.cells.filter(([r,c])=>current.state[r][c]===0&&sudokuCandidatesAt(r,c).includes(v));if(places.length===1){let [r,c]=places[0],cand=sudokuCandidatesAt(r,c);if(cand.length>1)return {r,c,v,rank:0,technique:id,why:lang()==='fr'?`${v} n’a qu’une seule position possible dans ${u.nameFr}.`:`${v} has only one possible position in ${u.nameEn}.`}}}
-  return null
-}
+
+
+
+
+
 function trainingHintForId(id,deadline=WebPlatform.clock.nowMs()+1800){
-  let x=PEDAGOGY_TECHNIQUES[id];if(!x||!current||current.game!==x.game)return null;let h=gamePedagogy(x.game).trainingHintForTechnique({id,rank:x.rank,deadline});
+  let x=PEDAGOGY_TECHNIQUES[id];if(!x||!current||current.game!==x.game)return null;let h=gamePedagogy(x.game).training.hintForTechnique({id,rank:x.rank,deadline});
   if(!h||h.timeout||coachTechniqueId(x.game,h)!==id)return null;h.technique=id;return h
 }
-function trainingBuildQueensDirect(id,deadline){
-  for(let attempt=0;attempt<5&&WebPlatform.clock.nowMs()<deadline;attempt++){
-    let g=queenCandidate('medium');
-    // Exclusions and unique-position exercises are constructed only from valid queen solution/regions; validation below uses visible state only.
-    if(id==='Q_EXCLUSION_ROW'){
-      for(let r=0;r<g.n;r++){trainingSetQueenBase(g,'medium');let q=g.sol[r],c=(q+2)%g.n;if(c===q)c=(c+1)%g.n;current.state[r][q]=2;let h=trainingHintForId(id,deadline);if(h)return h}
-    }else if(id==='Q_EXCLUSION_COLUMN'){
-      for(let r=0;r<g.n;r++){trainingSetQueenBase(g,'medium');let c=g.sol[r],rr=(r+2)%g.n;current.state[r][c]=2;let h=trainingHintForId(id,deadline);if(h)return h}
-    }else if(id==='Q_EXCLUSION_REGION'){
-      for(let r=0;r<g.n;r++){let q=[r,g.sol[r]],z=g.reg[q[0]][q[1]];for(let rr=0;rr<g.n;rr++)for(let cc=0;cc<g.n;cc++)if(g.reg[rr][cc]===z&&rr!==q[0]&&cc!==q[1]){trainingSetQueenBase(g,'medium');current.state[q[0]][q[1]]=2;let h=trainingHintForId(id,deadline);if(h)return h}}
-    }else if(id==='Q_EXCLUSION_ADJACENCY'){
-      for(let r=0;r<g.n;r++){let q=[r,g.sol[r]];for(let dr of [-1,1])for(let dc of [-1,1]){let rr=r+dr,cc=q[1]+dc;if(rr>=0&&rr<g.n&&cc>=0&&cc<g.n&&g.reg[rr][cc]!==g.reg[r][q[1]]){trainingSetQueenBase(g,'medium');current.state[r][q[1]]=2;let h=trainingHintForId(id,deadline);if(h)return h}}}
-    }else if(id==='Q_UNIQUE_ROW'){
-      for(let r=0;r<g.n;r++){trainingSetQueenBase(g,'medium');for(let c=0;c<g.n;c++)if(c!==g.sol[r])current.state[r][c]=1;let h=trainingHintForId(id,deadline);if(h)return h}
-    }else if(id==='Q_UNIQUE_COLUMN'){
-      for(let c=0;c<g.n;c++){let qr=g.sol.indexOf(c);if(qr<0)continue;trainingSetQueenBase(g,'medium');for(let r=0;r<g.n;r++)if(r!==qr)current.state[r][c]=1;let h=trainingHintForId(id,deadline);if(h)return h}
-    }else if(id==='Q_UNIQUE_REGION'){
-      for(let z of [...new Set(g.reg.flat())]){let q=null;for(let r=0;r<g.n;r++)if(g.reg[r][g.sol[r]]===z)q=[r,g.sol[r]];if(!q)continue;trainingSetQueenBase(g,'medium');for(let r=0;r<g.n;r++)for(let c=0;c<g.n;c++)if(g.reg[r][c]===z&&(r!==q[0]||c!==q[1]))current.state[r][c]=1;let h=trainingHintForId(id,deadline);if(h)return h}
-    }
-  }
-  return null
-}
-function trainingBuildTangoDirect(id,deadline){
-  for(let a=0;a<4&&WebPlatform.clock.nowMs()<deadline;a++){
-    let g=tangoCandidate('easy');trainingSetTangoBase(g,'easy',true);
-    if(id==='T_BALANCE_ROW'){
-      for(let r=0;r<6;r++)for(let v=0;v<2;v++){let cells=[];for(let c=0;c<6;c++)if(g.sol[r][c]===v)cells.push(c);if(cells.length===3){current.state=Array.from({length:6},()=>Array(6).fill(-1));current.givens=new Set();for(let c of cells){current.state[r][c]=v;current.givens.add(r*6+c)}let h=trainingHintForId(id,deadline);if(h)return h}}
-    }else if(id==='T_BALANCE_COLUMN'){
-      for(let c=0;c<6;c++)for(let v=0;v<2;v++){let cells=[];for(let r=0;r<6;r++)if(g.sol[r][c]===v)cells.push(r);if(cells.length===3){current.state=Array.from({length:6},()=>Array(6).fill(-1));current.givens=new Set();for(let r of cells){current.state[r][c]=v;current.givens.add(r*6+c)}let h=trainingHintForId(id,deadline);if(h)return h}}
-    }else if(id==='T_NO_THREE'){
-      for(let r=0;r<6;r++)for(let c=0;c<4;c++){let v=[g.sol[r][c],g.sol[r][c+1],g.sol[r][c+2]];for(let k=0;k<3;k++){let others=[0,1,2].filter(x=>x!==k);if(v[others[0]]===v[others[1]]&&v[k]!==v[others[0]]){current.state=Array.from({length:6},()=>Array(6).fill(-1));current.givens=new Set();for(let j of others){current.state[r][c+j]=v[j];current.givens.add(r*6+c+j)}let h=trainingHintForId(id,deadline);if(h)return h}}}
-    }else if(id==='T_RELATION_EQUAL'||id==='T_RELATION_OPPOSITE'){
-      let rel=id==='T_RELATION_EQUAL'?'=':'×';
-      for(let r=0;r<6;r++)for(let c=0;c<5;c++)if((g.sol[r][c]===g.sol[r][c+1])===(rel==='=')){current.state=Array.from({length:6},()=>Array(6).fill(-1));current.givens=new Set([r*6+c]);current.state[r][c]=g.sol[r][c];current.edges=[[r,c,'r',rel]];let h=trainingHintForId(id,deadline);if(h)return h}
-    }
-  }
-  return null
-}
-function trainingBuildSudokuDirect(id,deadline){
-  for(let a=0;a<4&&WebPlatform.clock.nowMs()<deadline;a++){
-    let g=sudokuCandidate('medium');
-    if(id==='S_NAKED_SINGLE'){
-      for(let r=0;r<6;r++)for(let target=0;target<6;target++){trainingSetSudokuBase(g,'medium');current.empty=new Set();for(let rr=0;rr<6;rr++)for(let c=0;c<6;c++)if(rr!==r||c===target)current.empty.add(rr*6+c);current.state=Array.from({length:6},()=>Array(6).fill(0));for(let c=0;c<6;c++)if(c!==target)current.state[r][c]=g.sol[r][c];let h=trainingHintForId(id,deadline);if(h)return h}
-    }else{
-      for(let k=0;k<500&&WebPlatform.clock.nowMs()<deadline;k++){
-        trainingSetSudokuBase(g,'medium');let holes=12+Math.floor(Math.random()*16),idx=shuffle(Array.from({length:36},(_,i)=>i)).slice(0,holes);current.empty=new Set(idx);current.state=g.sol.map((row,r)=>row.map((v,c)=>current.empty.has(r*6+c)?0:v));let h=trainingHintForId(id,deadline);if(h)return h
-      }
-    }
-  }
-  return null
-}
-function trainingBuildPatchDirect(id,deadline){
-  for(let a=0;a<8&&WebPlatform.clock.nowMs()<deadline;a++){
-    let g=patchesCandidate(id==='P_SINGLE_RECTANGLE'?'easy':'medium');trainingSetPatchBase(g,id==='P_SINGLE_RECTANGLE'?'easy':'medium');
-    for(let k=0;k<100&&WebPlatform.clock.nowMs()<deadline;k++){
-      current.paint=Array.from({length:g.n},()=>Array(g.n).fill(null));let p=id==='P_MANDATORY_CELL'?Math.random()*.42:Math.random()*.18;for(let r=0;r<g.n;r++)for(let c=0;c<g.n;c++)if(Math.random()<p)current.paint[r][c]=g.reg[r][c];let h=trainingHintForId(id,deadline);if(h)return h
-    }
-  }
-  return null
-}
-function trainingRandomProgress(game,base,p){return gamePedagogy(game).trainingRandomProgress({base,p})}
-const TRAINING_ADVANCED_FIXTURES={"Q_CONTRADICTION_R1":{"game":"queens","diff":"medium","n":7,"reg":[[2,2,2,0,0,0,0],[2,2,1,1,0,0,0],[2,2,2,1,1,1,0],[4,4,4,4,3,1,0],[4,4,4,4,4,1,0],[4,4,4,4,4,4,5],[6,4,4,4,4,4,4]],"sol":[5,3,1,4,2,6,0],"state":[[0,1,0,1,0,0,0],[0,0,0,2,0,0,1],[1,0,0,0,1,0,0],[0,0,0,0,0,0,0],[0,0,0,1,0,0,1],[0,1,0,1,0,0,2],[2,0,1,0,1,0,0]],"generated":true,"unique":true,"completed":false},"Q_CONTRADICTION_R2":{"game":"queens","diff":"hard","n":8,"reg":[[7,7,7,7,7,7,7,7],[6,7,7,5,5,7,7,5],[6,7,7,4,5,5,5,5],[6,6,7,4,4,4,5,3],[6,6,2,2,2,5,5,3],[6,6,6,2,2,2,2,2],[0,2,2,2,2,1,2,1],[0,0,2,2,2,1,1,1]],"sol":[2,0,6,4,7,3,5,1],"state":[[0,0,2,0,0,0,0,0],[2,1,1,1,0,0,0,0],[0,0,1,0,0,0,2,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,1,0,0],[0,0,1,0,0,0,0,1],[0,0,1,1,1,0,0,0],[0,0,0,1,1,0,0,0]],"generated":true,"unique":true,"completed":false},"Q_CONTRADICTION_R3":{"game":"queens","diff":"hard","n":8,"reg":[[0,0,0,0,0,0,1,1],[2,0,0,3,0,1,1,1],[2,3,3,3,0,1,1,1],[2,3,3,3,3,3,1,1],[3,3,4,3,3,7,1,1],[3,4,4,4,7,7,7,5],[4,4,4,7,7,6,6,7],[4,4,7,7,7,7,7,7]],"sol":[1,6,0,4,2,7,5,3],"state":[[0,0,1,0,1,0,1,0],[0,0,0,0,0,0,0,1],[0,0,0,0,0,0,0,0],[0,1,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0]],"generated":true,"unique":true,"completed":false},"T_CONTRADICTION_R1":{"game":"tango","diff":"medium","n":6,"sol":[[0,1,1,0,0,1],[0,1,1,0,1,0],[1,0,0,1,0,1],[1,0,1,1,0,0],[0,1,0,0,1,1],[1,0,0,1,1,0]],"givens":[3,4,7,8,21,22,31],"edges":[[2,1,"d","="],[1,1,"r","="],[4,0,"r","×"],[4,1,"r","×"],[1,0,"d","×"]],"state":[[-1,-1,-1,0,0,-1],[-1,1,1,-1,-1,-1],[-1,-1,-1,-1,-1,-1],[-1,-1,-1,1,0,-1],[-1,-1,-1,-1,-1,-1],[-1,0,-1,-1,-1,-1]],"generated":true,"unique":true,"completed":false,"tangoPendingCell":null},"T_CONTRADICTION_R2":{"game":"tango","diff":"hard","n":6,"sol":[[0,1,0,1,1,0],[0,1,1,0,0,1],[1,0,1,1,0,0],[0,1,0,0,1,1],[1,0,0,1,0,1],[1,0,1,0,1,0]],"givens":[1,4,5,6,7,8,9,10,13,16,17,18,19,22,29,30,31,32,33,35],"edges":[[3,2,"r","="],[2,0,"d","×"],[0,1,"d","="],[1,3,"r","="],[3,3,"r","×"],[4,1,"r","="],[1,1,"r","="]],"state":[[-1,1,-1,-1,1,0],[0,1,1,0,0,-1],[-1,0,-1,-1,0,0],[0,1,-1,-1,1,-1],[-1,-1,-1,-1,-1,1],[1,0,1,0,-1,0]],"generated":true,"unique":true,"completed":false,"tangoPendingCell":null},"S_CONTRADICTION_R1":{"game":"sudoku","diff":"medium","n":6,"sol":[[6,2,1,5,4,3],[5,4,3,6,2,1],[2,1,5,4,3,6],[4,3,6,2,1,5],[1,5,4,3,6,2],[3,6,2,1,5,4]],"empty":[2,3,4,5,6,7,11,13,16,18,20,21,28,29,30,31,33],"state":[[6,2,0,0,0,0],[0,0,3,6,2,0],[2,0,5,4,0,6],[0,3,0,0,1,5],[1,5,4,3,0,0],[0,0,2,0,5,4]],"sel":null,"generated":true,"unique":true,"completed":false},"S_CONTRADICTION_R2":{"game":"sudoku","diff":"hard","n":6,"sol":[[2,3,4,1,5,6],[5,6,1,4,2,3],[6,4,5,2,3,1],[3,1,2,5,6,4],[4,2,6,3,1,5],[1,5,3,6,4,2]],"empty":[1,3,4,5,6,8,9,11,13,15,16,19,20,21,22,25,26,27,28,30,34,35],"state":[[2,0,4,0,0,0],[0,6,0,0,2,0],[6,0,5,0,0,1],[3,0,0,0,0,4],[4,0,0,0,0,5],[0,5,3,6,0,0]],"sel":null,"generated":true,"unique":true,"completed":false},"P_CONTRADICTION_R1":{"game":"patches","diff":"hard","n":7,"reg":[[9,9,9,9,9,9,9],[8,8,8,8,8,8,8],[5,5,5,5,5,6,7],[5,5,5,5,5,4,7],[3,3,3,3,3,3,3],[1,1,1,1,2,2,0],[1,1,1,1,2,2,0]],"ids":[0,1,2,3,4,5,6,7,8,9],"cellsBy":{"0":[[5,6],[6,6]],"1":[[5,0],[5,1],[5,2],[5,3],[6,0],[6,1],[6,2],[6,3]],"2":[[5,4],[5,5],[6,4],[6,5]],"3":[[4,0],[4,1],[4,2],[4,3],[4,4],[4,5],[4,6]],"4":[[3,5]],"5":[[2,0],[2,1],[2,2],[2,3],[2,4],[3,0],[3,1],[3,2],[3,3],[3,4]],"6":[[2,5]],"7":[[2,6],[3,6]],"8":[[1,0],[1,1],[1,2],[1,3],[1,4],[1,5],[1,6]],"9":[[0,0],[0,1],[0,2],[0,3],[0,4],[0,5],[0,6]]},"clues":{"0":{"pos":[6,6],"size":2,"shape":"vertical","mode":"size"},"1":{"pos":[5,3],"size":8,"shape":"horizontal","mode":"size"},"2":{"pos":[5,5],"size":4,"shape":"carré","mode":"shape"},"3":{"pos":[4,4],"size":7,"shape":"horizontal","mode":"shape"},"4":{"pos":[3,5],"size":1,"shape":"carré","mode":"size"},"5":{"pos":[2,0],"size":10,"shape":"horizontal","mode":"size"},"6":{"pos":[2,5],"size":1,"shape":"carré","mode":"none"},"7":{"pos":[2,6],"size":2,"shape":"vertical","mode":"size"},"8":{"pos":[1,2],"size":7,"shape":"horizontal","mode":"size"},"9":{"pos":[0,4],"size":7,"shape":"horizontal","mode":"none"}},"pal":["#f3c6a8","#b9d9c1","#c6d4ed","#e2c3df","#f0dc9d","#c7e0e3","#d5ceb8","#d4e3b4","#edbfc1","#c8c4e8","#e5d0a4","#b7d7d1"],"active":0,"paint":[[9,9,9,9,9,9,9],[8,8,8,8,8,8,8],[null,5,null,null,null,null,7],[5,5,null,null,null,4,7],[null,null,null,null,null,null,null],[null,null,1,null,null,null,null],[null,null,1,1,null,null,null]],"patchSelectedRects":{"4":{"r0":3,"r1":3,"c0":5,"c1":5},"7":{"r0":2,"r1":3,"c0":6,"c1":6},"8":{"r0":1,"r1":1,"c0":0,"c1":6},"9":{"r0":0,"r1":0,"c0":0,"c1":6}},"sol":null,"difficultyProfile":{"schema":1,"ratingVersion":1,"game":"patches","status":"solved","difficulty":"hard","minimumRequiredTier":2,"limitingTechniqueLevel":2,"limitingRules":["NO_SUPPORT_CELL"],"totalLogicalSteps":29,"deductionsByRule":{"CELL_LOCKED_TO_CLUE":3,"CELL_SINGLETON":5,"CLUE_SINGLETON":5,"COMMON_COVERAGE":3,"NO_SUPPORT_CELL":12,"RECTANGULAR_CLOSURE":1},"limitingTierStepCount":12,"initialAvailableMoves":26,"minAvailableMoves":3,"bottleneckCount":1,"maxProofDepth":18,"budgetHit":false,"structure":{"n":7,"clueCount":10,"clueModes":{"both":0,"size":6,"shape":2,"none":2}},"fingerprint":"qfp1-57b09c48a8125ee0bb0091b98f7a6520"},"generationStats":{"generatorVersion":1,"targetDifficulty":"hard","strategy":"certified-template-transform","sizeHeuristic":7,"rectangleRange":[10,12],"attempts":1,"randomAttempts":0,"templateAttempts":1,"rejected":{"structure":0,"uniqueness":0,"ratingMismatch":0,"budgetExhausted":0,"invalid":0},"fallbackUsed":false,"fingerprint":"qfp1-57b09c48a8125ee0bb0091b98f7a6520","minimumRequiredTier":2,"totalLogicalSteps":29,"n":7,"clueCount":10,"clueModes":{"both":0,"size":6,"shape":2,"none":2}},"generated":true,"unique":true,"completed":false},"P_CONTRADICTION_R2":{"game":"patches","diff":"hard","n":7,"reg":[[0,0,0,0,1,1,2],[0,0,0,0,1,1,2],[3,3,3,3,3,3,3],[4,4,4,4,4,5,7],[4,4,4,4,4,6,7],[8,8,8,8,8,8,8],[9,9,9,9,9,9,9]],"ids":[0,1,2,3,4,5,6,7,8,9],"cellsBy":{"0":[[0,0],[0,1],[0,2],[0,3],[1,0],[1,1],[1,2],[1,3]],"1":[[0,4],[0,5],[1,4],[1,5]],"2":[[0,6],[1,6]],"3":[[2,0],[2,1],[2,2],[2,3],[2,4],[2,5],[2,6]],"4":[[3,0],[3,1],[3,2],[3,3],[3,4],[4,0],[4,1],[4,2],[4,3],[4,4]],"5":[[3,5]],"6":[[4,5]],"7":[[3,6],[4,6]],"8":[[5,0],[5,1],[5,2],[5,3],[5,4],[5,5],[5,6]],"9":[[6,0],[6,1],[6,2],[6,3],[6,4],[6,5],[6,6]]},"clues":{"0":{"pos":[1,3],"size":8,"shape":"horizontal","mode":"size"},"1":{"pos":[1,5],"size":4,"shape":"carré","mode":"shape"},"2":{"pos":[0,6],"size":2,"shape":"vertical","mode":"size"},"3":{"pos":[2,4],"size":7,"shape":"horizontal","mode":"shape"},"4":{"pos":[4,0],"size":10,"shape":"horizontal","mode":"size"},"5":{"pos":[3,5],"size":1,"shape":"carré","mode":"size"},"6":{"pos":[4,5],"size":1,"shape":"carré","mode":"none"},"7":{"pos":[4,6],"size":2,"shape":"vertical","mode":"size"},"8":{"pos":[5,2],"size":7,"shape":"horizontal","mode":"size"},"9":{"pos":[6,4],"size":7,"shape":"horizontal","mode":"none"}},"pal":["#f3c6a8","#b9d9c1","#c6d4ed","#e2c3df","#f0dc9d","#c7e0e3","#d5ceb8","#d4e3b4","#edbfc1","#c8c4e8","#e5d0a4","#b7d7d1"],"active":0,"paint":[[null,null,null,0,null,null,null],[null,0,null,null,null,1,null],[null,null,null,null,3,null,null],[null,4,4,null,null,null,null],[null,4,null,null,4,null,7],[null,8,8,8,8,8,8],[null,9,9,9,null,9,9]],"generated":true,"unique":true,"completed":false}};
+
+
+
+
+function trainingRandomProgress(game,base,p){return gamePedagogy(game).training.randomProgress({base,p})}
+function trainingAdvancedFixture(id){let x=PEDAGOGY_TECHNIQUES[id],lifecycle=x?GameRegistry.requireCapability(x.game,'pedagogyLifecycle'):null;return typeof lifecycle?.trainingFixture==='function'?lifecycle.trainingFixture(id):null}
 function trainingLoadAdvancedFixture(id,deadline){
-  let raw=TRAINING_ADVANCED_FIXTURES[id];if(!raw)return null;let c=JSON.parse(JSON.stringify(raw));if(Array.isArray(c.givens))c.givens=new Set(c.givens);if(Array.isArray(c.empty))c.empty=new Set(c.empty);current=c;current.training=true;let h=trainingHintForId(id,deadline);if(!h){current=null;return null}return h
+  let raw=trainingAdvancedFixture(id);if(!raw)return null;let c=JSON.parse(JSON.stringify(raw));if(Array.isArray(c.givens))c.givens=new Set(c.givens);if(Array.isArray(c.empty))c.empty=new Set(c.empty);current=c;current.training=true;let h=trainingHintForId(id,deadline);if(!h){current=null;return null}return h
 }
 function trainingBuildAdvanced(id,deadline){
   let fixture=trainingLoadAdvancedFixture(id,deadline);if(fixture)return fixture;let x=PEDAGOGY_TECHNIQUES[id],diff=trainingDifficulty(id);
   for(let b=0;b<4&&WebPlatform.clock.nowMs()<deadline;b++){
-    gamePedagogy(x.game).prepareTrainingBase(diff);
+    gamePedagogy(x.game).training.prepareBase(diff);
     let base=current;
     for(let k=0;k<90&&WebPlatform.clock.nowMs()<deadline;k++){
       let p=.12+Math.random()*.72;trainingRandomProgress(x.game,base,p);let h=trainingHintForId(id,deadline);if(h)return h
@@ -1221,9 +988,9 @@ function trainingBuildAdvanced(id,deadline){
   return null
 }
 function buildTrainingExercise(id){
-  let x=PEDAGOGY_TECHNIQUES[id];if(!x)return null;let deadline=WebPlatform.clock.nowMs()+5500,h=null;
-  if(x.rank===0)h=gamePedagogy(x.game).buildDirectTraining(id,deadline);
-  else h=trainingBuildAdvanced(id,deadline);
+  let x=PEDAGOGY_TECHNIQUES[id];if(!x)return null;let deadline=WebPlatform.clock.nowMs()+5500,h=trainingLoadAdvancedFixture(id,deadline);
+  if(!h&&x.rank===0)h=gamePedagogy(x.game).training.buildDirect(id,deadline);
+  else if(!h&&x.rank>0)h=trainingBuildAdvanced(id,deadline);
   if(!h)return null;
   current.training=true;current.trainingTechnique=id;current.trainingTargetHint={...h,technique:id};current.trainingCompleted=false;current.trainingOffPath=false;current.trainingStatsClosed=false;current.trainingMasteryMerged=false;current.coachUsage=null;current.masterySession=null;current.errorCoachUsage=null;current.lastError=null;current.hintFlow=null;current.lastReasoning=null;
   current.trainingStartSnapshot=puzzleSnapshot();return current
@@ -1250,7 +1017,7 @@ function launchTraining(id){
 function resetTrainingExercise(){
   if(!current?.training||!current.trainingStartSnapshot)return;paused=false;current.trainingCompleted=false;current.trainingOffPath=false;current.hintFlow=null;current.lastError=null;current.masteryPendingAid=null;restorePuzzleSnapshot(current.trainingStartSnapshot);historyInit(true);updateHistoryButtons();stopTimer(false);elapsedBase=0;startedAt=0;startTimer(true,0,false);decorateTrainingShell();saveCurrent();status('',true)
 }
-function trainingTargetStillCorrect(){let h=current?.trainingTargetHint;if(!h)return false;return gamePedagogy().trainingTargetStillCorrect(h)}
+function trainingTargetStillCorrect(){let h=current?.trainingTargetHint;if(!h)return false;return gamePedagogy().training.targetStillCorrect(h)}
 function checkTrainingTarget(){if(!current?.training)return;if(trainingTargetStillCorrect())return finishTrainingExercise();status(tr('trainingTryAgain'),false)}
 function trainingMoveCompleted(action){
   if(!current?.training||current.trainingCompleted)return false;let h=current.trainingTargetHint;if(trainingActionMatchesHint(h,action)){if(action.type==='COACH_APPLY')current.trainingPendingComplete=true;else finishTrainingExercise();return true}current.trainingOffPath=true;status(tr('trainingTryAgain'),false);return false
@@ -1261,12 +1028,12 @@ function finishTrainingExercise(){
   if(!current?.training||current.trainingCompleted)return false;current.trainingCompleted=true;let used=current.coachUsage?.techniques?.[current.trainingTechnique],withCoach=!!(used&&(used.where||used.rule||used.why||used.reveal));if(!withCoach)masteryRecord(current.trainingTechnique,'solo');let seconds=timerSeconds();stopTimer(false);elapsedBase=seconds;startedAt=0;paused=true;trainingStatsFinish(current,seconds);clearSaved();updatePauseButton();updateHistoryButtons();status(`${tr('trainingComplete')} — ${fmt(seconds)}`,true);showHintNotice(`<b>${tr('trainingComplete')}</b><br>${techniqueTitle(current.trainingTechnique)}<div class="training-complete-actions"><button class="btn primary" onclick="launchTraining('${current.trainingTechnique}')">${tr('newExercise')}</button><button class="btn" onclick="trainingView()">${tr('training')}</button></div>`);haptic(18);return true
 }
 function trainingCoach(){
-  if(!current?.training||paused&&current.trainingCompleted)return;if(showVisibleErrorsBeforeHint())return;if(current.trainingOffPath)return showToast(tr('trainingTryAgain'));let h=current.trainingTargetHint;if(!h)return showToast(tr('trainingUnavailable'));let g=current.game,p=gamePedagogy(g),move=p.trainingCoachText(h);
-  let why=h.why!=null?h.why:h.rank===3?rank3Why(h):h.rank===2?rank2Why(h):h.rank===1?rank1Why(h):h.why,reasoning=structuredReasoning(g,h),reveal=p.trainingRevealLabel();
-  hintStage(g,[h.r,h.c],{move,where:tr('trainingTarget')+` : ${techniqueTitle(current.trainingTechnique)}`,why,reveal,rank:h.rank||0,value:trainingHintExpectedValue(h),reasoning},()=>p.applyTrainingMove(h))
+  if(!current?.training||paused&&current.trainingCompleted)return;if(showVisibleErrorsBeforeHint())return;if(current.trainingOffPath)return showToast(tr('trainingTryAgain'));let h=current.trainingTargetHint;if(!h)return showToast(tr('trainingUnavailable'));let g=current.game,p=gamePedagogy(g),move=p.training.coachText(h);
+  let why=h.why!=null?h.why:h.rank===3?rank3Why(h):h.rank===2?rank2Why(h):h.rank===1?rank1Why(h):h.why,reasoning=structuredReasoning(g,h),reveal=p.training.revealLabel();
+  hintStage(g,[h.r,h.c],{move,where:tr('trainingTarget')+` : ${techniqueTitle(current.trainingTechnique)}`,why,reveal,rank:h.rank||0,value:trainingHintExpectedValue(h),reasoning},()=>p.training.applyMove(h))
 }
 
-function coachActionFor(game,h){return gamePedagogy(game).coachAction(h)}
+function coachActionFor(game,h){return gamePedagogy(game).coach.action(h)}
 function coachTechniqueId(game,h){return PedagogyMetadata.techniqueIdForHint(game,h)}
 function structuredReasoning(game,h){
   if(!h)return null;
@@ -1289,130 +1056,71 @@ function structuredReasoning(game,h){
   }
 }
 
-// ===== v2.28 — specialized reasoning presenters =====
-let reasoningPresenterCache=null;
-function reasoningPresenters(){
-  if(reasoningPresenterCache)return reasoningPresenterCache;
-  let modules=[globalThis.QuadludQueensReasoningPresenter,globalThis.QuadludTangoReasoningPresenter,globalThis.QuadludSudokuReasoningPresenter,globalThis.QuadludPatchesReasoningPresenter];
-  if(modules.some(x=>!x?.createPresenter||!x?.GAME))throw new Error('Reasoning presenter modules unavailable');
-  let common={tr,lang,cellName,genericLocalizedHint,pieceName,isDetailedLanguage:code=>DETAILED_HINT_LANGS.has(code),zoneBadge:queenZoneBadge,unitCells:queenUnitCells},out={};
-  for(let module of modules)out[module.GAME]=module.createPresenter(common);
-  reasoningPresenterCache=Object.freeze(out);return reasoningPresenterCache
+// ===== v2.28 / REF-2 — registry-driven specialized reasoning presenters =====
+const reasoningPresenterCache=new Map();
+function reasoningPresenter(game){
+  if(reasoningPresenterCache.has(game))return reasoningPresenterCache.get(game);
+  const lifecycle=GameRegistry.requireCapability(game,'reasoningLifecycle');
+  const presenter=lifecycle.createPresenter({tr,lang,cellName,genericLocalizedHint,pieceName,isDetailedLanguage:code=>DETAILED_HINT_LANGS.has(code)});
+  reasoningPresenterCache.set(game,presenter);return presenter
 }
-function reasoningPresenter(game){let p=reasoningPresenters()[game];if(!p)throw new Error(`Reasoning presenter unavailable: ${game}`);return p}
-function queenReasoningPresenter(){return reasoningPresenter(globalThis.QuadludQueensReasoningPresenter.GAME)}
-function tangoReasoningPresenter(){return reasoningPresenter(globalThis.QuadludTangoReasoningPresenter.GAME)}
-function sudokuReasoningPresenter(){return reasoningPresenter(globalThis.QuadludSudokuReasoningPresenter.GAME)}
-function patchesReasoningPresenter(){return reasoningPresenter(globalThis.QuadludPatchesReasoningPresenter.GAME)}
 
 // ===== v2.21.18 — Grille 6 explicit proof engine adapter =====
-function sudokuLogicAvailable(){return typeof SudokuLogic!=='undefined'&&SudokuLogic?.createSession}
-function sudokuLogicBoard(c=current,state=null){return {state:cloneGrid(state||c.state)}}
-function sudokuLogicSession(c=current,state=null){if(!sudokuLogicAvailable())throw new Error('Grille 6 inference engine unavailable');return SudokuLogic.createSession(sudokuLogicBoard(c,state))}
-function sudokuFormat(key,vars={}){return String(tr(key)||key).replace(/\{([A-Za-z0-9_]+)\}/g,(_,k)=>vars[k]??'')}
-function sudokuUnitHuman(ref){if(!ref)return '';let name=ref.family==='row'?`${tr('rowLabel')} ${Number(ref.id)+1}`:ref.family==='column'?`${tr('columnLabel')} ${Number(ref.id)+1}`:`${tr('slgBox')} ${Number(ref.id)+1}`;if(lang()!=='fr')return name;return ref.family==='row'?`la ${name}`:ref.family==='column'?`la ${name}`:`le ${name}`}
-function sudokuUnitCells(ref){if(!ref)return [];if(ref.family==='row')return Array.from({length:6},(_,c)=>[Number(ref.id),c]);if(ref.family==='column')return Array.from({length:6},(_,r)=>[r,Number(ref.id)]);let br=Math.floor(Number(ref.id)/2)*2,bc=(Number(ref.id)%2)*3,out=[];for(let r=br;r<br+2;r++)for(let c=bc;c<bc+3;c++)out.push([r,c]);return out}
-function sudokuCellListHuman(cells,limit=8){let names=(cells||[]).map(c=>cellName(...c));return names.length<=limit?names.join(', '):names.slice(0,limit).join(', ')+` (+${names.length-limit})`}
-function sudokuCurrentValueStep(){let session=sudokuLogicSession();return {session,...session.nextValueStep()}}
-function sudokuShowLogicalContradiction(w){current.hintFlow=null;clearHintFocus();let b=$('#sboard');if(b)for(let cell of w?.cells||[]){let el=b.children[cell[0]*6+cell[1]];if(el)el.classList.add('error-focus')}showHintNotice(`<b>⚠ ${tr('contradictionFound')}</b><br>${sudokuReasoningPresenter().contradictionText(w)}`);return true}
 
-// ===== v2.21.10 — Queens explicit proof engine adapter =====
-function queenLogicAvailable(){return typeof QueensLogic!=='undefined'&&QueensLogic?.createSession}
-function queenLogicBoard(c=current,state=null){return {n:c.n,reg:cloneGrid(c.reg),state:cloneGrid(state||c.state)}}
-function queenLogicSession(c=current,state=null){if(!queenLogicAvailable())throw new Error('Queens inference engine unavailable');return QueensLogic.createSession(queenLogicBoard(c,state))}
-function queenUnitCells(ref,c=current){
-  if(!ref||!c)return [];
-  if(ref.family==='row')return Array.from({length:c.n},(_,col)=>[Number(ref.id),col]);
-  if(ref.family==='column')return Array.from({length:c.n},(_,row)=>[row,Number(ref.id)]);
-  let out=[];for(let r=0;r<c.n;r++)for(let col=0;col<c.n;col++)if(c.reg[r][col]===ref.id)out.push([r,col]);return out
-}
-function queenUnitHuman(ref){
-  if(!ref)return '';
-  if(ref.family==='row')return `${tr('rowLabel')} ${Number(ref.id)+1}`;
-  if(ref.family==='column')return `${tr('columnLabel')} ${Number(ref.id)+1}`;
-  return queenZoneBadge(Number(ref.id))
-}
-function queenFormat(key,vars={}){let text=String(tr(key)||key);return text.replace(/\{([A-Za-z0-9_]+)\}/g,(_,k)=>vars[k]??'')}
-function queenUnitListHuman(units){return (units||[]).map(queenUnitHuman).join(tr('qlAnd'))}
-function queenCellListHuman(cells,limit=8){let a=(cells||[]).map(x=>cellName(x[0],x[1]));if(a.length<=limit)return a.join(', ');return a.slice(0,limit).join(', ')+queenFormat('qlMore',{count:a.length-limit})}
-function queenConflictReasonHuman(reasons){let r=reasons?.[0],key=r==='ROW'?'qlConflictRow':r==='COLUMN'?'qlConflictColumn':r==='REGION'?'qlConflictRegion':r==='ADJACENCY'?'qlConflictAdjacency':'qlConflictRule';return tr(key)}
-function queenFocusDeduction(d,reveal=false){
-  clearHintFocus();let board=$('#qboard')||document.querySelector('.board');if(!board||!current||!d)return;let n=current.n,ctx=queenReasoningPresenter().premiseCells(d,current),conclusions=(d.conclusions||[]).map(x=>x.cell),mark=(cell,cls)=>{let x=board.children[cell[0]*n+cell[1]];if(x)x.classList.add(cls)};
-  for(let cell of ctx)mark(cell,'hint-context');if(reveal)for(let cell of conclusions)mark(cell,'hint-focus')
-}
-function queenApplyDeductionToCurrent(d){
-  if(!d||!current||current.game!=='queens')return null;
-  let engine=queenLogicSession(),applied=engine.applyDeduction(d);if(!applied?.deduction)return null;
-  let changes=[...(applied.deduction.conclusions||[])];for(let a of applied.automatic||[])changes.push(...(a.conclusions||[]));
-  for(let c of changes){let [r,col]=c.cell;if(current.state[r][col]===0)current.state[r][col]=c.value}
-  return applied
-}
-function queenCurrentLogicResult(){let session=queenLogicSession();return {session,...session.nextDeduction()}}
-function queenShowLogicalContradiction(w){
-  current.hintFlow=null;clearHintFocus();let cells=w?.cells||w?.premises?.flatMap?.(p=>p.cell?[p.cell]:[])||[];let board=$('#qboard');if(board)for(let [r,c] of cells){let d=board.children[r*current.n+c];if(d)d.classList.add('error-focus')}
-  showHintNotice(`<b>⚠ ${tr('contradictionFound')}</b><br>${queenReasoningPresenter().contradictionText(w)}`);return true
-}
-function queenCoachHandleDeduction(d){
-  let presenter=queenReasoningPresenter(),boardKey=historySnapshotKey(),sig=d.id+'|'+d.rank,flow=current.hintFlow,isSame=flow?.kind==='queens-proof'&&flow.boardKey===boardKey&&flow.signature===sig,view=presenter.presentation(d);
-  if(!isSame){current.hintFlow={kind:'queens-proof',boardKey,signature:sig,stage:1,deduction:JSON.parse(JSON.stringify(d))};coachUsage(1,view.technique);queenFocusDeduction(d,false);showHintNotice(`<span class="coach-progress">1/2</span><b>${tr('where')} :</b> ${view.explanation.where}`);saveCurrent();return}
-  let proof=flow.deduction||d,before=historySnapshotKey();coachUsage(2,view.technique);coachUsage(3,view.technique);markHintUsed();updateScoreFlags();queenFocusDeduction(proof,true);let application=queenApplyDeductionToCurrent(proof);if(!application){current.hintFlow=null;showHintNotice(tr('hintError'));return}drawGameUi();let appliedView=presenter.presentation(application.deduction,application.automatic);historyRecord({type:'COACH_APPLY',reasoning:presenter.legacyReasoning(application.deduction,application.automatic),coachStage:2,coachFlowVersion:3},before);current.hintFlow=null;
-  showHintNotice(`<span class="coach-progress">2/2</span><b>${appliedView.explanation.title}</b><br>${appliedView.explanation.why}`);maybeAutoFinish();saveCurrent();haptic(12)
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // ===== v2.21.11 — Soleil/Lune explicit proof engine adapter =====
-function tangoLogicAvailable(){return typeof TangoLogic!=='undefined'&&TangoLogic?.createSession}
-function tangoLogicBoard(c=current,state=null,derived=null){return {n:c.n||6,state:cloneGrid(state||c.state),edges:JSON.parse(JSON.stringify(c.edges||[])),givens:c.givens||[],derivedRelations:JSON.parse(JSON.stringify(derived??c.tangoDerivedRelations??[]))}}
-function tangoLogicSession(c=current,state=null,derived=null){if(!tangoLogicAvailable())throw new Error('Soleil/Lune inference engine unavailable');return TangoLogic.createSession(tangoLogicBoard(c,state,derived))}
-function tangoUnitHuman(ref){if(!ref)return '';return `${tr(ref.family==='row'?'rowLabel':'columnLabel')} ${Number(ref.id)+1}`}
-function tangoFormat(key,vars={}){return String(tr(key)||key).replace(/\{([A-Za-z0-9_]+)\}/g,(_,k)=>vars[k]??'')}
-function tangoValueHuman(v){return pieceName('tango',Number(v))}
-function tangoRelationHuman(p){return tr(Number(p)===0?'tlgSame':'tlgOpposite')}
-function tangoFocusDeduction(d,reveal=false){clearHintFocus();let board=$('#tboard')||document.querySelector('.board');if(!board||!current||!d)return;let cells=[...(d.focusCells||[])];for(const r of d.focusRelations||[])cells.push(r.a,r.b);if(reveal)for(const c of d.conclusions||[])cells.push(...(c.type==='VALUE'?[c.cell]:[c.a,c.b]));let seen=new Set();for(const cell of cells){let k=cell.join(',');if(seen.has(k))continue;seen.add(k);let el=board.children[cell[0]*(current.n||6)+cell[1]];if(el)el.classList.add(reveal&&(d.conclusions||[]).some(c=>c.type==='VALUE'?c.cell[0]===cell[0]&&c.cell[1]===cell[1]:(c.a[0]===cell[0]&&c.a[1]===cell[1])||(c.b[0]===cell[0]&&c.b[1]===cell[1]))?'hint-focus':'hint-context')}}
-function tangoApplyDeductionToCurrent(d){if(!d||!current||current.game!=='tango')return null;let engine=tangoLogicSession(),applied=engine.applyDeduction(d);if(!applied?.deduction)return null;current.state=cloneGrid(engine.state);current.tangoDerivedRelations=engine.exportDerivedRelations();return applied}
-function tangoCurrentLogicResult(){let engine=tangoLogicSession(),result=engine.nextDeduction();return {...result,engine}}
-function tangoCoachHandleDeduction(d){
-  let presenter=tangoReasoningPresenter(),boardKey=historySnapshotKey(),sig=d.signature||d.id,flow=current.hintFlow,isSame=flow?.kind==='tango-proof'&&flow.boardKey===boardKey&&flow.signature===sig,view=presenter.presentation(d);
-  if(!isSame){current.hintFlow={kind:'tango-proof',boardKey,signature:sig,stage:1,deduction:JSON.parse(JSON.stringify(d))};coachUsage(1,view.technique);tangoFocusDeduction(d,false);showHintNotice(`<span class="coach-progress">1/2</span><b>${tr('where')} :</b> ${view.explanation.where}`);saveCurrent();return}
-  let proof=flow.deduction||d,before=historySnapshotKey();coachUsage(2,view.technique);coachUsage(3,view.technique);markHintUsed();updateScoreFlags();tangoFocusDeduction(proof,true);let application=tangoApplyDeductionToCurrent(proof);if(!application){current.hintFlow=null;showHintNotice(tr('hintError'));return}drawGameUi();let appliedView=presenter.presentation(application.deduction,application.automatic);historyRecord({type:'COACH_APPLY',reasoning:presenter.legacyReasoning(application.deduction,application.automatic),coachStage:2,coachFlowVersion:3},before);current.hintFlow=null;showHintNotice(`<span class="coach-progress">2/2</span><b>${appliedView.explanation.title}</b><br>${appliedView.explanation.why}`);maybeAutoFinish();saveCurrent();haptic(12)
-}
+
+
+
+
+
+
+
+
+
+
+
 
 // ===== v2.21.12 — Rectangles explicit proof engine adapter =====
-function patchesLogicAvailable(){return typeof globalThis!=='undefined'&&globalThis.PatchesLogic&&typeof globalThis.PatchesLogic.createSession==='function'}
-function patchEmptyEvidence(){return {schema:1,owners:[],notOwners:[],selected:[],eliminated:[]}}
-function patchesLogicSession(c=current,paint=null,selectedRects=null,logicEvidence=null){if(!patchesLogicAvailable()||!c||c.game!=='patches')throw new Error('Rectangles logic engine unavailable');return PatchesLogic.createSession({n:c.n,ids:[...(c.ids||[])],clues:JSON.parse(JSON.stringify(c.clues||{})),paint:cloneGrid(paint||c.paint),selectedRects:JSON.parse(JSON.stringify(selectedRects||c.patchSelectedRects||{})),logicEvidence:JSON.parse(JSON.stringify(logicEvidence||c.patchLogicEvidence||patchEmptyEvidence()))})}
-function patchFormat(k,vars={}){return String(tr(k)).replace(/\{(\w+)\}/g,(_,x)=>vars[x]??'')}
-function patchZoneName(id){return `${tr('zone')} ${Number(id)+1}`}
-function patchZonesName(ids){return (ids||[]).map(patchZoneName).join(lang()==='fr'?' et ':' and ')}
-function patchVisibleActionForDeduction(d,c=current){if(!d||!c)return null;let owner=(d.conclusions||[]).find(x=>x.type==='OWNER'&&c.paint?.[x.cell?.[0]]?.[x.cell?.[1]]!==x.clue);if(owner)return {r:owner.cell[0],c:owner.cell[1],id:owner.clue};let selected=(d.conclusions||[]).find(x=>x.type==='SELECTED_RECT');if(!selected)return null;let id=selected.clue,cells=selected.rectangle?.cells||PatchesLogic.helpers.rectCells(selected.rectangle||{}),cell=cells.find(x=>c.paint?.[x[0]]?.[x[1]]!==id)||cells[0];return cell?{r:cell[0],c:cell[1],id}:null}
-function patchVisibleHintFromEngine(expectedTechnique=null){if(!current||current.game!=='patches'||!patchesLogicAvailable())return null;let engine,result;try{engine=patchesLogicSession();result=engine.nextDeduction()}catch(_){return null}let d=result?.deduction;if(!d)return null;let presenter=patchesReasoningPresenter(),technique=presenter.techniqueForDeduction(d);if(!technique||(expectedTechnique&&technique!==expectedTechnique))return null;let target=patchVisibleActionForDeduction(d,current);if(!target)return null;return {...target,rank:d.rank,technique,why:presenter.explanation(d),structuredDeduction:JSON.parse(JSON.stringify(d)),reasoning:presenter.legacyReasoning(d)}}
-function patchTrainingHintFromEngine(expectedTechnique=null){
-  let direct=patchVisibleHintFromEngine(expectedTechnique);if(direct)return direct;
-  if(expectedTechnique!=='P_CONTRADICTION_R1'||!current||!patchesLogicAvailable())return null;
-  let engine;try{engine=patchesLogicSession(current,current.paint,current.patchSelectedRects,patchEmptyEvidence())}catch(_){return null}
-  let presenter=patchesReasoningPresenter(),proofChain=[],first=null,actionDeduction=null,target=null;
-  for(let guard=0;guard<12&&!target;guard++){
-    let result;try{result=engine.nextDeduction()}catch(_){return null}let d=result?.deduction;if(!d)return null;let technique=presenter.techniqueForDeduction(d);
-    if(!first){if(technique!==expectedTechnique)return null;first=JSON.parse(JSON.stringify(d))}
-    let snapshot=JSON.parse(JSON.stringify(d));proofChain.push(snapshot);target=patchVisibleActionForDeduction(d,current);if(target){actionDeduction=snapshot;break}
-    if(technique!==expectedTechnique)return null;
-    let applied;try{applied=engine.applyDeduction(d)}catch(_){return null}if(!applied?.deduction||applied.contradiction)return null;
-    for(const automatic of applied.automatic||[]){let a=JSON.parse(JSON.stringify(automatic));proofChain.push(a);let action=patchVisibleActionForDeduction(automatic,current);if(action){target=action;actionDeduction=a;break}}
-  }
-  if(!first||!target||!actionDeduction)return null;
-  let why=proofChain.map(d=>presenter.explanation(d)).filter(Boolean).map(x=>`<span class="reason-step">${x}</span>`).join('');
-  return {r:target.r,c:target.c,id:target.id,rank:first.rank,technique:expectedTechnique,why,structuredDeduction:first,finalStructuredDeduction:actionDeduction,proofChain,reasoning:presenter.legacyReasoning(first)}
-}
-function patchRectHuman(r){if(!r)return '';let h=r.r1-r.r0+1,w=r.c1-r.c0+1;return `${h}×${w} · ${cellName(r.r0,r.c0)}–${cellName(r.r1,r.c1)}`}
-function patchFocusDeduction(d,reveal=false){clearHintFocus();let board=$('#pboard')||document.querySelector('.board');if(!board||!current||!d)return;let focus=[...(d.focusCells||[])],targets=[];for(const c of d.conclusions||[]){if(c.type==='OWNER')targets.push(c.cell);else if(c.type==='SELECTED_RECT')targets.push(...(c.rectangle.cells||[]));else if(c.type==='ELIMINATED_CANDIDATE'){let rr=(d.focusRectangles||[]).find(x=>(x.key||PatchesLogic.helpers.rectKey(x))===c.rectangleKey);if(rr)targets.push(...(rr.cells||PatchesLogic.helpers.rectCells(rr)))}}let targetKeys=new Set(targets.map(x=>x.join(','))),seen=new Set();for(const cell of focus.concat(reveal?targets:[])){let k=cell.join(',');if(seen.has(k))continue;seen.add(k);let el=board.children[cell[0]*current.n+cell[1]];if(el)el.classList.add(reveal&&targetKeys.has(k)?'hint-focus':'hint-context')}}
-function patchSyncEngineToVisible(c,engine){c.patchLogicEvidence=engine.exportEvidence();c.patchSelectedRects=c.patchSelectedRects||{};for(const f of c.patchLogicEvidence.owners||[])c.paint[f.cell[0]][f.cell[1]]=f.clue;for(const f of c.patchLogicEvidence.selected||[]){let cand=engine.candidate(Number(f.clue),f.rectangleKey);if(!cand)continue;c.patchSelectedRects[f.clue]={r0:cand.r0,r1:cand.r1,c0:cand.c0,c1:cand.c1};for(const [r,col] of cand.cells)c.paint[r][col]=Number(f.clue)}}
-function patchSyncEngineEvidence(c,engine){c.patchLogicEvidence=engine.exportEvidence()}
-function patchApplyDeductionToState(c,d,engine=null){engine=engine||patchesLogicSession(c);let applied=engine.applyDeduction(d);if(!applied?.deduction)return null;patchSyncEngineToVisible(c,engine);return {...applied,engine}}
-function patchApplyDeductionToCurrent(d){if(!current||current.game!=='patches')return null;return patchApplyDeductionToState(current,d)}
-function patchCurrentLogicResult(){let engine=patchesLogicSession(),result=engine.nextDeduction();return {...result,engine}}
-function patchCoachHandleDeduction(d){
-  let presenter=patchesReasoningPresenter(),boardKey=historySnapshotKey(),sig=d.signature||d.id,flow=current.hintFlow,isSame=flow?.kind==='patches-proof'&&flow.boardKey===boardKey&&flow.signature===sig,view=presenter.presentation(d);
-  if(!isSame){current.hintFlow={kind:'patches-proof',boardKey,signature:sig,stage:1,deduction:JSON.parse(JSON.stringify(d))};coachUsage(1,view.technique);patchFocusDeduction(d,false);showHintNotice(`<span class="coach-progress">1/2</span><b>${tr('where')} :</b> ${view.explanation.where}`);saveCurrent();return}
-  let proof=flow.deduction||d,before=historySnapshotKey();coachUsage(2,view.technique);coachUsage(3,view.technique);markHintUsed();updateScoreFlags();patchFocusDeduction(proof,true);let application=patchApplyDeductionToCurrent(proof);if(!application){current.hintFlow=null;showHintNotice(tr('hintError'));return}drawGameUi();let appliedView=presenter.presentation(application.deduction,application.automatic);historyRecord({type:'COACH_APPLY',reasoning:presenter.legacyReasoning(application.deduction,application.automatic),coachStage:2,coachFlowVersion:4},before);current.hintFlow=null;showHintNotice(`<span class="coach-progress">2/2</span><b>${appliedView.explanation.title}</b><br>${appliedView.explanation.why}`);maybeAutoFinish();saveCurrent();haptic(12)
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 function cloneGrid(x){return SessionCore.cloneGrid(x)}
 function puzzleSnapshot(){return SessionHistory.puzzleSnapshot(current)}
@@ -1435,109 +1143,46 @@ function auditPrimaryChange(action){
   if(t&&Number.isInteger(t.row))return action.changes.find(x=>x.row===t.row&&x.column===t.column)||null;
   return action.changes.length===1?action.changes[0]:null
 }
-function auditNeutralValue(game){return gamePedagogy(game).auditNeutralValue()}
+function auditNeutralValue(game){return gamePedagogy(game).audit.neutralValue()}
 function auditConstructiveChange(action){
   let ch=auditPrimaryChange(action),neutral=auditNeutralValue(current?.game);
   if(!ch||ch.from!==neutral)return null;
-  if(!gamePedagogy().auditConstructiveValue(ch.to))return null;
+  if(!gamePedagogy().audit.constructiveValue(ch.to))return null;
   return ch
 }
 function withAuditSnapshot(beforeKey,fn){
   if(!current||!beforeKey)return null;let s;try{s=JSON.parse(beforeKey)}catch(_){return null}
   if(!s||s.game!==current.game)return null;
-  let snap=current,clone={...current};
-  if(s.state)clone.state=cloneGrid(s.state);if(s.paint)clone.paint=cloneGrid(s.paint);if('patchSelectedRects' in s)clone.patchSelectedRects=JSON.parse(JSON.stringify(s.patchSelectedRects||{}));if('patchLogicEvidence' in s)clone.patchLogicEvidence=JSON.parse(JSON.stringify(s.patchLogicEvidence||patchEmptyEvidence()));
-  if('tangoPendingCell' in s)clone.tangoPendingCell=s.tangoPendingCell?[...s.tangoPendingCell]:null;if('tangoDerivedRelations' in s)clone.tangoDerivedRelations=JSON.parse(JSON.stringify(s.tangoDerivedRelations||[]));
+  let snap=current,clone=DataSerialization.deserializeCurrentState(DataSerialization.serializeCurrentState(current));
+  if(!SessionHistory.applyPuzzleSnapshot(clone,s))return null;
   current=clone;try{return fn(clone)}finally{current=snap}
 }
 function proofResult(status,technique=null,rank=null,target=null,detail=null){
   return {schema:1,status,source:'visible-state',technique,rank,target,detail,at:WebPlatform.clock.nowMs()}
 }
-function queenDirectPlacementAt(r,c){
-  if(current.state[r][c]!==0||!queenCellAllowed(r,c))return null;let n=current.n;
-  if(!current.state[r].some(v=>v===2)){let a=[];for(let cc=0;cc<n;cc++)if(current.state[r][cc]===0&&queenCellAllowed(r,cc))a.push([r,cc]);if(a.length===1&&a[0][1]===c)return 'Q_UNIQUE_ROW'}
-  let has=false,a=[];for(let rr=0;rr<n;rr++){if(current.state[rr][c]===2)has=true;else if(current.state[rr][c]===0&&queenCellAllowed(rr,c))a.push([rr,c])}
-  if(!has&&a.length===1&&a[0][0]===r)return 'Q_UNIQUE_COLUMN';
-  let id=current.reg[r][c];has=false;a=[];for(let rr=0;rr<n;rr++)for(let cc=0;cc<n;cc++)if(current.reg[rr][cc]===id){if(current.state[rr][cc]===2)has=true;else if(current.state[rr][cc]===0&&queenCellAllowed(rr,cc))a.push([rr,cc])}
-  if(!has&&a.length===1&&a[0][0]===r&&a[0][1]===c)return 'Q_UNIQUE_REGION';
-  return null
-}
-function justifyQueenAt(r,c,v,deadline){
-  if(v===1){let q=queenDirectExclusionReason(r,c);if(q)return proofResult('justified',q.technique,0,[r,c],q.text)}
-  if(v===2){let t=queenDirectPlacementAt(r,c);if(t)return proofResult('justified',t,0,[r,c],techniqueTitle(t))}
-  let opp=v===2?1:2;
-  let chosenBad=withTempCurrent(x=>{x.state[r][c]=v},()=>queenStateContradiction()),oppBad=withTempCurrent(x=>{x.state[r][c]=opp},()=>queenStateContradiction());
-  if(!chosenBad&&oppBad)return proofResult('justified','Q_CONTRADICTION_R1',1,[r,c],null);
-  if(WebPlatform.clock.nowMs()>=deadline)return proofResult('unknown',null,null,[r,c],'timeout');
-  let opp2=withTempCurrent(x=>{x.state[r][c]=opp},()=>queenBoundedContradiction(1,deadline));if(opp2?.timeout)return proofResult('unknown',null,null,[r,c],'timeout');
-  let chosen2=withTempCurrent(x=>{x.state[r][c]=v},()=>queenBoundedContradiction(1,deadline));if(chosen2?.timeout)return proofResult('unknown',null,null,[r,c],'timeout');
-  if(opp2?.bad&&!chosen2?.bad)return proofResult('justified','Q_CONTRADICTION_R2',2,[r,c],null);
-  if(WebPlatform.clock.nowMs()>=deadline)return proofResult('unknown',null,null,[r,c],'timeout');
-  let opp3=withTempCurrent(x=>{x.state[r][c]=opp},()=>queenBoundedContradiction(2,deadline));if(opp3?.timeout)return proofResult('unknown',null,null,[r,c],'timeout');
-  let chosen3=withTempCurrent(x=>{x.state[r][c]=v},()=>queenBoundedContradiction(2,deadline));if(chosen3?.timeout)return proofResult('unknown',null,null,[r,c],'timeout');
-  if(opp3?.bad&&!chosen3?.bad)return proofResult('justified','Q_CONTRADICTION_R3',3,[r,c],null);
-  return proofResult('unjustified',null,null,[r,c],null)
-}
-function tangoDirectTechniqueAt(r,c,v){
-  let s=current.state,n=6;
-  let rowOpp=s[r].filter(x=>x===1-v).length;if(rowOpp===3)return 'T_BALANCE_ROW';
-  let colOpp=0;for(let rr=0;rr<n;rr++)if(s[rr][c]===1-v)colOpp++;if(colOpp===3)return 'T_BALANCE_COLUMN';
-  for(let i=Math.max(0,c-2);i<=Math.min(c,3);i++){let vals=[i,i+1,i+2].filter(cc=>cc!==c).map(cc=>s[r][cc]);if(vals.length===2&&vals[0]===1-v&&vals[1]===1-v)return 'T_NO_THREE'}
-  for(let i=Math.max(0,r-2);i<=Math.min(r,3);i++){let vals=[i,i+1,i+2].filter(rr=>rr!==r).map(rr=>s[rr][c]);if(vals.length===2&&vals[0]===1-v&&vals[1]===1-v)return 'T_NO_THREE'}
-  for(let [er,ec,d,rel] of current.edges){let r2=d==='r'?er:er+1,c2=d==='r'?ec+1:ec;if(!((er===r&&ec===c)||(r2===r&&c2===c)))continue;let or=er===r&&ec===c?r2:er,oc=er===r&&ec===c?c2:ec,other=s[or][oc];if(other===-1)continue;let need=rel==='='?other:1-other;if(v===need)return rel==='='?'T_RELATION_EQUAL':'T_RELATION_OPPOSITE'}
-  return null
-}
-function justifyTangoAt(r,c,v){
-  let t=tangoDirectTechniqueAt(r,c,v);if(t)return proofResult('justified',t,0,[r,c],techniqueTitle(t));
-  let opp=1-v,chosenBad=withTempCurrent(x=>{x.state[r][c]=v},()=>tangoStateContradiction()),oppBad=withTempCurrent(x=>{x.state[r][c]=opp},()=>tangoStateContradiction());
-  if(!chosenBad&&oppBad)return proofResult('justified','T_CONTRADICTION_R1',1,[r,c],null);
-  let opp2=withTempCurrent(x=>{x.state[r][c]=opp},()=>tangoRank2WitnessAfterAssumption()),chosen2=withTempCurrent(x=>{x.state[r][c]=v},()=>tangoRank2WitnessAfterAssumption());
-  if(opp2&&!chosen2)return proofResult('justified','T_CONTRADICTION_R2',2,[r,c],null);
-  return proofResult('unjustified',null,null,[r,c],null)
-}
-function sudokuDirectTechniqueAt(r,c,v){
-  let cand=sudokuCandidatesAt(r,c);if(cand.length===1&&cand[0]===v)return 'S_NAKED_SINGLE';
-  let units=[
-    ['S_HIDDEN_ROW',Array.from({length:6},(_,cc)=>[r,cc])],
-    ['S_HIDDEN_COLUMN',Array.from({length:6},(_,rr)=>[rr,c])]
-  ],br=Math.floor(r/2)*2,bc=Math.floor(c/3)*3,box=[];for(let rr=br;rr<br+2;rr++)for(let cc=bc;cc<bc+3;cc++)box.push([rr,cc]);units.push(['S_HIDDEN_BOX',box]);
-  for(let [id,cells] of units){let places=cells.filter(([rr,cc])=>current.state[rr][cc]===0&&current.empty.has(rr*6+cc)&&sudokuCandidatesAt(rr,cc).includes(v));if(places.length===1&&places[0][0]===r&&places[0][1]===c)return id}
-  return null
-}
-function justifySudokuAt(r,c,v){
-  if(!sudokuLogicAvailable())return proofResult('unknown',null,null,[r,c],{logicalStatus:'engine-unavailable'});
-  let p=sudokuLogicSession().proveValue([r,c],v),d=p.deduction||null,presenter=sudokuReasoningPresenter(),view=p.status==='proven'&&d?presenter.presentProof(p,current.state):null,reasoning=d?presenter.legacyProofReasoning(p):null,detail={logicalStatus:p.status,reason:p.reason||null,provenValue:p.provenValue??null,fact:p.fact?JSON.parse(JSON.stringify(p.fact)):null,contradiction:p.contradiction?JSON.parse(JSON.stringify(p.contradiction)):null,deduction:reasoning,metrics:p.metrics?JSON.parse(JSON.stringify(p.metrics)):null};
-  if(p.status==='proven'){let x=proofResult('justified',view?.technique??null,view?.metadata?.coachRank??0,[r,c],detail);x.logicalStatus='proven';return x}
-  let outer=p.status==='contradictory'?'unknown':'unjustified',x=proofResult(outer,d?presenter.techniqueForDeduction(d):null,d?presenter.coachRank(d):null,[r,c],detail);x.logicalStatus=p.status;return x
-}
 
-function justifyPatchCellAt(r,c,id){
-  if(!patchesLogicAvailable())return proofResult('unknown',null,null,[r,c],'engine-unavailable');
-  let p=patchesLogicSession().proveOwner([r,c],Number(id));
-  if(p.status==='proven'){let d=p.deduction||null,presenter=patchesReasoningPresenter(),view=d?presenter.presentation(d):null,x=proofResult('justified',view?.technique??null,view?.rank??p.fact?.rank??0,[r,c],{logicalStatus:'proven',deduction:d?presenter.legacyReasoning(d):null});x.logicalStatus='proven';return x}
-  let x=proofResult('unjustified',null,null,[r,c],{logicalStatus:p.status,contradiction:p.contradiction||null});x.logicalStatus=p.status;return x
-}
-function patchRectangleJustification(action){
-  if(action.type!=='PATCH_RECTANGLE'||action.region==null||!action.rectangle)return null;
-  if(!patchesLogicAvailable())return proofResult('unknown',null,null,null,'engine-unavailable');
-  let id=Number(action.region),p=patchesLogicSession().proveRectangle(id,action.rectangle),target=PatchesLogic.helpers.rectCells(action.rectangle);
-  if(p.status==='proven'){let d=p.deduction||null,presenter=patchesReasoningPresenter(),view=d?presenter.presentation(d):null,x=proofResult('justified',view?.technique??null,view?.rank??p.fact?.rank??0,target,{logicalStatus:'proven',deduction:d?presenter.legacyReasoning(d):null});x.logicalStatus='proven';return x}
-  let x=proofResult('unjustified',null,null,target,{logicalStatus:p.status,contradiction:p.contradiction||null});x.logicalStatus=p.status;return x
-}
+
+
+
+
+
+
+
+
 function firstKnownLogicalMoveFromSnapshot(beforeKey,deadline=WebPlatform.clock.nowMs()+250){
-  return withAuditSnapshot(beforeKey,()=>gamePedagogy().firstKnownLogicalMove({deadline}))
+  return withAuditSnapshot(beforeKey,()=>gamePedagogy().audit.firstKnownLogicalMove({deadline}))
 }
 function evaluateMoveJustification(beforeKey,action,error=null){
-  if(!current||current.training||error||!action||['COACH_APPLY','AUTO_CROSS_ENABLE','PATCH_REMOVE','LEARNING_GUIDED'].includes(action.type))return null;
-  let ch=auditConstructiveChange(action);if(!ch&&action.type!=='PATCH_RECTANGLE')return null;let deadline=WebPlatform.clock.nowMs()+350;
-  let result=withAuditSnapshot(beforeKey,()=>gamePedagogy().justifyMove({change:ch,action,beforeKey,deadline}));
-  if(result?.status==='unjustified')result.knownMove=firstKnownLogicalMoveFromSnapshot(beforeKey,deadline);
+  if(!current||current.training||error||!action||['COACH_APPLY','LEARNING_GUIDED'].includes(action.type)||!gamePedagogy().audit.actionEligible(action))return null;
+  let ch=auditConstructiveChange(action);if(!ch&&!gamePedagogy().audit.allowsNoPrimaryChange(action))return null;let deadline=WebPlatform.clock.nowMs()+350;
+  let result=withAuditSnapshot(beforeKey,()=>gamePedagogy().audit.justifyMove({change:ch,action,beforeKey,deadline}));
+  if(result?.status==='unjustified')result={...result,knownMove:firstKnownLogicalMoveFromSnapshot(beforeKey,deadline)};
   return result
 }
 function auditMoveText(reasoning){
   if(!reasoning?.target)return '';
   let r=reasoning.target.row,c=reasoning.target.column,v=reasoning.action?.value,g=reasoning.game;
-  return gamePedagogy(g).auditMoveText(reasoning)||cellName(r,c)
+  return gamePedagogy(g).audit.moveText(reasoning)||cellName(r,c)
 }
 function applyAuditResult(node,result){
   if(!current||!node)return;
@@ -1572,7 +1217,7 @@ function applyUnjustifiedHighlights(){
   [...board.children].forEach(d=>d.classList.remove('unjustified-piece'));
   // A completed Rectangles board must remain visually clean: move-audit warnings
   // are useful while solving, but must not leave orange/red cell outlines after victory.
-  if(gamePedagogy().suppressUnjustifiedAfterComplete(current))return;
+  if(gamePedagogy().audit.suppressUnjustifiedAfterComplete(current))return;
   if(!unjustifiedAlertsEnabled())return;
   let n=current.n||6;for(let [r,c] of unjustifiedCellsOnCurrentPath()){let d=board.children[r*n+c];if(d)d.classList.add('unjustified-piece')}
 }
@@ -1581,7 +1226,7 @@ function refreshReasoningAudit(){
   applyUnjustifiedHighlights()
 }
 function acceptLastMoveAsHypothesis(){
-  let h=current?.moveHistory,a=current?.lastMoveAudit;if(!h||!a?.historyNode)return false;let n=h.nodes[a.historyNode];if(!n?.justification||n.justification.status!=='unjustified')return false;if(!gamePedagogy().canAcceptHypothesis(n.justification))return false;
+  let h=current?.moveHistory,a=current?.lastMoveAudit;if(!h||!a?.historyNode)return false;let n=h.nodes[a.historyNode];if(!n?.justification||n.justification.status!=='unjustified')return false;if(!gamePedagogy().exploration.canAcceptHypothesis(n.justification))return false;
   n.justification.status='hypothesis';n.justification.acceptedAt=WebPlatform.clock.nowMs();let b=reasoningAuditBucket();b.hypotheses++;current.lastMoveAudit={...n.justification,historyNode:n.id,parentNode:n.parent};refreshReasoningAudit();saveCurrent();showToast(tr('hypothesisAccepted'));return true
 }
 
@@ -1602,9 +1247,9 @@ function historyActionShort(node){
   if(e)return `⚠ ${errorRuleTitle(e)}`;
   if(ch){
     let cell=cellName(ch.row,ch.column),val=ch.to;
-    return gamePedagogy(a.game).historyChangeText(ch)||cell;
+    return gamePedagogy(a.game).audit.historyChangeText(ch)||cell;
   }
-  if(a.type==='PATCH_RECTANGLE')return `${tr('gamePatches')} · ${tr('zone')} ${(a.region??0)+1}`;
+  let specialized=gamePedagogy(a.game||current?.game).audit.historyActionText(a);if(specialized)return specialized;
   if(a.type==='COACH_APPLY')return `Logic Coach`;
   if(j?.status==='hypothesis')return tr('moveHypothesis');
   return a.type||tr('branchStart')
@@ -1700,7 +1345,7 @@ function keepExplorationBranch(){
 }
 function explorationContradiction(){
   let errors=currentVisibleErrors();if(errors.length)return {bad:true,kind:'rules',html:errors.map(e=>`<b>${errorRuleTitle(e)}</b><br>${errorDetailedMessage(e)}`).join('<hr>')};
-  let result=gamePedagogy().explorationContradiction({deadline:WebPlatform.clock.nowMs()+700});
+  let result=gamePedagogy().exploration.contradiction({deadline:WebPlatform.clock.nowMs()+700});
   return result||{bad:false,kind:'none',html:tr('noContradiction')}
 }
 function analyzeExplorationBranch(){
@@ -1720,7 +1365,7 @@ function explorationOnRecordedNode(node){
   let e=explorationState();if(!e?.active||!node||!historyIsDescendant(node.id,e.branchPoint)||node.id===e.branchPoint)return;
   // In Exploration, a legal but unproved first move is explicitly a hypothesis.
   let path=historyPathFrom(e.branchPoint,node.id),h=current.moveHistory,priorHypothesis=path.slice(0,-1).some(id=>h.nodes[id]?.justification?.status==='hypothesis');
-  if(!priorHypothesis&&node.justification?.status==='unjustified'&&gamePedagogy().canAcceptHypothesis(node.justification)){
+  if(!priorHypothesis&&node.justification?.status==='unjustified'&&gamePedagogy().exploration.canAcceptHypothesis(node.justification)){
     node.justification.status='hypothesis';node.justification.acceptedAt=WebPlatform.clock.nowMs();node.justification.exploration=true;
     let b=reasoningAuditBucket();b.hypotheses++;current.lastMoveAudit={...node.justification,historyNode:node.id,parentNode:node.parent};showToast(tr('branchHypothesisAuto'))
   }
@@ -1882,107 +1527,34 @@ function statsView(){
   <h2>${tr('byGame')}</h2><div class="stat-games">${rows}</div><h2>${tr('history')}</h2><div class="history-list">${hist}</div></section>`;
   $('#statsBack').onclick=home;app.querySelectorAll('button').forEach(pressFeedback)
 }
-function home(){if(current&&!current.completed)saveCurrent();stopTimer();timerEl.textContent='00:00';current=null;updateI18n();let saved=getSaved();app.innerHTML=`<section class="hero"><h1>${tr('homeTitle')}</h1><p>${tr('homeSub')}</p></section>${saved?`<button class="resume-card" id="resumeBtn"><b>${tr('resume')} ${gameLabel(saved.current.game)}</b><span>${DIFF[saved.current.diff]} · ${fmt(saved.elapsed||0)}</span></button>`:''}<section class="cards">
-<button class="game-card" data-g="queens"><span class="game-icon" aria-hidden="true">♛</span><span><h2>${gameLabel('queens')}</h2><p>${gameDescription('queens')}</p></span></button>
-<button class="game-card" data-g="tango"><span class="game-icon" aria-hidden="true">☀︎</span><span><h2>${gameLabel('tango')}</h2><p>${gameDescription('tango')}</p></span></button>
-<button class="game-card" data-g="sudoku"><span class="game-icon" aria-hidden="true">✎</span><span><h2>${gameLabel('sudoku')}</h2><p>${gameDescription('sudoku')}</p></span></button>
-<button class="game-card" data-g="patches"><span class="game-icon" aria-hidden="true">▦</span><span><h2>${gameLabel('patches')}</h2><p>${gameDescription('patches')}</p></span></button>
-</section><button class="daily-card" id="dailyBtn"><span>◆</span><b>${tr('daily')}</b><small>${dailyHomeLine()}</small></button><button class="stats-card challenge-home-card" id="challengeBtn"><span>↗</span><b>${tr('challenge')}</b><small>${tr('challengeSub')}</small></button><button class="stats-card" id="statsBtn"><span>▥</span><b>${tr('stats')}</b><small>${tr('statsSub')}</small></button><button class="stats-card mastery-home-card" id="masteryBtn"><span>◎</span><b>${tr('mastery')}</b><small>${tr('masterySub')}</small></button><button class="stats-card learning-home-card" id="learnBtn"><span>◉</span><b>${tr('learn')}</b><small>${tr('learnSub')}</small></button><button class="stats-card training-home-card" id="trainingBtn"><span>◇</span><b>${tr('training')}</b><small>${tr('trainingSub')}</small></button><button class="settings-card" id="settingsBtn"><span>⚙︎</span><b>${tr('prefs')}</b><small>${tr('prefsSub')}</small></button><button class="settings-card" id="aboutBtn"><span>ⓘ</span><b>${tr('about')}</b><small>${tr('aboutSub')}</small></button><div class="footer-note">QUADLUD v${VERSION} · © 2026 Serge Benoliel</div>`;
+function home(){if(current&&!current.completed)saveCurrent();stopTimer();timerEl.textContent='00:00';current=null;updateI18n();let saved=getSaved();app.innerHTML=`<section class="hero"><h1>${tr('homeTitle')}</h1><p>${tr('homeSub')}</p></section>${saved?`<button class="resume-card" id="resumeBtn"><b>${tr('resume')} ${gameLabel(saved.current.game)}</b><span>${DIFF[saved.current.diff]} · ${fmt(saved.elapsed||0)}</span></button>`:''}<section class="cards">${GAME_IDS.map(g=>`<button class="game-card" data-g="${g}"><span class="game-icon" aria-hidden="true">${gameIcon(g)}</span><span><h2>${gameLabel(g)}</h2><p>${gameDescription(g)}</p></span></button>`).join('')}</section><button class="daily-card" id="dailyBtn"><span>◆</span><b>${tr('daily')}</b><small>${dailyHomeLine()}</small></button><button class="stats-card challenge-home-card" id="challengeBtn"><span>↗</span><b>${tr('challenge')}</b><small>${tr('challengeSub')}</small></button><button class="stats-card" id="statsBtn"><span>▥</span><b>${tr('stats')}</b><small>${tr('statsSub')}</small></button><button class="stats-card mastery-home-card" id="masteryBtn"><span>◎</span><b>${tr('mastery')}</b><small>${tr('masterySub')}</small></button><button class="stats-card learning-home-card" id="learnBtn"><span>◉</span><b>${tr('learn')}</b><small>${tr('learnSub')}</small></button><button class="stats-card training-home-card" id="trainingBtn"><span>◇</span><b>${tr('training')}</b><small>${tr('trainingSub')}</small></button><button class="settings-card" id="settingsBtn"><span>⚙︎</span><b>${tr('prefs')}</b><small>${tr('prefsSub')}</small></button><button class="settings-card" id="aboutBtn"><span>ⓘ</span><b>${tr('about')}</b><small>${tr('aboutSub')}</small></button><div class="footer-note">QUADLUD v${VERSION} · © 2026 Serge Benoliel</div>`;
 if(saved)$('#resumeBtn').onclick=resumeSaved;$('#dailyBtn').onclick=dailyView;$('#challengeBtn').onclick=()=>challengeView();$('#statsBtn').onclick=statsView;$('#masteryBtn').onclick=masteryView;$('#learnBtn').onclick=learningView;$('#trainingBtn').onclick=trainingView;$('#settingsBtn').onclick=settingsView;$('#aboutBtn').onclick=aboutView;app.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>launch(b.dataset.g,'easy'));app.querySelectorAll('button').forEach(pressFeedback)}
 function gameLabel(g){let metadata=GameRegistry.getMetadata(g);return metadata?tr(metadata.labelKey):g}
 function gameDescription(g){let metadata=GameRegistry.getMetadata(g);return metadata?.descriptionKey?tr(metadata.descriptionKey):''}
+function gameIcon(g){return GameRegistry.getMetadata(g)?.icon||''}
+function gameVictoryClass(g){return GameRegistry.getMetadata(g)?.victoryClass||''}
 
 // ===== v2.21.4 — non-destructive logical walkthrough =====
 let walkthroughSession=null;
 function walkthroughRootSnapshot(){
   let h=current?.moveHistory,root=h?.nodes?.h0?.snapshot,historyRoot=root?JSON.parse(JSON.stringify(root)):null;
-  return gamePedagogy().walkthroughRootSnapshot({historyRoot,puzzleSnapshot})
+  return gamePedagogy().walkthrough.rootSnapshot({historyRoot,puzzleSnapshot})
 }
-function walkthroughVisibleClone(c,root){return c&&root?gamePedagogy(c.game).walkthroughVisibleClone(c,root):null}
-function walkthroughSnapshot(c){return gamePedagogy(c.game).walkthroughSnapshot(c)}
+function walkthroughVisibleClone(c,root){return c&&root?gamePedagogy(c.game).walkthrough.visibleClone(c,root):null}
+function walkthroughSnapshot(c){return gamePedagogy(c.game).walkthrough.snapshot(c)}
 function withWalkthroughCurrent(fn){let saved=current;current=walkthroughSession?.work||saved;try{return fn(current)}finally{current=saved}}
-function walkthroughComplete(){return withWalkthroughCurrent(c=>!!c&&gamePedagogy(c.game).walkthroughComplete(c))}
-function walkthroughGenerateQueensNext(){
-  let s=walkthroughSession;if(!s||s.base.game!=='queens'||s.done||s.stalled)return false;
-  if(!s.queenLogic)s.queenLogic=queenLogicSession(s.work,s.work.state);
-  if(walkthroughComplete()){s.done=true;s.total=s.moves.length;return false}
-  let result=s.queenLogic.nextDeduction();
-  if(result.contradiction){s.stalled=true;s.logicContradiction=result.contradiction;return false}
-  if(!result.deduction){s.stalled=true;return false}
-  let beforeSnapshot=walkthroughSnapshot(s.work),applied=s.queenLogic.applyDeduction(result.deduction),d=applied.deduction;if(!d){s.stalled=true;return false}
-  s.work.state=cloneGrid(s.queenLogic.state);
-  let presenter=queenReasoningPresenter(),presentation=presenter.presentation(d,applied.automatic),reasoning=presenter.legacyReasoning(d,applied.automatic),info={
-    rule:presentation.rule,technique:presentation.technique,rank:presentation.rank,techniqueLevel:presentation.techniqueLevel,target:d.conclusions?.[0]?.cell?[...d.conclusions[0].cell]:null,
-    presentation,deduction:reasoning,where:presentation.explanation.where,why:presentation.explanation.why,move:presentation.explanation.move,automatic:JSON.parse(JSON.stringify(applied.automatic||[])),metrics:s.queenLogic.metrics(),beforeSnapshot
-  };
-  info.snapshot=walkthroughSnapshot(s.work);s.moves.push(info);
-  if(walkthroughComplete()){s.done=true;s.total=s.moves.length;s.metrics=s.queenLogic.metrics()}
-  return true
-}
-function walkthroughGenerateTangoNext(){
-  let s=walkthroughSession;if(!s||s.base.game!=='tango'||s.done||s.stalled)return false;
-  if(!s.tangoLogic)s.tangoLogic=tangoLogicSession(s.work,s.work.state,s.work.tangoDerivedRelations||[]);
-  if(walkthroughComplete()){s.done=true;s.total=s.moves.length;return false}
-  let result=s.tangoLogic.nextDeduction();
-  if(result.contradiction){s.stalled=true;s.logicContradiction=result.contradiction;return false}
-  if(!result.deduction){s.stalled=true;return false}
-  let beforeSnapshot=walkthroughSnapshot(s.work),applied=s.tangoLogic.applyDeduction(result.deduction),d=applied.deduction;if(!d){s.stalled=true;return false}
-  s.work.state=cloneGrid(s.tangoLogic.state);s.work.tangoDerivedRelations=s.tangoLogic.exportDerivedRelations();
-  let presenter=tangoReasoningPresenter(),presentation=presenter.presentation(d,applied.automatic),reasoning=presenter.legacyReasoning(d,applied.automatic),firstValue=(d.conclusions||[]).find(c=>c.type==='VALUE'),info={
-    rule:presentation.rule,technique:presentation.technique,rank:presentation.rank,techniqueLevel:presentation.techniqueLevel,target:firstValue?firstValue.cell.slice():null,
-    presentation,deduction:reasoning,where:presentation.explanation.where,why:presentation.explanation.why,move:presentation.explanation.move,automatic:JSON.parse(JSON.stringify(applied.automatic||[])),metrics:s.tangoLogic.metrics(),beforeSnapshot
-  };
-  info.snapshot=walkthroughSnapshot(s.work);s.moves.push(info);
-  if(walkthroughComplete()){s.done=true;s.total=s.moves.length;s.metrics=s.tangoLogic.metrics()}
-  return true
-}
-function patchTutorSelectedIds(engine,ids){return new Set((ids||[]).filter(id=>engine.selectedRect(id)!=null))}
-function patchTutorQueueSelections(s,beforeSelected,primary,automatic){let sequence=[primary,...(automatic||[])].filter(Boolean),afterSelected=patchTutorSelectedIds(s.patchLogic,s.base.ids),pending=new Set([...afterSelected].filter(id=>!beforeSelected.has(id)));s.patchRevealQueue=s.patchRevealQueue||[];let enqueue=(id,deduction)=>{id=Number(id);if(!pending.has(id))return;let rect=s.patchLogic.selectedRect(id)?.rect;if(!rect)return;s.patchRevealQueue.push({clue:id,rectangle:JSON.parse(JSON.stringify(rect)),deduction:JSON.parse(JSON.stringify(deduction||primary)),batchPrimaryId:primary?.id||null});pending.delete(id)};for(const d of sequence)for(const c of d?.conclusions||[])if(c.type==='SELECTED_RECT')enqueue(c.clue,d);for(const id of s.base.ids)if(pending.has(Number(id)))enqueue(id,primary)}
-function patchTutorRevealNext(s){let item=s.patchRevealQueue?.shift();if(!item)return false;let id=item.clue,rect=item.rectangle,d=item.deduction,beforeSnapshot=walkthroughSnapshot(s.work);s.work.patchSelectedRects=s.work.patchSelectedRects||{};s.work.patchSelectedRects[id]={r0:rect.r0,r1:rect.r1,c0:rect.c0,c1:rect.c1};for(const [r,col] of rect.cells||PatchesLogic.helpers.rectCells(rect))s.work.paint[r][col]=id;let presenter=patchesReasoningPresenter(),presentation=presenter.presentation(d,[]),reasoning=presenter.legacyReasoning(d,[]),info={
-    rule:presentation.rule,technique:presentation.technique,rank:presentation.rank,techniqueLevel:presentation.techniqueLevel,target:presenter.primaryCell(d),presentation,deduction:reasoning,
-    where:presentation.explanation.where,why:presentation.explanation.why,move:presentation.explanation.move,automatic:[],metrics:s.patchLogic.metrics(),beforeSnapshot,revealedClue:id,revealedRectangle:{r0:rect.r0,r1:rect.r1,c0:rect.c0,c1:rect.c1}
-  };info.snapshot=walkthroughSnapshot(s.work);info.after=info.snapshot;s.moves.push(info);if(walkthroughComplete()&&!s.patchRevealQueue.length){s.done=true;s.total=s.moves.length;s.metrics=s.patchLogic.metrics()}return true}
-function walkthroughGeneratePatchesNext(){
-  let s=walkthroughSession;if(!s||s.base.game!=='patches'||s.done||s.stalled)return false;
-  if(!s.patchLogic)s.patchLogic=patchesLogicSession(s.work,s.work.paint,s.work.patchSelectedRects,s.work.patchLogicEvidence);
-  if(s.patchRevealQueue?.length)return patchTutorRevealNext(s);
-  if(walkthroughComplete()){s.done=true;s.total=s.moves.length;return false}
-  let guard=0,maxGuard=Math.max(20,(s.base.ids?.length||1)*20);
-  while(!s.patchRevealQueue?.length&&guard++<maxGuard){
-    let result=s.patchLogic.nextDeduction();
-    if(result.contradiction){s.stalled=true;s.logicContradiction=result.contradiction;return false}
-    if(!result.deduction){s.stalled=true;return false}
-    let beforeSelected=patchTutorSelectedIds(s.patchLogic,s.base.ids),applied=s.patchLogic.applyDeduction(result.deduction),d=applied.deduction;if(!d){s.stalled=true;return false}
-    if(applied.contradiction){s.stalled=true;s.logicContradiction=applied.contradiction;return false}
-    patchSyncEngineEvidence(s.work,s.patchLogic);
-    patchTutorQueueSelections(s,beforeSelected,d,applied.automatic);
-  }
-  if(!s.patchRevealQueue?.length){s.stalled=true;return false}
-  return patchTutorRevealNext(s)
-}
-function walkthroughGenerateSudokuNext(){
-  let s=walkthroughSession;if(!s||s.base.game!=='sudoku'||s.done||s.stalled)return false;
-  if(walkthroughComplete()){s.done=true;s.total=s.moves.length;return false}
-  let session=sudokuLogicSession(s.work,s.work.state),result=session.nextValueStep();
-  if(result.contradiction){s.stalled=true;s.logicContradiction=result.contradiction;s.sudokuStatus='contradiction';s.metrics=result.metrics;return false}
-  let value=sudokuReasoningPresenter().valueStepConclusion(result);
-  if(!value){s.stalled=true;s.sudokuStatus=result.status||'blocked';s.metrics=result.metrics;return false}
-  let [r,c]=value.cell;if(s.work.state[r][c]!==0){s.stalled=true;s.sudokuStatus='invalid-value-target';return false}
-  let beforeSnapshot=walkthroughSnapshot(s.work),primary=result.primaryDeduction||result.deduction,presenter=sudokuReasoningPresenter(),presentation=presenter.presentValueStep(result,beforeSnapshot.state),reasoning=presenter.legacyValueStepReasoning(result),valueStep={status:result.status,contradiction:null,deduction:JSON.parse(JSON.stringify(result.deduction)),primaryDeduction:JSON.parse(JSON.stringify(primary)),supportingDeductions:JSON.parse(JSON.stringify(result.supportingDeductions||[])),logicalSteps:result.logicalSteps,metrics:JSON.parse(JSON.stringify(result.metrics||{}))};
-  s.work.state[r][c]=value.value;
-  let info={
-    rule:presentation.rule,technique:presentation.technique,rank:presentation.metadata.coachRank,techniqueLevel:presentation.techniqueLevel,target:[r,c],
-    presentation,deduction:reasoning,logicDeduction:JSON.parse(JSON.stringify(primary)),finalDeduction:JSON.parse(JSON.stringify(result.deduction)),supportingDeductions:JSON.parse(JSON.stringify(result.supportingDeductions||[])),valueStep,
-    where:presentation.explanation.where,why:presentation.explanation.why,move:`${value.value} · ${cellName(r,c)}`,automatic:[],metrics:JSON.parse(JSON.stringify(result.metrics||{})),beforeSnapshot
-  };
-  info.snapshot=walkthroughSnapshot(s.work);s.moves.push(info);s.sudokuStatus='value';s.metrics=info.metrics;
-  if(walkthroughComplete()){s.done=true;s.total=s.moves.length}
-  return true
-}
-function walkthroughGenerateNext(){let s=walkthroughSession;if(!s||s.done||s.stalled)return false;return gamePedagogy(s.base.game).walkthroughGenerateNext(s)}
+function walkthroughComplete(){return withWalkthroughCurrent(c=>!!c&&gamePedagogy(c.game).walkthrough.complete(c))}
+
+
+
+
+
+
+
+function walkthroughGenerateNext(){let s=walkthroughSession;if(!s||s.done||s.stalled)return false;return gamePedagogy(s.base.game).walkthrough.generateNext(s)}
 function walkthroughTarget(index){return index>0?walkthroughSession?.moves?.[index-1]?.target:null}
 function walkthroughBoardHtml(snapshot,target=null,deduction=null){
-  let s=walkthroughSession,c=s.base,n=c.n||6,view=gamePedagogy(c.game).walkthroughBoard({base:c,initial:s.initial,snapshot,target,deduction})||{},boardClass=view.boardClass?`${view.boardClass} `:'';
+  let s=walkthroughSession,c=s.base,n=c.n||6,view=gamePedagogy(c.game).walkthrough.board({base:c,initial:s.initial,snapshot,target,deduction})||{},boardClass=view.boardClass?`${view.boardClass} `:'';
   return `<div class="walkthrough-board-wrap"><div class="board ${boardClass}walkthrough-board" style="grid-template-columns:repeat(${n},minmax(0,1fr));grid-template-rows:repeat(${n},minmax(0,1fr))">${view.cellsHtml||''}</div></div>`
 }
 function walkthroughExplanationHtml(index){
@@ -1999,18 +1571,18 @@ function a11ySyncWalkthroughBoard(){
 }
 function renderWalkthrough(){
   let s=walkthroughSession;if(!s)return;let i=s.index,snap=i===0?s.initial:s.moves[i-1].snapshot,target=walkthroughTarget(i),deduction=i>0?s.moves[i-1]?.deduction:null;
-  let contradiction=s.logicContradiction?(gamePedagogy(s.base.game).walkthroughContradictionText(s.logicContradiction)||tr('walkthroughStalled')):tr('walkthroughStalled'),stateNote=s.done&&i===s.moves.length?`<div class="walkthrough-complete">✓ ${tr('walkthroughComplete')}</div>`:s.stalled&&i===s.moves.length?`<div class="walkthrough-stalled">⚠ ${contradiction}</div>`:'';
+  let contradiction=s.logicContradiction?(gamePedagogy(s.base.game).walkthrough.contradictionText(s.logicContradiction)||tr('walkthroughStalled')):tr('walkthroughStalled'),stateNote=s.done&&i===s.moves.length?`<div class="walkthrough-complete">✓ ${tr('walkthroughComplete')}</div>`:s.stalled&&i===s.moves.length?`<div class="walkthrough-stalled">⚠ ${contradiction}</div>`:'';
   let total=s.done?s.moves.length:'…',progress=`${i}/${total}`;document.body.classList.add('tutor-active');
   app.innerHTML=`<section class="panel walkthrough-panel"><div class="stats-head walkthrough-head"><div><h1>${tr('walkthrough')}</h1><p>${gameLabel(s.base.game)} · ${DIFF[s.base.diff]}</p></div><button class="btn" id="walkthroughClose">${tr('walkthroughClose')}</button></div>${walkthroughBoardHtml(snap,target,deduction)}<div class="walkthrough-actions walkthrough-actions-top"><button class="btn" id="walkthroughPrev" ${i===0?'disabled':''}>← ${tr('walkthroughPrevious')}</button><button class="btn walkthrough-step-counter" id="walkthroughRestart" ${i===0?'disabled':''} title="${tr('walkthroughRestart')}">${tr('walkthroughStep')} ${progress} · ↺</button><button class="btn primary" id="walkthroughNext" ${(s.done||s.stalled)&&i===s.moves.length?'disabled':''}>${tr('walkthroughNext')} →</button></div><div class="walkthrough-scroll" aria-live="polite" aria-atomic="false"><p class="walkthrough-help-note">💡 ${tr('walkthroughCountsAsHelp')}</p>${walkthroughExplanationHtml(i)}${stateNote}</div></section>`;
   a11ySyncWalkthroughBoard();
-  gamePedagogy(s.base.game).walkthroughAfterRender(app.querySelector('.walkthrough-board'),s.base);
+  gamePedagogy(s.base.game).walkthrough.afterRender(app.querySelector('.walkthrough-board'),s.base);
   $('#walkthroughClose').onclick=closeWalkthrough;$('#walkthroughPrev').onclick=()=>{if(s.index>0){s.index--;renderWalkthrough()}};$('#walkthroughRestart').onclick=()=>{s.index=0;renderWalkthrough()};$('#walkthroughNext').onclick=()=>{if(s.index<s.moves.length)s.index++;else if(walkthroughGenerateNext())s.index++;renderWalkthrough()};app.querySelectorAll('button').forEach(pressFeedback)
 }
 function openWalkthrough(){
   if(!current||current.training)return false;let root=walkthroughRootSnapshot(),work=walkthroughVisibleClone(current,root);if(!work)return false;
   let elapsed=timerSeconds(),wasPaused=paused;stopTimer(true);current.walkthroughUsed=true;markHintUsed();updateScoreFlags();saveCurrent();
   walkthroughSession={schema:2,base:work,work,initial:walkthroughSnapshot(work),moves:[],index:0,done:false,stalled:false,elapsed,wasPaused};
-  gamePedagogy(work.game).walkthroughInitialize(walkthroughSession);
+  gamePedagogy(work.game).walkthrough.initialize(walkthroughSession);
   renderWalkthrough();return true
 }
 function closeWalkthrough(){
@@ -2065,7 +1637,7 @@ function ensurePrecomputeWorker(){
   if(precomputeWorker)return precomputeWorker;
   if(!WebPlatform.workers.supported())return null;
   try{
-    let w=WebPlatform.workers.create('./precompute-worker.js?v=2.30.0');if(!w)return null;
+    let w=WebPlatform.workers.create('./precompute-worker.js?v=2.32.0');if(!w)return null;
     w.onmessage=e=>{
       let m=e.data||{};precomputeBusy=false;
       if(m.ok&&m.day===precomputeDay&&m.candidate&&precomputeCandidateCertified(m.game,m.diff,m.candidate)){
@@ -2142,250 +1714,49 @@ function launch(game,diff){if(!GameRegistry.hasGame(game))throw new Error(`Unkno
 function resumeSaved(){let s=getSaved();if(!s)return home();stopTimer();let c=DataSerialization.deserializeCurrentState(s.current);current=c;historyInit(false);renderGameUi(c);startTimer(true,s.elapsed||0,!!s.paused);updatePauseButton();refreshExplorationPanel();showToast(tr('restored'));if(!c.training)startBackgroundPrecompute(c.game,c.diff)}
 
 
-function sudokuCandidatesAt(r,c){
-  let s=new Set([1,2,3,4,5,6]);for(let i=0;i<6;i++){s.delete(current.state[r][i]);s.delete(current.state[i][c])}
-  let br=Math.floor(r/2)*2,bc=Math.floor(c/3)*3;for(let rr=br;rr<br+2;rr++)for(let cc=bc;cc<bc+3;cc++)s.delete(current.state[rr][cc]);return [...s]
-}
-function tangoReason(r,c,v){
-  let sym=v===1?(lang()==='fr'?'soleil ☀':'sun ☀'):(lang()==='fr'?'lune ☾':'moon ☾'),opp=1-v,s=current.state,reasons=[];
-  let rowOpp=s[r].filter(x=>x===opp).length,rowSame=s[r].filter(x=>x===v).length,colOpp=0,colSame=0;for(let rr=0;rr<6;rr++){if(s[rr][c]===opp)colOpp++;if(s[rr][c]===v)colSame++}
-  if(rowOpp===3)reasons.push(lang()==='fr'?`la ligne contient déjà 3 ${opp===1?'soleils':'lunes'}`:`the row already contains 3 ${opp===1?'suns':'moons'}`);
-  if(colOpp===3)reasons.push(lang()==='fr'?`la colonne contient déjà 3 ${opp===1?'soleils':'lunes'}`:`the column already contains 3 ${opp===1?'suns':'moons'}`);
-  for(let [rr,cc,d,rel] of current.edges){let r2=d==='r'?rr:rr+1,c2=d==='r'?cc+1:cc;if(!((rr===r&&cc===c)||(r2===r&&c2===c)))continue;let or=rr===r&&cc===c?r2:rr,oc=rr===r&&cc===c?c2:cc,ov=s[or][oc];if(ov===-1)continue;let forced=rel==='='?ov:1-ov;if(forced===v)reasons.push(lang()==='fr'?`la relation ${rel} avec la case voisine impose ce symbole`:`the ${rel} relation with the adjacent cell forces this symbol`)}
-  let triples=[[[r,c-2],[r,c-1]],[[r,c-1],[r,c+1]],[[r,c+1],[r,c+2]],[[r-2,c],[r-1,c]],[[r-1,c],[r+1,c]],[[r+1,c],[r+2,c]]];
-  for(let pair of triples){let vals=pair.map(([rr,cc])=>rr>=0&&rr<6&&cc>=0&&cc<6?s[rr][cc]:-9);if(vals[0]===opp&&vals[1]===opp){reasons.push(lang()==='fr'?`deux ${opp===1?'soleils':'lunes'} voisins interdisent un troisième symbole identique`:`two adjacent ${opp===1?'suns':'moons'} prevent a third identical symbol`);break}}
-  if(!reasons.length)reasons.push(lang()==='fr'?`ce ${sym} est compatible avec l’équilibre 3/3, les relations et la règle des trois`:`this ${sym} is compatible with the 3/3 balance, relations and no-three rule`);
-  return reasons.join(lang()==='fr'?' ; ': '; ')
-}
-function queenReason(r,c){
-  let z=current.reg[r][c],sameRegion=[],sameRow=[],sameCol=[];for(let rr=0;rr<current.n;rr++)for(let cc=0;cc<current.n;cc++)if(current.state[rr][cc]!==1){if(current.reg[rr][cc]===z)sameRegion.push([rr,cc]);if(rr===r)sameRow.push([rr,cc]);if(cc===c)sameCol.push([rr,cc])}
-  let txt=lang()==='fr'?`cette case respecte la ligne ${r+1}, la colonne ${c+1}, la zone ${z+1} et la règle de non-adjacence.`:`this cell satisfies row ${r+1}, column ${c+1}, region ${z+1}, and the non-adjacency rule.`;
-  if(sameRegion.length===1)txt+=(lang()==='fr'?' C’est la dernière case non barrée de sa zone.':' It is the last unmarked cell in its region.');
-  return txt
-}
-function patchReason(r,c,id,cl){
-  let piece=lang()==='fr'?`zone ${id+1}`:`region ${id+1}`,shape=cl.shape==='carré'?(lang()==='fr'?'carrée':'square'):cl.shape==='vertical'?(lang()==='fr'?'verticale':'vertical'):cl.shape==='horizontal'?(lang()==='fr'?'horizontale':'horizontal'):(lang()==='fr'?'rectangulaire':'rectangular');
-  if(cl.mode==='both')return lang()==='fr'?`l’indice impose une zone ${shape} de ${cl.size} cases ; cette case appartient au rectangle compatible avec cet indice.`:`the clue requires a ${shape} region of ${cl.size} cells; this cell belongs to the rectangle compatible with that clue.`;
-  if(cl.mode==='size')return lang()==='fr'?`l’indice impose ${cl.size} cases ; cette case est nécessaire pour compléter un rectangle de cette surface.`:`the clue requires ${cl.size} cells; this cell is needed to complete a rectangle of that area.`;
-  if(cl.mode==='shape')return lang()==='fr'?`l’indice impose une forme ${shape} ; cette case prolonge la zone sans recouvrir un autre indice.`:`the clue requires a ${shape} shape; this cell extends the region without covering another clue.`;
-  return lang()==='fr'?`cette case appartient à ${piece} dans l’unique découpage valide et n’introduit ni chevauchement ni second indice.`:`this cell belongs to ${piece} in the unique valid partition and creates neither overlap nor a second clue.`
-}
+
+
+
+
 
 function showNoLogicalHint(){showHintNotice(tr('noLogicalHint'));saveCurrent()}
 const DETAILED_HINT_LANGS=new Set(['fr','en']);
-function genericLocalizedHint(kind,target,rank,value){return gamePedagogy(kind).localizedHint({target,rank,value})}
+function genericLocalizedHint(kind,target,rank,value){return gamePedagogy(kind).coach.localizedHint({target,rank,value})}
 
 
-const QUEEN_REGION_COLORS=['#f6d68a','#c9dca5','#b9d8e9','#d9c4e8','#f3b8ad','#b5dbc9','#e7c9a3','#c6c7e9','#c4dfd7'];
-function queenWalkthroughRegionColor(i){return QUEEN_REGION_COLORS[i%QUEEN_REGION_COLORS.length]}
-function queenZoneBadge(id){
-  let color=QUEEN_REGION_COLORS[id%QUEEN_REGION_COLORS.length],label=tr('zone');
-  return `<span class="queen-zone-ref"><span class="queen-zone-swatch" style="background:${color}" aria-hidden="true"></span>${label} ${id+1}</span>`
-}
-function queenCellAllowed(r,c){
-  if(current.state[r][c]===1)return false;
-  for(let rr=0;rr<current.n;rr++)for(let cc=0;cc<current.n;cc++)if(current.state[rr][cc]===2){
-    if(rr===r||cc===c||current.reg[rr][cc]===current.reg[r][c]||(Math.abs(rr-r)<=1&&Math.abs(cc-c)<=1))return rr===r&&cc===c
-  }
-  return true
-}
-function queenDirectExclusionReason(r,c){
-  for(let rr=0;rr<current.n;rr++)for(let cc=0;cc<current.n;cc++)if(current.state[rr][cc]===2){
-    if(rr===r)return {technique:'Q_EXCLUSION_ROW',text:lang()==='fr'?`la ligne ${r+1} contient déjà une reine en ${cellName(rr,cc)}.`:`row ${r+1} already contains a queen at ${cellName(rr,cc)}.`};
-    if(cc===c)return {technique:'Q_EXCLUSION_COLUMN',text:lang()==='fr'?`la colonne ${c+1} contient déjà une reine en ${cellName(rr,cc)}.`:`column ${c+1} already contains a queen at ${cellName(rr,cc)}.`};
-    if(current.reg[rr][cc]===current.reg[r][c])return {technique:'Q_EXCLUSION_REGION',text:lang()==='fr'?`${queenZoneBadge(current.reg[r][c])} contient déjà une reine en ${cellName(rr,cc)}.`:`${queenZoneBadge(current.reg[r][c])} already contains a queen at ${cellName(rr,cc)}.`};
-    if(Math.abs(rr-r)<=1&&Math.abs(cc-c)<=1)return {technique:'Q_EXCLUSION_ADJACENCY',text:lang()==='fr'?`${cellName(r,c)} est adjacente à la reine de ${cellName(rr,cc)}.`:`${cellName(r,c)} is adjacent to the queen at ${cellName(rr,cc)}.`};
-  }
-  return null
-}
-function findQueenLogicalHint(){
-  let n=current.n,cands=Array.from({length:n},(_,r)=>Array.from({length:n},(_,c)=>queenCellAllowed(r,c)));
-  // First expose direct X deductions if auto-cross is disabled or some X is missing.
-  for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.state[r][c]===0&&!cands[r][c]){
-    let reason=queenDirectExclusionReason(r,c);if(reason)return {r,c,v:1,rank:0,why:reason.text,technique:reason.technique}
-  }
-  function forcedFrom(cells,reasonFr,reasonEn,technique){
-    let open=cells.filter(([r,c])=>cands[r][c]&&current.state[r][c]!==2),q=cells.filter(([r,c])=>current.state[r][c]===2);
-    if(!q.length&&open.length===1)return {r:open[0][0],c:open[0][1],v:2,rank:0,why:lang()==='fr'?reasonFr:reasonEn,technique}
-    return null
-  }
-  for(let r=0;r<n;r++){let h=forcedFrom(Array.from({length:n},(_,c)=>[r,c]),`toutes les autres cases de la ligne ${r+1} sont exclues`,`all other cells in row ${r+1} are excluded; only one queen position remains.`,'Q_UNIQUE_ROW');if(h)return h}
-  for(let c=0;c<n;c++){let h=forcedFrom(Array.from({length:n},(_,r)=>[r,c]),`toutes les autres cases de la colonne ${c+1} sont exclues.`,`all other cells in column ${c+1} are excluded.`,'Q_UNIQUE_COLUMN');if(h)return h}
-  let ids=[...new Set(current.reg.flat())];
-  for(let id of ids){let cells=[];for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.reg[r][c]===id)cells.push([r,c]);let h=forcedFrom(cells,`toutes les autres cases de ${queenZoneBadge(id)} sont exclues : cette zone n’a plus qu’une seule place possible pour sa reine.`,`all other cells in ${queenZoneBadge(id)} are excluded; only one queen position remains.`,'Q_UNIQUE_REGION');if(h)return h}
-  return null
-}
 
-function findTangoLogicalHint(){
-  let s=current.state,n=6;
-  function out(r,c,v,whyFr,whyEn,technique){if(r>=0&&r<n&&c>=0&&c<n&&s[r][c]===-1)return {r,c,v,why:lang()==='fr'?whyFr:whyEn,technique};return null}
-  // 3/3 balance
-  for(let r=0;r<n;r++){for(let v=0;v<=1;v++){let count=s[r].filter(x=>x===v).length;if(count===3)for(let c=0;c<n;c++){let h=out(r,c,1-v,`la ligne contient déjà 3 ${v===1?'soleils':'lunes'} ; les cases restantes doivent être des ${v===1?'lunes':'soleils'}.`,`the row already has 3 ${v===1?'suns':'moons'}; remaining cells must be ${v===1?'moons':'suns'}.`,'T_BALANCE_ROW');if(h)return h}}}
-  for(let c=0;c<n;c++){for(let v=0;v<=1;v++){let count=0;for(let r=0;r<n;r++)if(s[r][c]===v)count++;if(count===3)for(let r=0;r<n;r++){let h=out(r,c,1-v,`la colonne contient déjà 3 ${v===1?'soleils':'lunes'} ; les cases restantes doivent être des ${v===1?'lunes':'soleils'}.`,`the column already has 3 ${v===1?'suns':'moons'}; remaining cells must be ${v===1?'moons':'suns'}.`,'T_BALANCE_COLUMN');if(h)return h}}}
-  // no three: XX_ _XX X_X
-  for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(s[r][c]===-1){
-    let pairs=[[[r,c-2],[r,c-1]],[[r,c-1],[r,c+1]],[[r,c+1],[r,c+2]],[[r-2,c],[r-1,c]],[[r-1,c],[r+1,c]],[[r+1,c],[r+2,c]]];
-    for(let pair of pairs){let a=pair[0],b=pair[1];if(a[0]>=0&&a[0]<n&&a[1]>=0&&a[1]<n&&b[0]>=0&&b[0]<n&&b[1]>=0&&b[1]<n){let va=s[a[0]][a[1]],vb=s[b[0]][b[1]];if(va!==-1&&va===vb)return {r,c,v:1-va,technique:'T_NO_THREE',why:lang()==='fr'?`deux symboles identiques encadrent ou précèdent cette case ; un troisième identique est interdit.`:`two identical symbols surround or precede this cell; a third identical symbol is forbidden.`}}}
-  }
-  // relation with known neighbor
-  for(let [r,c,d,rel] of current.edges){let r2=d==='r'?r:r+1,c2=d==='r'?c+1:c,a=s[r][c],b=s[r2][c2];
-    if(a===-1&&b!==-1)return {r,c,v:rel==='='?b:1-b,technique:rel==='='?'T_RELATION_EQUAL':'T_RELATION_OPPOSITE',why:lang()==='fr'?`la relation ${rel} avec la case voisine impose ce symbole.`:`the ${rel} relation with the adjacent cell forces this symbol.`};
-    if(b===-1&&a!==-1)return {r:r2,c:c2,v:rel==='='?a:1-a,technique:rel==='='?'T_RELATION_EQUAL':'T_RELATION_OPPOSITE',why:lang()==='fr'?`la relation ${rel} avec la case voisine impose ce symbole.`:`the ${rel} relation with the adjacent cell forces this symbol.`}
-  }
-  return null
-}
 
-function findSudokuLogicalHint(){
-  let empties=[];for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(current.empty.has(r*6+c)&&current.state[r][c]===0)empties.push([r,c]);
-  for(let [r,c] of empties){let cand=sudokuCandidatesAt(r,c);if(cand.length===1)return {r,c,v:cand[0],technique:'S_NAKED_SINGLE',why:lang()==='fr'?`après élimination par la ligne, la colonne et le bloc 2×3, seul ${cand[0]} reste possible.`:`after elimination by the row, column and 2×3 box, only ${cand[0]} remains possible.`}}
-  let units=[];for(let r=0;r<6;r++)units.push({cells:Array.from({length:6},(_,c)=>[r,c]),nameFr:`la ligne ${r+1}`,nameEn:`row ${r+1}`,technique:'S_HIDDEN_ROW'});for(let c=0;c<6;c++)units.push({cells:Array.from({length:6},(_,r)=>[r,c]),nameFr:`la colonne ${c+1}`,nameEn:`column ${c+1}`,technique:'S_HIDDEN_COLUMN'});
-  for(let br=0;br<6;br+=2)for(let bc=0;bc<6;bc+=3){let cells=[];for(let r=br;r<br+2;r++)for(let c=bc;c<bc+3;c++)cells.push([r,c]);units.push({cells,nameFr:`le bloc ${Math.floor(br/2)+1}-${Math.floor(bc/3)+1}`,nameEn:`the 2×3 box at rows ${br+1}-${br+2}, columns ${bc+1}-${bc+3}`,technique:'S_HIDDEN_BOX'})}
-  for(let u of units)for(let v=1;v<=6;v++){let places=u.cells.filter(([r,c])=>current.state[r][c]===0&&sudokuCandidatesAt(r,c).includes(v));if(places.length===1){let [r,c]=places[0];return {r,c,v,technique:u.technique,why:lang()==='fr'?`${v} n’a qu’une seule position possible dans ${u.nameFr}.`:`${v} has only one possible position in ${u.nameEn}.`}}}
-  return null
-}
+
+
+
+
+
+
+
 
 // ===== Rank-1 inference: simulate one candidate, then reject it if the
 // resulting visible state already contains a contradiction or leaves any
 // required next placement with no legal candidate. No hidden solution is used.
 
 function withTempCurrent(mutator,fn){
-  let snap=current,clone={...current};
-  if(current.state)clone.state=current.state.map(r=>[...r]);
-  if(current.paint)clone.paint=current.paint.map(r=>[...r]);
-  current=clone;
-  try{mutator(clone);return fn(clone)}finally{current=snap}
+  let snap=current,clone=DataSerialization.deserializeCurrentState(DataSerialization.serializeCurrentState(current));
+  current=clone;try{mutator(clone);return fn(clone)}finally{current=snap}
 }
 
-// QUEENS
-function queenStateContradiction(){
-  if(queenIllegalCells().size)return true;
-  let n=current.n;
-  // Every row, column and region still needing a queen must retain >=1 legal cell.
-  for(let r=0;r<n;r++){
-    let q=false,open=false;for(let c=0;c<n;c++){if(current.state[r][c]===2)q=true;else if(queenCellAllowed(r,c))open=true}
-    if(!q&&!open)return true
-  }
-  for(let c=0;c<n;c++){
-    let q=false,open=false;for(let r=0;r<n;r++){if(current.state[r][c]===2)q=true;else if(queenCellAllowed(r,c))open=true}
-    if(!q&&!open)return true
-  }
-  for(let id of [...new Set(current.reg.flat())]){
-    let q=false,open=false;for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.reg[r][c]===id){if(current.state[r][c]===2)q=true;else if(queenCellAllowed(r,c))open=true}
-    if(!q&&!open)return true
-  }
-  return false
-}
-const QUEEN_HINT_BUDGET_MS=5000;
+
 function hintBudgetExpired(deadline){return Number.isFinite(deadline)&&WebPlatform.clock.nowMs()>=deadline}
-function queenHintTimeout(){return {timeout:true}}
-function findQueenRank1Hint(deadline=Infinity){
-  let n=current.n;
-  for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(hintBudgetExpired(deadline))return queenHintTimeout();else if(current.state[r][c]===0&&queenCellAllowed(r,c)){
-    let queenBad=withTempCurrent(x=>{x.state[r][c]=2},()=>queenStateContradiction());
-    let xBad=withTempCurrent(x=>{x.state[r][c]=1},()=>queenStateContradiction());
-    if(hintBudgetExpired(deadline))return queenHintTimeout();
-    if(queenBad!==xBad){
-      let v=queenBad?1:2,rej=v===2?1:2,w;
-      if(rej===2)w=queenRank1PlacementFailure(r,c);
-      else w=withTempCurrent(x=>{x.state[r][c]=1},()=>{
-        let n=current.n;
-        for(let rr=0;rr<n;rr++){let q=current.state[rr].some(z=>z===2),open=[];for(let cc=0;cc<n;cc++)if(current.state[rr][cc]===0&&queenCellAllowed(rr,cc))open.push([rr,cc]);if(!q&&!open.length)return {text:lang()==='fr'?`la ligne ${rr+1} n'aurait plus aucune case disponible pour sa reine.`:`row ${rr+1} would have no cell left for its queen.`}}
-        for(let cc=0;cc<n;cc++){let q=false,open=[];for(let rr=0;rr<n;rr++){if(current.state[rr][cc]===2)q=true;else if(current.state[rr][cc]===0&&queenCellAllowed(rr,cc))open.push([rr,cc])}if(!q&&!open.length)return {text:lang()==='fr'?`la colonne ${cc+1} n'aurait plus aucune case disponible pour sa reine.`:`column ${cc+1} would have no cell left for its queen.`}}
-        for(let id of [...new Set(current.reg.flat())]){let q=false,open=[];for(let rr=0;rr<n;rr++)for(let cc=0;cc<n;cc++)if(current.reg[rr][cc]===id){if(current.state[rr][cc]===2)q=true;else if(current.state[rr][cc]===0&&queenCellAllowed(rr,cc))open.push([rr,cc])}if(!q&&!open.length)return {text:lang()==='fr'?`${queenZoneBadge(id)} n'aurait plus aucune case disponible pour sa reine.`:`${queenZoneBadge(id)} would have no cell left for its queen.`}}
-        return null
-      });
-      let badText=w&&w.text?w.text:(lang()==='fr'?'une ligne, une colonne ou une zone deviendrait impossible.':'a row, column, or region would become impossible.');
-      return {r,c,v,rank:1,
-        hypothesis:lang()==='fr'?`essayons ${rej===2?'une reine ♛':'un X'} en ${cellName(r,c)}.`:`try ${rej===2?'a queen ♛':'an X'} at ${cellName(r,c)}.`,
-        consequence:badText,
-        deadend:lang()==='fr'?`ce choix ne permet donc pas de terminer la grille en respectant une reine par ligne, colonne et zone.`:`this choice cannot lead to a completed grid with one queen per row, column, and region.`,
-        conclusion:lang()==='fr'?`${cellName(r,c)} doit donc contenir ${v===2?'une reine ♛':'un X'}.`:`${cellName(r,c)} must therefore contain ${v===2?'a queen ♛':'an X'}.`,
-        why:null}
-    }
-  }
-  return null
-}
 
-// TANGO
-function tangoImmediateContradiction(){
-  let s=current.state,n=6;
-  if(tangoIllegalCells().size)return true;
-  for(let r=0;r<n;r++)for(let v=0;v<=1;v++){let count=s[r].filter(x=>x===v).length,empty=s[r].filter(x=>x===-1).length;if(count>3||count+empty<3)return true}
-  for(let c=0;c<n;c++)for(let v=0;v<=1;v++){let count=0,empty=0;for(let r=0;r<n;r++){if(s[r][c]===v)count++;if(s[r][c]===-1)empty++}if(count>3||count+empty<3)return true}
-  return false
-}
-function tangoCandidateLocallyLegal(r,c,v){
-  if(current.state[r][c]!==-1)return false;
-  return withTempCurrent(x=>{x.state[r][c]=v},()=>!tangoImmediateContradiction())
-}
-function tangoStateContradiction(){
-  if(tangoImmediateContradiction())return true;
-  // Rank-1 consistency: every unresolved cell must retain at least one legal symbol.
-  for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(current.state[r][c]===-1){
-    let ok0=tangoCandidateLocallyLegal(r,c,0),ok1=tangoCandidateLocallyLegal(r,c,1);
-    if(!ok0&&!ok1)return true
-  }
-  return false
-}
-function findTangoRank1Hint(){
-  for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(current.state[r][c]===-1){
-    let direct0=tangoCandidateLocallyLegal(r,c,0),direct1=tangoCandidateLocallyLegal(r,c,1);
-    if(!direct0||!direct1)continue;
-    let bad=[];for(let v=0;v<=1;v++)bad[v]=withTempCurrent(x=>{x.state[r][c]=v},()=>tangoStateContradiction());
-    if(bad[0]!==bad[1]){
-      let v=bad[0]?1:0,rejected=1-v;
-      let d=withTempCurrent(x=>{x.state[r][c]=rejected},()=>tangoRank1ContradictionDetail());
-      let detail=d&&d.text?d.text:(lang()==='fr'?'une case suivante ne conserverait plus aucun symbole possible.':'a following cell would have no possible symbol left.');
-      return {r,c,v,rank:1,
-        hypothesis:lang()==='fr'?`essayons ${pieceName('tango',rejected)} en ${cellName(r,c)}.`:`try ${pieceName('tango',rejected)} at ${cellName(r,c)}.`,
-        consequence:detail,
-        deadend:lang()==='fr'?`ce choix conduit donc à une situation impossible dès le coup suivant.`:`this choice therefore creates an impossible situation on the next move.`,
-        conclusion:lang()==='fr'?`${cellName(r,c)} doit contenir ${pieceName('tango',v)}.`:`${cellName(r,c)} must contain ${pieceName('tango',v)}.`,
-        why:null}
-    }
-  }
-  return null
-}
 
-// MINI SUDOKU
-function sudokuImmediateContradiction(){
-  if(sudokuIllegalCells().size)return true;
-  for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(current.state[r][c]===0&&sudokuCandidatesAt(r,c).length===0)return true;
-  // Every missing digit in every unit must still have a possible position.
-  let units=[];for(let r=0;r<6;r++)units.push(Array.from({length:6},(_,c)=>[r,c]));for(let c=0;c<6;c++)units.push(Array.from({length:6},(_,r)=>[r,c]));
-  for(let br=0;br<6;br+=2)for(let bc=0;bc<6;bc+=3){let a=[];for(let r=br;r<br+2;r++)for(let c=bc;c<bc+3;c++)a.push([r,c]);units.push(a)}
-  for(let u of units)for(let v=1;v<=6;v++){
-    if(u.some(([r,c])=>current.state[r][c]===v))continue;
-    if(!u.some(([r,c])=>current.state[r][c]===0&&sudokuCandidatesAt(r,c).includes(v)))return true
-  }
-  return false
-}
 
-function sudokuContradictionDetail(){
-  if(sudokuIllegalCells().size)return lang()==='fr'?'un chiffre est en conflit direct avec sa ligne, sa colonne ou son bloc.':'a digit directly conflicts with its row, column, or box.';
-  for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(current.state[r][c]===0&&sudokuCandidatesAt(r,c).length===0)return lang()==='fr'?`${cellName(r,c)} n'aurait plus aucun chiffre possible.`:`${cellName(r,c)} would have no possible digit left.`;
-  let units=[];for(let r=0;r<6;r++)units.push({name:lang()==='fr'?`la ligne ${r+1}`:`row ${r+1}`,cells:Array.from({length:6},(_,c)=>[r,c])});
-  for(let c=0;c<6;c++)units.push({name:lang()==='fr'?`la colonne ${c+1}`:`column ${c+1}`,cells:Array.from({length:6},(_,r)=>[r,c])});
-  for(let br=0;br<6;br+=2)for(let bc=0;bc<6;bc+=3){let a=[];for(let r=br;r<br+2;r++)for(let c=bc;c<bc+3;c++)a.push([r,c]);units.push({name:lang()==='fr'?`le bloc L${br+1}-${br+2}/C${bc+1}-${bc+3}`:`box R${br+1}-${br+2}/C${bc+1}-${bc+3}`,cells:a})}
-  for(let u of units)for(let v=1;v<=6;v++)if(!u.cells.some(([r,c])=>current.state[r][c]===v)&&!u.cells.some(([r,c])=>current.state[r][c]===0&&sudokuCandidatesAt(r,c).includes(v)))return lang()==='fr'?`le chiffre ${v} n'aurait plus aucun emplacement possible dans ${u.name}.`:`digit ${v} would have no possible place in ${u.name}.`;
-  return lang()==='fr'?'les contraintes du Sudoku deviendraient impossibles.':'the Sudoku constraints would become impossible.';
-}
-function findSudokuRank1Hint(){
-  for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(current.state[r][c]===0&&current.empty.has(r*6+c)){
-    let cand=sudokuCandidatesAt(r,c);if(cand.length<2)continue;
-    let good=[],bad=[],details={};
-    for(let v of cand){let contradiction=withTempCurrent(x=>{x.state[r][c]=v},()=>sudokuImmediateContradiction());(contradiction?bad:good).push(v);if(contradiction)details[v]=withTempCurrent(x=>{x.state[r][c]=v},()=>sudokuContradictionDetail())}
-    if(good.length===1&&bad.length){
-      let lines=bad.map(v=>`• ${v} : ${details[v]}`).join('<br>');
-      return {r,c,v:good[0],rank:1,
-        hypothesis:lang()==='fr'?`${cellName(r,c)} accepte d'abord les candidats ${cand.join(', ')}. Testons les autres possibilités.`:`${cellName(r,c)} initially allows candidates ${cand.join(', ')}. Test the alternatives.`,
-        consequence:lines,
-        deadend:lang()==='fr'?`tous les candidats sauf ${good[0]} créent immédiatement une impossibilité.`:`every candidate except ${good[0]} immediately creates an impossibility.`,
-        conclusion:lang()==='fr'?`${cellName(r,c)} doit donc contenir ${good[0]}.`:`${cellName(r,c)} must therefore contain ${good[0]}.`,
-        why:null}
-    }
-  }return null
-}
+
+
+
+
+
+
+
+
+
 
 // ===== Rank-2 inference =====
 // A candidate that survived direct rules and rank 1 is simulated. The engine
@@ -2395,7 +1766,7 @@ function findSudokuRank1Hint(){
 // hypothesis -> consequence -> dead end -> conclusion.
 
 function cellName(r,c){return lang()==='fr'?`L${r+1}C${c+1}`:`R${r+1}C${c+1}`}
-function pieceName(kind,v){return gamePedagogy(kind).pieceName(v)}
+function pieceName(kind,v){return gamePedagogy(kind).coach.pieceName(v)}
 function rank1Why(h){
   return `<span class="reason-step"><b>1. ${lang()==='fr'?'Essai':'Try'} :</b> ${h.hypothesis}</span>`+
          `<span class="reason-step"><b>2. ${lang()==='fr'?'Ce que cela provoque':'What happens'} :</b> ${h.consequence}</span>`+
@@ -2417,291 +1788,30 @@ function rank3Why(h){
 }
 
 
-// TANGO rank 2
 
-function tangoRejectReason(r,c,v){
-  let s=current.state,n=6,name=pieceName('tango',v),opp=pieceName('tango',1-v);
-  // three consecutive
-  let line=s[r].slice();line[c]=v;
-  for(let i=Math.max(0,c-2);i<=Math.min(c,3);i++)if(line[i]===v&&line[i+1]===v&&line[i+2]===v)
-    return lang()==='fr'?`${name} formerait trois ${v===1?'soleils':'lunes'} consécutifs sur la ligne ${r+1}.`:`${name} would create three consecutive ${v===1?'suns':'moons'} in row ${r+1}.`;
-  let col=Array.from({length:n},(_,rr)=>rr===r?v:s[rr][c]);
-  for(let i=Math.max(0,r-2);i<=Math.min(r,3);i++)if(col[i]===v&&col[i+1]===v&&col[i+2]===v)
-    return lang()==='fr'?`${name} formerait trois ${v===1?'soleils':'lunes'} consécutifs dans la colonne ${c+1}.`:`${name} would create three consecutive ${v===1?'suns':'moons'} in column ${c+1}.`;
-  // balance
-  if(line.filter(x=>x===v).length>3)return lang()==='fr'?`il y aurait plus de 3 ${v===1?'soleils':'lunes'} sur la ligne ${r+1}.`:`row ${r+1} would contain more than 3 ${v===1?'suns':'moons'}.`;
-  if(col.filter(x=>x===v).length>3)return lang()==='fr'?`il y aurait plus de 3 ${v===1?'soleils':'lunes'} dans la colonne ${c+1}.`:`column ${c+1} would contain more than 3 ${v===1?'suns':'moons'}.`;
-  // equality / opposite relation
-  for(let [er,ec,d,rel] of current.edges){
-    let r2=d==='r'?er:er+1,c2=d==='r'?ec+1:ec;
-    if(!((er===r&&ec===c)||(r2===r&&c2===c)))continue;
-    let or=er===r&&ec===c?r2:er,oc=er===r&&ec===c?c2:ec,ov=s[or][oc];
-    if(ov===-1)continue;
-    let ok=rel==='='?v===ov:v!==ov;
-    if(!ok)return lang()==='fr'
-      ?`${name} ne respecterait pas la relation « ${rel} » avec ${cellName(or,oc)} (${pieceName('tango',ov)}).`
-      :`${name} would violate the “${rel}” relation with ${cellName(or,oc)} (${pieceName('tango',ov)}).`;
-  }
-  return lang()==='fr'?`${name} rendrait immédiatement les contraintes de cette ligne ou colonne impossibles.`:`${name} would immediately make the row or column constraints impossible.`
-}
 
-function tangoRank1ContradictionDetail(){
-  if(tangoImmediateContradiction())return {text:lang()==='fr'?'les règles sont déjà violées immédiatement.':'the rules are already violated immediately.'};
-  for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(current.state[r][c]===-1){
-    let ok0=tangoCandidateLocallyLegal(r,c,0),ok1=tangoCandidateLocallyLegal(r,c,1);
-    if(!ok0&&!ok1)return {r,c,text:lang()==='fr'
-      ?`${cellName(r,c)} devient impossible :<br>&nbsp;&nbsp;– lune ☾ : ${tangoRejectReason(r,c,0)}<br>&nbsp;&nbsp;– soleil ☀ : ${tangoRejectReason(r,c,1)}`
-      :`${cellName(r,c)} becomes impossible:<br>&nbsp;&nbsp;– moon ☾: ${tangoRejectReason(r,c,0)}<br>&nbsp;&nbsp;– sun ☀: ${tangoRejectReason(r,c,1)}`}
-  }
-  return null
-}
-function tangoRank2WitnessAfterAssumption(){
-  for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(current.state[r][c]===-1){
-    let viable=[],reasons={};
-    for(let v=0;v<=1;v++){
-      if(!tangoCandidateLocallyLegal(r,c,v)){reasons[v]=tangoRejectReason(r,c,v);continue}
-      let bad=withTempCurrent(x=>{x.state[r][c]=v},()=>tangoStateContradiction());
-      if(!bad)viable.push(v);else{
-        let d=withTempCurrent(x=>{x.state[r][c]=v},()=>tangoRank1ContradictionDetail());
-        reasons[v]=d&&d.text?d.text:(lang()==='fr'?`${pieceName('tango',v)} conduit à une contradiction.`:`${pieceName('tango',v)} leads to a contradiction.`)
-      }
-    }
-    if(!viable.length)return {r,c,reasons,detail:lang()==='fr'
-      ?`${cellName(r,c)} ne peut plus recevoir aucun symbole.`
-      :`${cellName(r,c)} can no longer take either symbol.`}
-  }
-  return null
-}
-function findTangoRank2Hint(){
-  for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(current.state[r][c]===-1){
-    let surviving=[];
-    for(let v=0;v<=1;v++){
-      if(!tangoCandidateLocallyLegal(r,c,v))continue;
-      let rank1Bad=withTempCurrent(x=>{x.state[r][c]=v},()=>tangoStateContradiction());
-      if(!rank1Bad)surviving.push(v)
-    }
-    if(surviving.length<2)continue;
-    let bad=[],witness={};
-    for(let v of surviving){
-      let w=withTempCurrent(x=>{x.state[r][c]=v},()=>tangoRank2WitnessAfterAssumption());
-      if(w){bad.push(v);witness[v]=w}
-    }
-    let good=surviving.filter(v=>!bad.includes(v));
-    if(good.length===1&&bad.length){
-      let v=good[0],rej=bad[0],w=witness[rej];
-      return {r,c,v,rank:2,
-        hypothesis:lang()==='fr'?`supposons ${cellName(r,c)} = ${pieceName('tango',rej)}.`:`suppose ${cellName(r,c)} = ${pieceName('tango',rej)}.`,
-        consequence:lang()==='fr'
-          ?`regardons alors ${cellName(w.r,w.c)} :<br>• si on y place une lune ☾ : ${w.reasons[0]||'ce choix conduit à une contradiction.'}<br>• si on y place un soleil ☀ : ${w.reasons[1]||'ce choix conduit à une contradiction.'}`
-          :`now look at ${cellName(w.r,w.c)}:<br>• if we place a moon ☾: ${w.reasons[0]||'this choice leads to a contradiction.'}<br>• if we place a sun ☀: ${w.reasons[1]||'this choice leads to a contradiction.'}`,
-        deadend:lang()==='fr'?`${cellName(w.r,w.c)} n'a donc plus aucune valeur possible. Notre hypothèse de départ est impossible.`:`${cellName(w.r,w.c)} therefore has no possible value. Our initial assumption is impossible.`,
-        conclusion:lang()==='fr'?`${pieceName('tango',rej)} est donc impossible en ${cellName(r,c)} ; il faut placer ${pieceName('tango',v)}.`:`${pieceName('tango',rej)} is therefore impossible at ${cellName(r,c)}; place ${pieceName('tango',v)}.`,
-        why:null}
-    }
-  }
-  return null
-}
 
-// SUDOKU rank 2
-function sudokuRank2WitnessAfterAssumption(){
-  for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(current.state[r][c]===0){
-    let cand=sudokuCandidatesAt(r,c),viable=[];
-    for(let v of cand){
-      let bad=withTempCurrent(x=>{x.state[r][c]=v},()=>sudokuImmediateContradiction());
-      if(!bad)viable.push(v)
-    }
-    if(!viable.length)return {r,c,detail:lang()==='fr'
-      ?`${cellName(r,c)} n'a plus aucun chiffre possible.`
-      :`${cellName(r,c)} has no possible digit left.`}
-  }
-  return null
-}
-function findSudokuRank2Hint(){
-  for(let r=0;r<6;r++)for(let c=0;c<6;c++)if(current.state[r][c]===0&&current.empty.has(r*6+c)){
-    let cand=sudokuCandidatesAt(r,c);if(cand.length<2)continue;
-    let surviving=cand.filter(v=>!withTempCurrent(x=>{x.state[r][c]=v},()=>sudokuImmediateContradiction()));
-    if(surviving.length<2)continue;
-    let bad=[],witness={};
-    for(let v of surviving){
-      let w=withTempCurrent(x=>{x.state[r][c]=v},()=>sudokuRank2WitnessAfterAssumption());
-      if(w){bad.push(v);witness[v]=w}
-    }
-    let good=surviving.filter(v=>!bad.includes(v));
-    if(good.length===1&&bad.length){
-      let v=good[0],rej=bad[0],w=witness[rej];
-      return {r,c,v,rank:2,
-        hypothesis:lang()==='fr'?`supposons ${cellName(r,c)} = ${rej}.`:`suppose ${cellName(r,c)} = ${rej}.`,
-        consequence:lang()==='fr'?`on recalcule les candidats des cases voisines et des unités concernées.`:`we recompute candidates in the affected cells and units.`,
-        deadend:w.detail,
-        conclusion:lang()==='fr'?`${rej} est impossible en ${cellName(r,c)} ; le chiffre ${v} est imposé.`:`${rej} is impossible at ${cellName(r,c)}; digit ${v} is forced.`,
-        why:null}
-    }
-  }
-  return null
-}
 
-// QUEENS rank 2
 
-function queenPlacementRejectReason(r,c){
-  if(current.state[r][c]===1)return lang()==='fr'?`${cellName(r,c)} est déjà barrée par X.`:`${cellName(r,c)} is already marked X.`;
-  for(let rr=0;rr<current.n;rr++)for(let cc=0;cc<current.n;cc++)if(current.state[rr][cc]===2){
-    if(rr===r)return lang()==='fr'?`la ligne ${r+1} contient déjà une reine en ${cellName(rr,cc)}.`:`row ${r+1} already contains a queen at ${cellName(rr,cc)}.`;
-    if(cc===c)return lang()==='fr'?`la colonne ${c+1} contient déjà une reine en ${cellName(rr,cc)}.`:`column ${c+1} already contains a queen at ${cellName(rr,cc)}.`;
-    if(current.reg[rr][cc]===current.reg[r][c])return lang()==='fr'?`${queenZoneBadge(current.reg[r][c])} contient déjà une reine en ${cellName(rr,cc)}.`:`${queenZoneBadge(current.reg[r][c])} already contains a queen at ${cellName(rr,cc)}.`;
-    if(Math.abs(rr-r)<=1&&Math.abs(cc-c)<=1)return lang()==='fr'?`${cellName(r,c)} touche diagonalement la reine de ${cellName(rr,cc)}.`:`${cellName(r,c)} touches the queen at ${cellName(rr,cc)} diagonally.`;
-  }
-  return null
-}
-function queenRank1PlacementFailure(r,c){
-  // Called while testing a queen in r,c. Explain the first unit that becomes impossible.
-  return withTempCurrent(x=>{x.state[r][c]=2},()=>{
-    if(queenIllegalCells().size)return {text:queenPlacementRejectReason(r,c)|| (lang()==='fr'?'ce placement crée un conflit de reines.':'this placement creates a queen conflict.')};
-    let n=current.n;
-    for(let rr=0;rr<n;rr++){
-      if(current.state[rr].some(v=>v===2))continue;
-      let possible=[];
-      for(let cc=0;cc<n;cc++)if(current.state[rr][cc]===0&&queenCellAllowed(rr,cc))possible.push([rr,cc]);
-      if(!possible.length)return {type:'row',i:rr,text:lang()==='fr'?`la ligne ${rr+1} n'aurait alors plus aucune case où placer sa reine.`:`row ${rr+1} would then have no cell left for its queen.`}
-    }
-    for(let cc=0;cc<n;cc++){
-      let has=false;for(let rr=0;rr<n;rr++)if(current.state[rr][cc]===2)has=true;if(has)continue;
-      let possible=[];for(let rr=0;rr<n;rr++)if(current.state[rr][cc]===0&&queenCellAllowed(rr,cc))possible.push([rr,cc]);
-      if(!possible.length)return {type:'col',i:cc,text:lang()==='fr'?`la colonne ${cc+1} n'aurait alors plus aucune case où placer sa reine.`:`column ${cc+1} would then have no cell left for its queen.`}
-    }
-    for(let id of [...new Set(current.reg.flat())]){
-      let has=false,cells=[];for(let rr=0;rr<n;rr++)for(let cc=0;cc<n;cc++)if(current.reg[rr][cc]===id){if(current.state[rr][cc]===2)has=true;else if(current.state[rr][cc]===0&&queenCellAllowed(rr,cc))cells.push([rr,cc])}
-      if(!has&&!cells.length)return {type:'region',i:id,text:lang()==='fr'?`${queenZoneBadge(id)} n'aurait alors plus aucune case où placer sa reine.`:`${queenZoneBadge(id)} would then have no cell left for its queen.`}
-    }
-    return null
-  })
-}
-function queenUnitViableWithRank1(){
-  let n=current.n;
-  function inspect(cells,type,i){
-    let candidates=cells.filter(([r,c])=>current.state[r][c]===0&&queenCellAllowed(r,c));
-    let failures=[];
-    for(let [r,c] of candidates){
-      let failure=queenRank1PlacementFailure(r,c);
-      if(!failure)return null; // at least one continuation survives
-      failures.push({r,c,text:failure.text});
-    }
-    if(!candidates.length||failures.length===candidates.length)return {type,i,candidates,failures}
-    return null
-  }
-  for(let r=0;r<n;r++){
-    if(current.state[r].some(v=>v===2))continue;
-    let w=inspect(Array.from({length:n},(_,c)=>[r,c]),'row',r);if(w)return w
-  }
-  for(let c=0;c<n;c++){
-    let has=false;for(let r=0;r<n;r++)if(current.state[r][c]===2)has=true;if(has)continue;
-    let w=inspect(Array.from({length:n},(_,r)=>[r,c]),'col',c);if(w)return w
-  }
-  for(let id of [...new Set(current.reg.flat())]){
-    let cells=[],has=false;for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.reg[r][c]===id){cells.push([r,c]);if(current.state[r][c]===2)has=true}
-    if(has)continue;let w=inspect(cells,'region',id);if(w)return w
-  }
-  return null
-}
 
-function queenUnitName(u){
-  return lang()==='fr'
-    ?(u.type==='row'?`la ligne ${u.i+1}`:u.type==='col'?`la colonne ${u.i+1}`:`la ${queenZoneBadge(u.i)}`)
-    :(u.type==='row'?`row ${u.i+1}`:u.type==='col'?`column ${u.i+1}`:`the ${queenZoneBadge(u.i)}`)
-}
-function queenUnresolvedUnits(){
-  let n=current.n,out=[];
-  for(let r=0;r<n;r++)if(!current.state[r].some(v=>v===2)){let cells=[];for(let c=0;c<n;c++)if(current.state[r][c]===0&&queenCellAllowed(r,c))cells.push([r,c]);out.push({type:'row',i:r,cells})}
-  for(let c=0;c<n;c++){let has=false,cells=[];for(let r=0;r<n;r++){if(current.state[r][c]===2)has=true;else if(current.state[r][c]===0&&queenCellAllowed(r,c))cells.push([r,c])}if(!has)out.push({type:'col',i:c,cells})}
-  for(let id of [...new Set(current.reg.flat())]){let has=false,cells=[];for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.reg[r][c]===id){if(current.state[r][c]===2)has=true;else if(current.state[r][c]===0&&queenCellAllowed(r,c))cells.push([r,c])}if(!has)out.push({type:'region',i:id,cells})}
-  out.sort((a,b)=>a.cells.length-b.cells.length);return out
-}
-function queenImmediateContradictionDetail(){
-  if(queenIllegalCells().size)return lang()==='fr'?'deux reines entrent immédiatement en conflit.':'two queens immediately conflict.';
-  for(let u of queenUnresolvedUnits())if(!u.cells.length)return lang()==='fr'?`${queenUnitName(u)} n’a plus aucune case disponible pour sa reine.`:`${queenUnitName(u)} has no cell left for its queen.`;
-  return lang()==='fr'?'les contraintes deviennent immédiatement impossibles.':'the constraints immediately become impossible.';
-}
-function queenBoundedContradiction(depth,deadline){
-  if(hintBudgetExpired(deadline))return queenHintTimeout();
-  if(queenStateContradiction())return {bad:true,reason:queenImmediateContradictionDetail()};
-  if(depth<=0)return null;
-  let units=queenUnresolvedUnits().filter(u=>u.cells.length);
-  // Most-constrained units first. Testing at most the first 4 keeps the proof bounded and responsive.
-  for(let u of units.slice(0,4)){
-    if(hintBudgetExpired(deadline))return queenHintTimeout();
-    let failures=[],allBad=true;
-    for(let [r,c] of u.cells){
-      if(hintBudgetExpired(deadline))return queenHintTimeout();
-      let child=withTempCurrent(x=>{x.state[r][c]=2},()=>queenBoundedContradiction(depth-1,deadline));
-      if(child?.timeout)return child;
-      if(!child?.bad){allBad=false;break}
-      failures.push({r,c,child})
-    }
-    if(allBad&&failures.length===u.cells.length)return {bad:true,unit:u,failures}
-  }
-  return null
-}
-function queenRank3BranchSummary(w){
-  if(!w)return '';
-  if(w.reason)return w.reason;
-  let unit=queenUnitName(w.unit),items=(w.failures||[]).slice(0,5).map(f=>{
-    let child=f.child,why=child?.reason||(child?.unit?(lang()==='fr'?`${queenUnitName(child.unit)} devient à son tour impossible.`:`${queenUnitName(child.unit)} then becomes impossible.`):(lang()==='fr'?'la branche conduit à une impasse.':'the branch reaches a dead end.'));
-    return `• ${cellName(f.r,f.c)} : ${why}`
-  });
-  return (lang()==='fr'?`${unit} doit recevoir une reine. Testons ses positions possibles :`:`${unit} must receive a queen. Test its possible positions:`)+`<br>${items.join('<br>')}`
-}
-function findQueenRank3Hint(deadline=Infinity){
-  let n=current.n;
-  for(let r=0;r<n;r++)for(let c=0;c<n;c++){
-    if(hintBudgetExpired(deadline))return queenHintTimeout();
-    if(current.state[r][c]!==0||!queenCellAllowed(r,c))continue;
-    let candidates=[1,2],results={};
-    for(let v of candidates){
-      if(hintBudgetExpired(deadline))return queenHintTimeout();
-      let w=withTempCurrent(x=>{x.state[r][c]=v},()=>queenBoundedContradiction(2,deadline));
-      if(w?.timeout)return w;results[v]=w
-    }
-    let bad=candidates.filter(v=>results[v]?.bad),good=candidates.filter(v=>!results[v]?.bad);
-    if(good.length===1&&bad.length===1){
-      let v=good[0],rej=bad[0],w=results[rej],first=w.unit?queenUnitName(w.unit):(lang()==='fr'?'une contrainte obligatoire':'a required constraint');
-      return {r,c,v,rank:3,
-        hypothesis:lang()==='fr'?`essayons ${rej===2?'une reine ♛':'un X'} en ${cellName(r,c)}.`:`try ${rej===2?'a queen ♛':'an X'} at ${cellName(r,c)}.`,
-        consequence:lang()==='fr'?`cette hypothèse oblige ensuite à résoudre ${first}.`:`this assumption then forces us to resolve ${first}.`,
-        secondStep:queenRank3BranchSummary(w),
-        deadend:lang()==='fr'?`toutes les continuations testées à ce niveau conduisent à une impasse. L’hypothèse de départ est donc impossible.`:`every continuation tested at this level reaches a dead end. The initial assumption is impossible.`,
-        conclusion:lang()==='fr'?`${cellName(r,c)} doit donc contenir ${v===2?'une reine ♛':'un X'}.`:`${cellName(r,c)} must therefore contain ${v===2?'a queen ♛':'an X'}.`,
-        why:null}
-    }
-  }
-  return null
-}
-function findQueenRank2Hint(deadline=Infinity){
-  let n=current.n;
-  for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(hintBudgetExpired(deadline))return queenHintTimeout();else if(current.state[r][c]===0&&queenCellAllowed(r,c)){
-    let opts=[1,2],surviving=opts.filter(v=>!withTempCurrent(x=>{x.state[r][c]=v},()=>queenStateContradiction()));
-    if(surviving.length<2)continue;
-    let bad=[],witness={};
-    for(let v of surviving){
-      let w=withTempCurrent(x=>{x.state[r][c]=v},()=>queenUnitViableWithRank1());
-      if(hintBudgetExpired(deadline))return queenHintTimeout();
-      if(w){bad.push(v);witness[v]=w}
-    }
-    let good=surviving.filter(v=>!bad.includes(v));
-    if(good.length===1&&bad.length){
-      let v=good[0],rej=bad[0],w=witness[rej],unit=queenUnitName(w);
-      let details=(w.failures||[]).map(f=>`• ${cellName(f.r,f.c)} : ${f.text}`).join('<br>');
-      if(!details)details=lang()==='fr'?`aucune case n'y reste disponible pour une reine.`:`no cell remains available there for a queen.`;
-      return {r,c,v,rank:2,
-        hypothesis:lang()==='fr'?`essayons ${rej===2?'une reine ♛':'un X'} en ${cellName(r,c)}.`:`try ${rej===2?'a queen ♛':'an X'} at ${cellName(r,c)}.`,
-        consequence:lang()==='fr'?`avec cette hypothèse, regardons ${unit}. Les emplacements de reine qui restent apparemment possibles sont testés un par un :<br>${details}`:`with that assumption, look at ${unit}. Each apparently possible queen position is tested:<br>${details}`,
-        deadend:lang()==='fr'?`aucun de ces emplacements ne permet de continuer. ${unit} finirait donc sans aucune position possible pour sa reine.`:`none of these positions allows the puzzle to continue. ${unit} would therefore be left with no possible queen position.`,
-        conclusion:lang()==='fr'?`${pieceName('queens',rej)} est impossible en ${cellName(r,c)} ; il faut ${v===2?'y placer une reine ♛':'barrer cette case par X'}.`:`${pieceName('queens',rej)} is impossible at ${cellName(r,c)}; ${v===2?'place a queen ♛ there':'mark that cell X'}.`,
-        why:null}
-    }
-  }
-  return null
-}
 
-function coachLookText(kind,target,message={}){return gamePedagogy(kind).coachLookText({target,message,current})}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function coachLookText(kind,target,message={}){return gamePedagogy(kind).coach.lookText({target,message,current})}
 function coachRuleText(message={}){
   let id=message?.reasoning?.technique;
   if(id&&PEDAGOGY_TECHNIQUES[id])return `<span class="coach-technique-title">${techniqueTitle(id)}</span><code class="coach-technique-id">${id}</code><span class="coach-technique-summary">${techniqueSummary(id)}</span>`;
@@ -2721,7 +1831,7 @@ function coachUsage(stage,technique=null){
   }
 }
 function hintStage(kind,target,message,apply){
-  if(!DETAILED_HINT_LANGS.has(lang())&&message.rank!=null&&message?.reasoning?.source!=='sudoku-inference-engine'){let g=genericLocalizedHint(kind,target,message.rank,message.value);message={...message,...g}}
+  if(!DETAILED_HINT_LANGS.has(lang())&&message.rank!=null&&gamePedagogy(kind).coach.genericHintFallbackAllowed(message)){let g=genericLocalizedHint(kind,target,message.rank,message.value);message={...message,...g}}
   if(message.reasoning)current.lastReasoning=message.reasoning;
   let technique=message?.reasoning?.technique||null,isNew=!current.hintFlow||current.hintFlow.kind!==kind||current.hintFlow.key!==target.join(',')||current.hintFlow.plan?.flowVersion!==2;
   if(isNew){
@@ -2752,11 +1862,10 @@ function focusHint([r,c]){let board=document.querySelector('.board');if(!board)r
 function focusHintContext(kind,[r,c],message={}){
   let board=document.querySelector('.board');if(!board)return;let n=current.n||6,cells=[...board.children],add=(rr,cc)=>{let d=cells[rr*n+cc];if(d)d.classList.add('hint-context')};
   for(let i=0;i<n;i++){add(r,i);add(i,c)}
-  for(let cell of gamePedagogy(kind).coachContextCells({target:[r,c],message,current})||[])add(cell[0],cell[1])
+  for(let cell of gamePedagogy(kind).coach.contextCells({target:[r,c],message,current})||[])add(cell[0],cell[1])
 }
 function clearHintFocus(){document.querySelectorAll('.hint-focus,.hint-context').forEach(x=>{x.classList.remove('hint-focus');x.classList.remove('hint-context')})}
 function touchSave(fn,action='MOVE'){return()=>{if(paused)return;let before=historySnapshotKey();closeHintNotice();current.hintFlow=null;clearHintFocus();fn();historyRecord(action,before);saveCurrent()}}
-// QUEENS
 
 
 function maybeAutoFinish(){
@@ -2768,7 +1877,7 @@ function maybeAutoFinish(){
 function celebrateBoard(){
   let board=document.querySelector('.board');if(!board)return;
   board.classList.add('board-complete');
-  if(current?.game==='queens'||board.id==='qboard')board.classList.add('queens-win');
+  let victoryClass=gameVictoryClass(current?.game);if(victoryClass)board.classList.add(victoryClass);
   [...board.children].forEach((cell,i)=>{cell.style.setProperty('--win-delay',`${Math.min(i,80)*16}ms`);cell.classList.add('win-pop')});
   let layer=document.createElement('div');layer.className='celebration-layer';layer.setAttribute('aria-hidden','true');
   for(let i=0;i<22;i++){let p=document.createElement('i');p.style.setProperty('--x',`${8+Math.random()*84}%`);p.style.setProperty('--dx',`${-55+Math.random()*110}px`);p.style.setProperty('--delay',`${Math.random()*220}ms`);p.style.setProperty('--rot',`${Math.random()*500-250}deg`);layer.appendChild(p)}
@@ -2777,15 +1886,15 @@ function celebrateBoard(){
 }
 // 27.3 — registry-driven Web UI lifecycle. Game-specific renderer factories are resolved lazily through GameRegistry.
 let webGameUiAdapterCollection=null;
-function pedagogicalHintForGame(game){return gamePedagogy(game).runCoachHint()}
+function pedagogicalHintForGame(game){return gamePedagogy(game).coach.runHint()}
 function webGameUiDependencies(game){
   return {
     document,window:typeof window!=='undefined'?window:{addEventListener(){},matchMedia:null},query:$,getApp:()=>app,shell,gameLabel,
-    difficultyLabel:diff=>DIFF[diff],tr,gameRules,regionColors:QUEEN_REGION_COLORS,getCurrent:()=>current,getWalkthroughSession:()=>walkthroughSession,
+    difficultyLabel:diff=>DIFF[diff],tr,gameRules,getCurrent:()=>current,getWalkthroughSession:()=>walkthroughSession,
     isPaused:()=>paused,getPrefs:prefs,savePrefs,touchSave,historySnapshotKey,historyRecord,saveCurrent,closeHintNotice,clearHintFocus,
-    captureRejectedPatchError,markBacktrack,haptic,maybeAutoFinish,a11ySetupGrid,a11yAnnounce,a11yCoord,a11ySetCell,keyCell,
-    queenIllegalCells,tangoIllegalCells,sudokuIllegalCells,patchIllegalCells,applyIllegalClasses,applyConfiguredIllegalClasses,
-    applyUnjustifiedHighlights,updateScoreFlags,coarsePointer,patchEmptyEvidence,checkVictory:checkRegisteredVictory,
+    markBacktrack,haptic,maybeAutoFinish,a11ySetupGrid,a11yAnnounce,a11yCoord,a11ySetCell,keyCell,
+    applyLogicalMove:move=>{const applied=LogicalTransactions.apply(current,move);updateHistoryButtons();saveCurrent();return applied},
+    applyIllegalClasses,applyConfiguredIllegalClasses,applyUnjustifiedHighlights,updateScoreFlags,coarsePointer,checkVictory:checkRegisteredVictory,
     hint:()=>pedagogicalHintForGame(game),finish,showToast,requestFrame:cb=>requestAnimationFrame(cb),cancelFrame:id=>cancelAnimationFrame(id),
     setTimer:(cb,ms)=>setTimeout(cb,ms),getResizeObserver:()=>typeof ResizeObserver==='function'?ResizeObserver:null
   }
@@ -2807,56 +1916,16 @@ function gameWebUi(game=current?.game){
 function renderGameUi(session=current){if(!session?.game)return false;return gameWebUi(session.game).render(session)}
 function drawGameUi(session=current){if(!session?.game)return false;return gameWebUi(session.game).draw()}
 function resetGameUi(session=current){if(!session?.game)return false;return gameWebUi(session.game).reset(session)}
-// COURONNES — Web renderer/input implementation lives in queens-ui.js (v2.27 migration 27.1C).
-function queenHintNoResultMessage(elapsedMs){
-  if(!DETAILED_HINT_LANGS.has(lang()))return `<b>${tr('noLogicalHint')}</b><br>${tr('hintNoR0')}<br>${tr('hintNoR1')}<br>${tr('hintNoR2')}<br>${tr('hintNoR3')}`;
-  let e=(elapsedMs/1000).toFixed(2).replace('.',lang()==='fr'?',':'.');
-  return lang()==='fr'
-    ?`<b>Aucun indice trouvé jusqu’au rang 3.</b><br>${tr('hintNoR0')}<br>${tr('hintNoR1')}<br>${tr('hintNoR2')}<br>${tr('hintNoR3')}<br><small>Recherche terminée en ${e} s. Cela ne signifie pas que la grille est bloquée : seulement qu’aucun coup n’est forcé à cette profondeur.</small>`
-    :`<b>No hint found through rank 3.</b><br>${tr('hintNoR0')}<br>${tr('hintNoR1')}<br>${tr('hintNoR2')}<br>${tr('hintNoR3')}<br><small>Search completed in ${e} s. This does not mean the puzzle is stuck; only that no move is forced at this depth.</small>`
-}
-function queenHintTimeoutMessage(stage,elapsedMs){
-  if(!DETAILED_HINT_LANGS.has(lang()))return `<b>${tr('hintTimeout')}</b>`;
-  let e=(elapsedMs/1000).toFixed(2).replace('.',lang()==='fr'?',':'.');
-  return lang()==='fr'
-    ?`<b>Recherche arrêtée après ${e} s.</b><br>Les rangs précédents ont été testés sans trouver d’indice. La limite de 5 secondes a été atteinte pendant le <b>rang ${stage}</b> ; ce niveau n’a donc pas été exploré complètement. Aucun indice non démontré n’est affiché.`
-    :`<b>Search stopped after ${e} s.</b><br>Earlier ranks were tested without finding a hint. The 5-second limit was reached during <b>rank ${stage}</b>, so that level was not fully explored. No unproved hint is shown.`
-}
-let queenHintSearchToken=0;
-function hintQ(){
-  if(current?.training)return trainingCoach();
-  if(paused){showHintNotice(tr('hintPaused'));return}
-  if(!current||current.game!=='queens'){showHintNotice(tr('noLogicalHint'));return}
-  if(showVisibleErrorsBeforeHint())return;
-  if(showExplorationContradictionBeforeHint())return;
-  let token=++queenHintSearchToken;showHintNotice(tr('hintSearching'));
-  setTimeout(()=>{
-    if(token!==queenHintSearchToken||!current||current.game!=='queens')return;
-    try{
-      let result=queenCurrentLogicResult();
-      if(result.contradiction){queenShowLogicalContradiction(result.contradiction);return}
-      if(!result.deduction){showHintNotice(`<b>${tr('noLogicalHint')}</b><br>${tr('qlNoDeduction')}`);return}
-      queenCoachHandleDeduction(result.deduction)
-    }catch(err){console.error('Queens proof engine failed',err);showHintNotice(`<b>${tr('hintError')}</b>`)}
-  },0)
-}
 
-// TANGO — Web renderer/input implementation lives in tango-ui.js (v2.27 migration 27.1A).
-function hintT(){if(current?.training)return trainingCoach();if(paused)return;if(showVisibleErrorsBeforeHint())return;if(showExplorationContradictionBeforeHint())return;current.tangoPendingCell=null;try{let result=tangoCurrentLogicResult();if(result.contradiction){current.hintFlow=null;clearHintFocus();let cells=result.contradiction.cells||[];let b=$('#tboard');if(b)for(let [r,c] of cells){let el=b.children[r*6+c];if(el)el.classList.add('error-focus')}showHintNotice(`<b>⚠ ${tr('contradictionFound')}</b><br>${tangoReasoningPresenter().contradictionText(result.contradiction)}`);return}if(!result.deduction)return showHintNotice(`<b>${tr('noLogicalHint')}</b><br>${tr('tlgNoDeduction')}`);tangoCoachHandleDeduction(result.deduction)}catch(err){console.error('Soleil/Lune proof engine failed',err);showHintNotice(`<b>${tr('hintError')}</b>`)}}
 
-// MINI SUDOKU 6x6 regions 2x3
-// GRILLE 6 — Web renderer/input implementation lives in sudoku-ui.js (v2.27 migration 27.1B).
-function hintS(){if(current?.training)return trainingCoach();if(paused)return;if(showVisibleErrorsBeforeHint())return;if(showExplorationContradictionBeforeHint())return;try{let result=sudokuCurrentValueStep();if(result.contradiction)return sudokuShowLogicalContradiction(result.contradiction);let presenter=sudokuReasoningPresenter(),view=presenter.presentValueStep(result,current.state);if(!view)return showHintNotice(`<b>${tr('noLogicalHint')}</b><br>${tr('slgNoDeduction')}`);let target=view.action.target,[r,c]=[target.row,target.column],reasoning=presenter.legacyValueStepReasoning(result);hintStage('sudoku',[r,c],{move:view.explanation.move,look:view.explanation.where,why:view.explanation.why,reveal:tr('digitRevealed'),rank:view.metadata.coachRank,value:view.action.value,reasoning},()=>{current.state[r][c]=view.action.value;current.sel=[r,c];drawGameUi();maybeAutoFinish()})}catch(err){console.error('Grille 6 proof engine failed',err);showHintNotice(`<b>${tr('hintError')}</b>`)}}
 
-// PATCHES — Web renderer/input implementation lives in patches-ui.js (v2.27 migration 27.1D).
-function hintP(){
-  if(current?.training)return trainingCoach();if(paused)return;if(showVisibleErrorsBeforeHint())return;if(showExplorationContradictionBeforeHint())return;
-  if(!patchesLogicAvailable()){showHintNotice(tr('hintError'));return}
-  let result;try{result=patchCurrentLogicResult()}catch(_){showHintNotice(tr('hintError'));return}
-  if(result.contradiction){current.hintFlow=null;clearHintFocus();showHintNotice(`<b>⚠ ${tr('errorDetected')}</b><br>${patchesReasoningPresenter().contradictionText(result.contradiction)}`);return}
-  if(!result.deduction){current.hintFlow=null;clearHintFocus();showHintNotice(tr('plNoDeduction'));return}
-  patchCoachHandleDeduction(result.deduction)
-}
+
+
+
+
+
+
+
 
 
 
@@ -2864,21 +1933,13 @@ function hintP(){
 function keyboardInput(e){if(!current?.game)return false;let handler=gameWebUi(current.game).keyboardInput;return typeof handler==='function'?handler(e):false}
 document.addEventListener('keydown',keyboardInput);
 function status(t,ok){let s=$('#status');if(!s)return;s.textContent=t;s.className='status '+(ok?'ok':'bad');if(!ok)playTone('error')}
-function finish(t,outcome='solved'){let total=timerSeconds(),snapshot=current?{...current}:null;stopTimer(false);elapsedBase=total;startedAt=0;paused=true;if(current){statsFinish(current,total,outcome);markDaily(current,outcome,total);current.completed=true;gamePedagogy(current.game).afterFinish({current})}clearSaved();renderTimer();status(`${t} — ${fmt(elapsedBase)}`,true);updatePauseButton();if(outcome==='solved'&&snapshot)requestAnimationFrame(()=>{celebrateBoard();setTimeout(()=>victoryOverlay(snapshot,total),2100)})}
+function finish(t,outcome='solved'){let total=timerSeconds(),snapshot=current?{...current}:null;stopTimer(false);elapsedBase=total;startedAt=0;paused=true;if(current){statsFinish(current,total,outcome);markDaily(current,outcome,total);current.completed=true;gamePedagogy(current.game).lifecycle.afterFinish({current})}clearSaved();renderTimer();status(`${t} — ${fmt(elapsedBase)}`,true);updatePauseButton();if(outcome==='solved'&&snapshot)requestAnimationFrame(()=>{celebrateBoard();setTimeout(()=>victoryOverlay(snapshot,total),2100)})}
 WebPlatform.lifecycle.onVisibilityChange(()=>{if(WebPlatform.lifecycle.isHidden()&&current&&!current.completed)saveCurrent()});WebPlatform.lifecycle.onPageHide(()=>{if(current&&!current.completed)saveCurrent()});if(WebPlatform.serviceWorker.supported())WebPlatform.lifecycle.onLoad(()=>WebPlatform.serviceWorker.register('./sw.js').catch(()=>{}));
 discardLegacyPersistence();applyPrefs();try{window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{if(prefs().theme==='auto')applyPrefs()})}catch(_){}initialView();
 
 
 // ===== v2.23 — shared helpers still used by current logic/generation =====
-function queenLogicalComplete(){
-  if(!current||current.game!=='queens')return false;
-  let n=current.n,queens=[];
-  for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(current.state[r][c]===2)queens.push([r,c]);
-  if(queens.length!==n)return false;
-  if(new Set(queens.map(x=>x[0])).size!==n||new Set(queens.map(x=>x[1])).size!==n)return false;
-  if(new Set(queens.map(([r,c])=>current.reg[r][c])).size!==n)return false;
-  return !queenStateContradiction()
-}
+
 
 // v2.6.2 — generation identity session anti-repeat.
 // Only games declaring the optional generationIdentity capability participate.

@@ -5,16 +5,16 @@
  * without prior written authorization is prohibited.
  */
 (function(root,factory){
-  const api=factory();
+  const api=factory(root);
   if(typeof module==='object'&&module.exports)module.exports=api;
   if(root)root.QuadludPatchesUI=api;
-})(typeof globalThis!=='undefined'?globalThis:this,function(){
+})(typeof globalThis!=='undefined'?globalThis:this,function(root){
   'use strict';
 
   const REQUIRED=[
     'document','window','query','getApp','shell','gameLabel','tr','gameRules','getCurrent','getWalkthroughSession','isPaused',
-    'patchEmptyEvidence','historySnapshotKey','historyRecord','saveCurrent','captureRejectedPatchError','markBacktrack','haptic',
-    'updateScoreFlags','maybeAutoFinish','patchIllegalCells','applyIllegalClasses','applyConfiguredIllegalClasses','applyUnjustifiedHighlights',
+    'historySnapshotKey','historyRecord','saveCurrent','markBacktrack','haptic',
+    'updateScoreFlags','maybeAutoFinish','applyIllegalClasses','applyConfiguredIllegalClasses','applyUnjustifiedHighlights',
     'a11ySetupGrid','a11yAnnounce','a11yCoord','a11ySetCell','coarsePointer','checkVictory','hint','finish','requestFrame','cancelFrame',
     'setTimer','getResizeObserver'
   ];
@@ -24,11 +24,13 @@
     for(const name of REQUIRED)if(deps[name]==null)throw new Error(`QUADLUD Rectangles UI dependency unavailable: ${name}`);
 
     const {
-      document,window,query,getApp,shell,gameLabel,tr,gameRules,getCurrent,getWalkthroughSession,isPaused,patchEmptyEvidence,
-      historySnapshotKey,historyRecord,saveCurrent,captureRejectedPatchError,markBacktrack,haptic,updateScoreFlags,maybeAutoFinish,
-      patchIllegalCells,applyIllegalClasses,applyConfiguredIllegalClasses,applyUnjustifiedHighlights,a11ySetupGrid,
+      document,window,query,getApp,shell,gameLabel,tr,gameRules,getCurrent,getWalkthroughSession,isPaused,
+      historySnapshotKey,historyRecord,saveCurrent,markBacktrack,haptic,updateScoreFlags,maybeAutoFinish,
+      applyIllegalClasses,applyConfiguredIllegalClasses,applyUnjustifiedHighlights,a11ySetupGrid,
       a11yAnnounce,a11yCoord,a11ySetCell,coarsePointer,checkVictory,hint,finish,requestFrame,cancelFrame,setTimer,getResizeObserver
     }=deps;
+    const patchEmptyEvidence=deps.patchEmptyEvidence||root?.patchEmptyEvidence,captureRejectedPatchError=deps.captureRejectedPatchError||root?.captureRejectedPatchError,patchIllegalCells=deps.patchIllegalCells||root?.patchIllegalCells;
+    for(const [name,fn] of [['patchEmptyEvidence',patchEmptyEvidence],['captureRejectedPatchError',captureRejectedPatchError],['patchIllegalCells',patchIllegalCells]])if(typeof fn!=='function')throw new Error(`QUADLUD Rectangles UI dependency unavailable: ${name}`);
 
     let patchPaintFrame=0,patchDragFrame=0,patchDragPending=null,patchClueResizeObserver=null;
     const PATCH_DRAG_THRESHOLD_FINE=5,PATCH_DRAG_THRESHOLD_COARSE=9,PATCH_HYSTERESIS=.18;

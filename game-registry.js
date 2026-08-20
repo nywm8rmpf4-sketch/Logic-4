@@ -7,15 +7,17 @@
 (function(root,factory){
   const isNode=typeof module!=='undefined'&&module.exports;
   const contract=isNode?require('./game-contract.js'):root.QuadludGameContract;
-  const api=factory(root,contract,isNode?require:null);
+  const manifest=isNode?require('./game-manifest.js'):root.QuadludGameManifest;
+  const api=factory(root,contract,manifest,isNode?require:null);
   if(isNode)module.exports=api;
   if(root)root.QuadludGameRegistry=api;
-})(typeof globalThis!=='undefined'?globalThis:this,function(root,contract,nodeRequire){
+})(typeof globalThis!=='undefined'?globalThis:this,function(root,contract,manifest,nodeRequire){
   'use strict';
 
   if(!contract)throw new Error('QUADLUD game contract unavailable');
+  if(!manifest)throw new Error('QUADLUD game manifest unavailable');
 
-  const VERSION=2;
+  const VERSION=6;
   function moduleCapability(globalName,nodePath,property=null){
     return ()=>{let module=resolveModule(globalName,nodePath);return property==null?module:module[property]};
   }
@@ -28,65 +30,33 @@
     };
     const frozen=Object.freeze(proxy);return ()=>frozen
   }
-  const CATALOG=Object.freeze([
-    Object.freeze({
-      id:'queens',metadata:Object.freeze({labelKey:'gameQueens',descriptionKey:'queensSub',challengeCode:'Q'}),
-      capabilities:Object.freeze({
-        logic:moduleCapability('QueensLogic','./queens-logic.js'),
-        difficulty:moduleCapability('QueensDifficulty','./queens-difficulty.js'),
-        generatePuzzle:moduleCapability('QuadludQueensGenerator','./queens-generator.js','generateQueensPuzzle'),
-        canonicalizePublicPuzzle:moduleCapability('QueensDifficulty','./queens-difficulty.js','canonicalizePublicPuzzle'),
-        publicPuzzleFromCandidate:moduleCapability('QuadludQueensGenerator','./queens-generator.js','publicPuzzleFromCandidate'),
-        publicPuzzleFromSession:moduleCapability('QuadludQueensGenerator','./queens-generator.js','publicPuzzleFromSession'),
-        sessionLifecycle:moduleCapability('QuadludGameSessionAdapters','./game-session-adapters.js','queens'),
-        uiLifecycle:lazyModuleObjectCapability('QuadludQueensUI','./queens-ui.js',['createAdapter']),
-        pedagogyLifecycle:lazyModuleObjectCapability('QuadludQueensPedagogy','./queens-pedagogy.js',['createAdapter','dependencyNames']),
-        generationIdentity:moduleCapability('QuadludQueensGenerator','./queens-generator.js','generationIdentity')
-      })
-    }),
-    Object.freeze({
-      id:'tango',metadata:Object.freeze({labelKey:'gameTango',descriptionKey:'tangoSub',challengeCode:'T'}),
-      capabilities:Object.freeze({
-        logic:moduleCapability('TangoLogic','./tango-logic.js'),
-        difficulty:moduleCapability('TangoDifficulty','./tango-difficulty.js'),
-        generatePuzzle:moduleCapability('QuadludTangoGenerator','./tango-generator.js','generateTangoPuzzle'),
-        canonicalizePublicPuzzle:moduleCapability('TangoDifficulty','./tango-difficulty.js','canonicalizePublicPuzzle'),
-        publicPuzzleFromCandidate:moduleCapability('QuadludTangoGenerator','./tango-generator.js','publicPuzzleFromCandidate'),
-        publicPuzzleFromSession:moduleCapability('QuadludTangoGenerator','./tango-generator.js','publicPuzzleFromSession'),
-        sessionLifecycle:moduleCapability('QuadludGameSessionAdapters','./game-session-adapters.js','tango'),
-        uiLifecycle:lazyModuleObjectCapability('QuadludTangoUI','./tango-ui.js',['createAdapter']),
-        pedagogyLifecycle:lazyModuleObjectCapability('QuadludTangoPedagogy','./tango-pedagogy.js',['createAdapter','dependencyNames'])
-      })
-    }),
-    Object.freeze({
-      id:'sudoku',metadata:Object.freeze({labelKey:'gameSudoku',descriptionKey:'sudokuSub',challengeCode:'S'}),
-      capabilities:Object.freeze({
-        logic:moduleCapability('SudokuLogic','./sudoku-logic.js'),
-        difficulty:moduleCapability('SudokuDifficulty','./sudoku-difficulty.js'),
-        generatePuzzle:moduleCapability('QuadludSudokuGenerator','./sudoku-generator.js','generateSudokuPuzzle'),
-        canonicalizePublicPuzzle:moduleCapability('SudokuDifficulty','./sudoku-difficulty.js','canonicalizePublicPuzzle'),
-        publicPuzzleFromCandidate:moduleCapability('QuadludSudokuGenerator','./sudoku-generator.js','publicPuzzleFromCandidate'),
-        publicPuzzleFromSession:moduleCapability('QuadludSudokuGenerator','./sudoku-generator.js','publicPuzzleFromSession'),
-        sessionLifecycle:moduleCapability('QuadludGameSessionAdapters','./game-session-adapters.js','sudoku'),
-        uiLifecycle:lazyModuleObjectCapability('QuadludSudokuUI','./sudoku-ui.js',['createAdapter']),
-        pedagogyLifecycle:lazyModuleObjectCapability('QuadludSudokuPedagogy','./sudoku-pedagogy.js',['createAdapter','dependencyNames'])
-      })
-    }),
-    Object.freeze({
-      id:'patches',metadata:Object.freeze({labelKey:'gamePatches',descriptionKey:'patchesSub',challengeCode:'P'}),
-      capabilities:Object.freeze({
-        logic:moduleCapability('PatchesLogic','./patches-logic.js'),
-        difficulty:moduleCapability('PatchesDifficulty','./patches-difficulty.js'),
-        generatePuzzle:moduleCapability('QuadludPatchesGenerator','./patches-generator.js','generatePatchesPuzzle'),
-        canonicalizePublicPuzzle:moduleCapability('PatchesDifficulty','./patches-difficulty.js','canonicalizePublicPuzzle'),
-        publicPuzzleFromCandidate:moduleCapability('QuadludPatchesGenerator','./patches-generator.js','publicPuzzleFromCandidate'),
-        publicPuzzleFromSession:moduleCapability('QuadludPatchesGenerator','./patches-generator.js','publicPuzzleFromSession'),
-        sessionLifecycle:moduleCapability('QuadludGameSessionAdapters','./game-session-adapters.js','patches'),
-        uiLifecycle:lazyModuleObjectCapability('QuadludPatchesUI','./patches-ui.js',['createAdapter']),
-        pedagogyLifecycle:lazyModuleObjectCapability('QuadludPatchesPedagogy','./patches-pedagogy.js',['createAdapter','dependencyNames'])
-      })
-    })
-  ]);
+  const BINDINGS=Object.freeze({
+    queens:Object.freeze({logic:'QueensLogic',difficulty:'QueensDifficulty',generator:'QuadludQueensGenerator',generate:'generateQueensPuzzle',ui:'QuadludQueensUI',pedagogy:'QuadludQueensPedagogy',reasoning:'QuadludQueensReasoningPresenter',i18n:'QuadludQueensI18n',generationIdentity:'generationIdentity'}),
+    tango:Object.freeze({logic:'TangoLogic',difficulty:'TangoDifficulty',generator:'QuadludTangoGenerator',generate:'generateTangoPuzzle',ui:'QuadludTangoUI',pedagogy:'QuadludTangoPedagogy',reasoning:'QuadludTangoReasoningPresenter',i18n:'QuadludTangoI18n'}),
+    sudoku:Object.freeze({logic:'SudokuLogic',difficulty:'SudokuDifficulty',generator:'QuadludSudokuGenerator',generate:'generateSudokuPuzzle',ui:'QuadludSudokuUI',pedagogy:'QuadludSudokuPedagogy',reasoning:'QuadludSudokuReasoningPresenter',i18n:'QuadludSudokuI18n'}),
+    patches:Object.freeze({logic:'PatchesLogic',difficulty:'PatchesDifficulty',generator:'QuadludPatchesGenerator',generate:'generatePatchesPuzzle',ui:'QuadludPatchesUI',pedagogy:'QuadludPatchesPedagogy',reasoning:'QuadludPatchesReasoningPresenter',i18n:'QuadludPatchesI18n'}),
+    nonogram:Object.freeze({logic:'NonogramLogic',difficulty:'NonogramDifficulty',generator:'NonogramGenerator',generate:'generateProductPuzzle',ui:'QuadludNonogramUI',pedagogy:'QuadludNonogramPedagogy',reasoning:'QuadludNonogramReasoningPresenter',i18n:'QuadludNonogramI18n',generationIdentity:'generationIdentity'})
+  });
+  function gameModulePath(id,role){return `./${manifest.modulePath(id,role)}`}
+  function manifestEntryToCatalog(game){
+    const id=game.id,b=BINDINGS[id];if(!b)throw new Error(`QUADLUD game registry binding missing for manifest entry: ${id}`);
+    const capabilities={
+      logic:moduleCapability(b.logic,gameModulePath(id,'logic')),
+      difficulty:moduleCapability(b.difficulty,gameModulePath(id,'difficulty')),
+      generatePuzzle:moduleCapability(b.generator,gameModulePath(id,'generator'),b.generate),
+      canonicalizePublicPuzzle:moduleCapability(b.difficulty,gameModulePath(id,'difficulty'),'canonicalizePublicPuzzle'),
+      publicPuzzleFromCandidate:moduleCapability(b.generator,gameModulePath(id,'generator'),'publicPuzzleFromCandidate'),
+      publicPuzzleFromSession:moduleCapability(b.generator,gameModulePath(id,'generator'),'publicPuzzleFromSession'),
+      sessionLifecycle:moduleCapability('QuadludGameSessionAdapters',gameModulePath(id,'session'),id),
+      uiLifecycle:lazyModuleObjectCapability(b.ui,gameModulePath(id,'ui'),['createAdapter']),
+      pedagogyLifecycle:lazyModuleObjectCapability(b.pedagogy,gameModulePath(id,'pedagogy'),['createAdapter','dependencyNames','trainingFixture']),
+      reasoningLifecycle:lazyModuleObjectCapability(b.reasoning,gameModulePath(id,'reasoning'),['createPresenter']),
+      i18n:moduleCapability(b.i18n,gameModulePath(id,'i18n'))
+    };
+    if(b.generationIdentity)capabilities.generationIdentity=moduleCapability(b.generator,gameModulePath(id,'generator'),b.generationIdentity);
+    return Object.freeze({id,metadata:game.metadata,capabilities:Object.freeze(capabilities)})
+  }
+  const CATALOG=Object.freeze(manifest.listGames().map(manifestEntryToCatalog));
   const IDS=Object.freeze(CATALOG.map(entry=>entry.id));
   const CATALOG_BY_ID=new Map(CATALOG.map(entry=>[entry.id,entry]));
 
@@ -122,5 +92,5 @@
   function hasCapability(id,name){assertCapabilityName(name);const entry=catalogEntry(id);return !!entry&&typeof entry.capabilities[name]==='function'}
   function requireCapability(id,name){return resolveCapability(requireCatalogEntry(id),name)}
 
-  return Object.freeze({VERSION,IDS,listGames,getGame,requireGame,hasGame,getMetadata,hasCapability,requireCapability});
+  return Object.freeze({VERSION,MANIFEST_VERSION:manifest.VERSION,IDS,listGames,getGame,requireGame,hasGame,getMetadata,hasCapability,requireCapability});
 });

@@ -5,13 +5,13 @@
  * without prior written authorization is prohibited.
  */
 (function(root,factory){
-  const api=factory();
+  const api=factory(root,typeof module==='object'&&module.exports?require:null);
   if(typeof module==='object'&&module.exports)module.exports=api;
   if(root)root.QuadludGameSessionAdapters=api;
-})(typeof globalThis!=='undefined'?globalThis:this,function(){
+})(typeof globalThis!=='undefined'?globalThis:this,function(root,nodeRequire){
   'use strict';
 
-  const VERSION=2;
+  const VERSION=4;
   const PATCH_PALETTE=Object.freeze(['#f3c6a8','#b9d9c1','#c6d4ed','#e2c3df','#f0dc9d','#c7e0e3','#d5ceb8','#d4e3b4','#edbfc1','#c8c4e8','#e5d0a4','#b7d7d1']);
 
   function cloneGrid(value){return Array.isArray(value)?value.map(row=>Array.isArray(row)?[...row]:row):value}
@@ -27,6 +27,19 @@
     const out={...action};if(out.type==='MOVE'&&changes.length===1){const ch=changes[0];out.type=type;out.target={row:ch.row,column:ch.column}}return out
   }}
   function solvedAgainstSolution(session){return !!session?.state&&Array.isArray(session.sol)&&session.state.every((row,r)=>row.every((value,c)=>value===session.sol?.[r]?.[c]))}
+  function nonogramLogic(){
+    const value=nodeRequire?nodeRequire('./nonogram-logic.js'):root?.NonogramLogic;
+    if(!value||typeof value.validatePuzzle!=='function'||typeof value.applyLogicalMove!=='function')throw new Error('QUADLUD NonogramLogic unavailable');
+    return value
+  }
+  function nonogramCellFromId(id){const m=/^r(\d+)c(\d+)$/.exec(String(id||''));return m?[Number(m[1]),Number(m[2])]:null}
+  function nonogramUserMove(row,column,state){
+    const L=nonogramLogic(),r=Number(row),c=Number(column),s=Number(state);
+    if(!Number.isInteger(r)||r<0||!Number.isInteger(c)||c<0)throw new TypeError('Invalid Nonogram cell coordinates');
+    if(![L.UNKNOWN,L.FILLED,L.EMPTY].includes(s))throw new TypeError('Invalid Nonogram user cell state');
+    const entity={kind:'cell',id:L.cellId(r,c)};
+    return {schema:1,techniqueId:null,rank:0,targets:[entity],effects:[{type:'SET_CELL',target:entity,state:s,stateName:L.STATE_NAMES[s]}],focus:[{entity,role:'target'}],evidence:{schema:1,kind:'user-mark'}}
+  }
   function patchShape(cells){
     if(!Array.isArray(cells)||!cells.length)return 'libre';
     const rs=cells.map(x=>x[0]),cs=cells.map(x=>x[1]),h=Math.max(...rs)-Math.min(...rs)+1,w=Math.max(...cs)-Math.min(...cs)+1;
@@ -71,6 +84,59 @@
     normalizeHistoryAction:singleCellAction('SET_DIGIT'),
     validateVictory(session){const solved=!!session&&session.game==='sudoku'&&solvedAgainstSolution(session);return Object.freeze({solved,reasonKey:solved?null:'sudokuIncomplete'})}
   });
+  const nonogram=Object.freeze({
+    createGeneratedSession(diff,g){
+      if(!g||g.game!=='nonogram'||!g.puzzle)throw new Error('Invalid nonogram generated session input');
+      const L=nonogramLogic(),p=L.validatePuzzle(g.puzzle);
+      if(g.validationState!=null&&(!g.validationState||!Array.isArray(g.validationState.solutionGrid)))throw new Error('Invalid nonogram validation state');
+      return {
+        game:'nonogram',diff,difficultyProfile:cloneJson(g.difficultyProfile),generationStats:cloneJson(g.generationStats),generated:true,unique:g.unique!==false,completed:false,
+        seed:g.seed??null,generatorVersion:g.generatorVersion??null,fingerprint:g.fingerprint??g.generationStats?.fingerprint??null,
+        puzzle:cloneJson(p),validationState:cloneJson(g.validationState),state:L.createState(p)
+      }
+    },
+    snapshot(session){
+      if(session?.game!=='nonogram')throw new Error('Invalid nonogram session');
+      return {game:'nonogram',state:cloneGrid(session.state)}
+    },
+    applySnapshot(session,snapshot){
+      if(snapshot?.game!=='nonogram')return false;
+      const L=nonogramLogic();session.state=L.createState(session.puzzle,snapshot.state);return true
+    },
+    hasProgress(session){const L=nonogramLogic();return !!session?.state?.some(row=>row.some(v=>v!==L.UNKNOWN))},
+    resetState(session){const L=nonogramLogic();session.state=L.createState(session.puzzle);return true},
+    reasoningView(session){
+      if(!session||session.game!=='nonogram')throw new Error('Invalid nonogram session');
+      const L=nonogramLogic(),p=L.validatePuzzle(session.puzzle),state=L.validateState(p,session.state);
+      return {game:'nonogram',publicPuzzle:cloneJson(p),visibleState:{game:'nonogram',state:cloneGrid(state)},metadata:{source:'nonogram-session-lifecycle',visibleOnly:true}}
+    },
+    historyChanges(before,after){return matrixChanges(before,after,'state')},
+    normalizeHistoryAction(_session,action,changes){
+      const out={...action};
+      if(out.type==='MOVE'&&changes.length===1){const ch=changes[0];out.type='SET_NONOGRAM_CELL';out.target={row:ch.row,column:ch.column};out.state=ch.to}
+      return out
+    },
+    validateVictory(session){
+      const L=nonogramLogic(),solved=!!session&&session.game==='nonogram'&&L.isSolved(session.puzzle,session.state);
+      return Object.freeze({solved,reasonKey:solved?null:'nonogramIncomplete'})
+    },
+    applyLogicalMove(session,move){
+      if(!session||session.game!=='nonogram')throw new Error('Invalid nonogram session');
+      const L=nonogramLogic();
+      if(move?.techniqueId!=null){session.state=L.applyLogicalMove(session.puzzle,session.state,move);return {state:cloneGrid(session.state)}}
+      if(!Array.isArray(move?.effects)||!move.effects.length)throw new Error('Nonogram user LogicalMove requires effects');
+      const next=cloneGrid(session.state),seen=new Set();
+      for(const effect of move.effects){
+        if(effect?.type!=='SET_CELL'||effect.target?.kind!=='cell')throw new Error('Unsupported Nonogram user LogicalMove effect');
+        const cell=nonogramCellFromId(effect.target.id);if(!cell)throw new Error(`Invalid Nonogram cell id ${effect.target?.id}`);
+        const [r,c]=cell;if(r<0||r>=session.puzzle.rows||c<0||c>=session.puzzle.cols)throw new Error(`Nonogram cell ${effect.target.id} is outside puzzle`);
+        const state=Number(effect.state);if(![L.UNKNOWN,L.FILLED,L.EMPTY].includes(state))throw new Error('Invalid Nonogram user cell state');
+        if(seen.has(effect.target.id))throw new Error(`Duplicate Nonogram user cell effect ${effect.target.id}`);seen.add(effect.target.id);next[r][c]=state
+      }
+      session.state=next;return {state:cloneGrid(session.state)}
+    },
+    createCellMove:nonogramUserMove
+  });
   const patches=Object.freeze({
     createGeneratedSession(diff,g){if(!g)throw new Error('Invalid patches generated session input');return {...commonSession('patches',diff,g),n:g.n,reg:g.reg,ids:g.ids,cellsBy:g.cellsBy,clues:g.clues,paint:Array.from({length:g.n},()=>Array(g.n).fill(null)),patchSelectedRects:{},patchLogicEvidence:emptyPatchEvidence(),pal:[...PATCH_PALETTE],active:g.ids[0]}},
     snapshot(session){return {game:'patches',paint:cloneGrid(session.paint),patchSelectedRects:cloneJson(session.patchSelectedRects||{}),patchLogicEvidence:cloneJson(session.patchLogicEvidence||emptyPatchEvidence())}},
@@ -106,5 +172,5 @@
     }
   });
 
-  return Object.freeze({VERSION,PATCH_PALETTE,queens,tango,sudoku,patches});
+  return Object.freeze({VERSION,PATCH_PALETTE,queens,tango,sudoku,patches,nonogram});
 });

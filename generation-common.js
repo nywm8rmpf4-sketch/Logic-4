@@ -18,7 +18,7 @@ function rotGrid(grid){const n=grid.length;return Array.from({length:n},(_,r)=>A
 function flipGrid(grid){return grid.map(r=>[...r].reverse())}
 function transformGrid(grid,k){let g=grid.map(r=>[...r]);for(let i=0;i<k%4;i++)g=rotGrid(g);if(k>=4)g=flipGrid(g);return g}
 
-function generateRegisteredCandidate(game,diff){return generationRegistry().requireCapability(game,'generatePuzzle')(diff)}
+function generateRegisteredCandidate(game,diff,options){return generationRegistry().requireCapability(game,'generatePuzzle')(diff,options)}
 function generatedPublicPuzzleFromCandidate(game,g){
   if(!game||!g)return null;
   return generationRegistry().requireCapability(game,'publicPuzzleFromCandidate')(g)
