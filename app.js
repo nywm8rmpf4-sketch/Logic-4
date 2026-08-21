@@ -5,7 +5,7 @@
  */
 'use strict';
 const $=s=>document.querySelector(s), app=$('#app'), toast=$('#toast'), timerEl=$('#timer');
-const VERSION='2.32.0';
+const VERSION='3.0.1';
 const WebPlatform=QuadludWebPlatform.getWebPlatform();
 const DataSerialization=QuadludDataSerialization;
 const SessionCore=QuadludSessionCore;
@@ -1637,7 +1637,7 @@ function ensurePrecomputeWorker(){
   if(precomputeWorker)return precomputeWorker;
   if(!WebPlatform.workers.supported())return null;
   try{
-    let w=WebPlatform.workers.create('./precompute-worker.js?v=2.32.0');if(!w)return null;
+    let w=WebPlatform.workers.create('./precompute-worker.js?v=3.0.1');if(!w)return null;
     w.onmessage=e=>{
       let m=e.data||{};precomputeBusy=false;
       if(m.ok&&m.day===precomputeDay&&m.candidate&&precomputeCandidateCertified(m.game,m.diff,m.candidate)){

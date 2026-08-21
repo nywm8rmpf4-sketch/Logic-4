@@ -114,7 +114,7 @@ function createTutor(options={}){
       index:walk.moves.length+1,rule:p.rule,technique:p.technique,rank:p.rank,where:e.where||'',why:e.why||'',move:e.move||'',
       presentation:clone(p),deduction:clone(previewResult.deduction),logicalMove:clone(move),transaction:clone(applied.transaction),historyNode:node.id,snapshot:lifecycle.snapshot(walk.work),deductionSignature:previewResult.deductionSignature
     });
-    walk.moves.push(step);walk.index=walk.moves.length;walk.done=Logic.isSolved(walk.work.puzzle,walk.work.state);walk.stalled=false;walk.logicContradiction=null;return step
+    walk.moves.push(step);walk.done=Logic.isSolved(walk.work.puzzle,walk.work.state);walk.stalled=false;walk.logicContradiction=null;return step
   }
   function next(walk){
     const hint=preview(walk);
@@ -224,7 +224,7 @@ function createAdapter(d={}){
       visibleClone:(session,root)=>visibleSessionClone(session,{fromRoot:false,stateOverride:root?.state||null}),
       snapshot:session=>SessionAdapters.nonogram.snapshot(session),complete:session=>Logic.isSolved(session.puzzle,session.state),
       generateNext:walk=>!!tutor.next(walk),board:walkthroughBoard,
-      contradictionText:x=>coach.presenter.contradictionText(x),afterRender:()=>undefined,initialize:walk=>tutor.initialize(walk)
+      contradictionText:x=>coach.presenter.contradictionText(x),afterRender:(board,base)=>{if(!board)return;const puzzle=Logic.validatePuzzle(base?.puzzle);board.style.setProperty('--ng-rows',String(puzzle.rows));board.style.setProperty('--ng-cols',String(puzzle.cols))},initialize:walk=>tutor.initialize(walk)
     })
   })
 }
