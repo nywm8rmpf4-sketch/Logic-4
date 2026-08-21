@@ -6,6 +6,13 @@
  */
 'use strict';
 
+const QueenQpool4=(()=>{
+  if(typeof module!=='undefined'&&module.exports)return require('./queens-qpool4.js');
+  if(typeof globalThis!=='undefined'&&globalThis.QuadludQueensQpool4)return globalThis.QuadludQueensQpool4;
+  if(typeof importScripts==='function'){importScripts('./queens-qpool4.js?v=3.0.1');return typeof globalThis!=='undefined'?globalThis.QuadludQueensQpool4:null}
+  return null
+})();
+
 function queenRegionSizeCount(reg,size){
   let sizes={};for(let id of reg.flat())sizes[id]=(sizes[id]||0)+1;
   return Object.values(sizes).filter(x=>x===size).length
@@ -142,7 +149,7 @@ function queenRandomStructuralCandidateV223(cfg){
 function queenCertifiedStructureMatchesV223(reg,cfg){
   return reg.length===cfg.n&&(cfg.maxSingles>=99||queenSingletonRegions(reg)<=cfg.maxSingles)&&(cfg.maxTwos>=99||queenTwoCellRegions(reg)<=cfg.maxTwos)
 }
-function generateQueensPuzzle(diff){
+function generateQueensPuzzleLegacyV223(diff){
   const cfg=queenCertifiedGenerationConfigV223[diff];if(!cfg)throw new Error('Unknown Queens difficulty');
   let stats=queenGenerationStatsV223(diff,cfg),base=queenCertifiedTemplatesV223[diff];
   for(let t=0;t<cfg.attempts;t++){
@@ -162,6 +169,19 @@ function generateQueensPuzzle(diff){
   let rate=queenRateGeneratedV223(fallback.reg);
   if(!queenExactDifficultyMatchV223(rate,diff))throw new Error(`Queens certified generation failed exact difficulty match (${diff})`);
   return queenCertifiedResultV223(fallback,rate,stats)
+}
+function queenQpool4Candidate(diff){
+  if(!QueenQpool4||typeof QueenQpool4.size!=='function'||typeof QueenQpool4.entryAt!=='function')throw new Error('Queens qpool4 runtime data unavailable');
+  let size=QueenQpool4.size(diff),index=Math.floor(Math.random()*size),entry=QueenQpool4.entryAt(diff,index),profile=entry.difficultyProfile;
+  if(!profile||profile.status!=='solved'||profile.difficulty!==diff||profile.minimumRequiredTier!==(typeof DifficultyRating!=='undefined'?DifficultyRating.tierIndex(diff):profile.minimumRequiredTier)||profile.budgetHit)throw new Error(`Queens qpool4 profile mismatch (${diff}/${entry.id})`);
+  let stats={generatorVersion:typeof DifficultyRating!=='undefined'?DifficultyRating.GENERATOR_VERSION:1,targetDifficulty:diff,strategy:'qpool4-certified-pool',attempts:1,rejected:{structure:0,uniqueness:0,ratingMismatch:0,budgetExhausted:0,invalid:0},fallbackUsed:false,poolVersion:QueenQpool4.POOL_VERSION,poolEntryId:entry.id,poolIndex:index,fingerprint:profile.fingerprint,minimumRequiredTier:profile.minimumRequiredTier,totalLogicalSteps:profile.totalLogicalSteps};
+  return {n:entry.n,sol:[...entry.sol],reg:entry.reg.map(r=>[...r]),difficultyProfile:JSON.parse(JSON.stringify(profile)),generationStats:stats}
+}
+function generateQueensPuzzle(diff,options={}){
+  if(!queenCertifiedGenerationConfigV223[diff])throw new Error('Unknown Queens difficulty');
+  if(options?.protocolGeneration===1||diff==='easy')return generateQueensPuzzleLegacyV223(diff);
+  if(diff==='medium'||diff==='hard'||diff==='expert')return queenQpool4Candidate(diff);
+  throw new Error('Unknown Queens difficulty')
 }
 
 
