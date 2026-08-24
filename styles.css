@@ -1050,16 +1050,15 @@ body.tutor-active .walkthrough-actions-top{margin:4px 0 7px}
     flex-direction:column;
     padding-top:10px;
   }
-  .patch-game-panel .game-head{order:0;margin-bottom:6px}
-  .patch-game-panel .patch-board-wrap{order:1;margin-top:2px;margin-bottom:3px;max-width:calc(100vw - 34px)}
-  .patch-game-panel .patch-gesture-legend{order:2;margin:5px auto 2px;font-size:11px}
-  .patch-game-panel .toolbar{order:3;margin:7px 0 4px;grid-template-columns:repeat(4,minmax(0,1fr))}
-  .patch-game-panel .status{order:4;margin:3px 0;min-height:18px}
-  .patch-game-panel .error-coach{order:5}
-  .patch-game-panel .reasoning-audit{order:6}
-  .patch-game-panel .exploration-panel{order:7}
-  .patch-game-panel .learning-guide{order:8}
-  .patch-game-panel .rules{order:9;display:none}
+  .patch-game-panel .game-head{order:0;margin-bottom:5px}
+  .patch-game-panel .toolbar{order:1;margin:5px 0 4px;grid-template-columns:repeat(4,minmax(0,1fr))}
+  .patch-game-panel .status{order:2;margin:2px 0;min-height:16px}
+  .patch-game-panel .error-coach{order:3}
+  .patch-game-panel .reasoning-audit{order:4}
+  .patch-game-panel .exploration-panel{order:5}
+  .patch-game-panel .learning-guide{order:6}
+  .patch-game-panel .patch-board-wrap{order:7;margin-top:2px;margin-bottom:2px;max-width:calc(100vw - 34px)}
+  .patch-game-panel .rules{order:8;display:none}
   .patch-game-panel #undoBtn{order:1}
   .patch-game-panel #redoBtn{order:2}
   .patch-game-panel #hintBtn{order:3}
@@ -1190,6 +1189,17 @@ html{scroll-padding-top:82px;scroll-padding-bottom:110px}
   .nonogram-tools{gap:5px;margin-top:6px}.nonogram-tools .ng-tool{font-size:11px;padding-inline:4px}
   .ng-row-clue{max-width:56px;min-width:30px;padding-right:4px;gap:2px}.ng-col-clue{min-height:38px;padding-bottom:4px}
   .ng-col-clue,.ng-row-clue{font-size:clamp(8px,2.6vw,11px)}
+}
+@media(max-width:520px){
+  .panel:has(.nonogram-game){padding-top:10px}
+  .panel:has(.nonogram-game) .game-head{margin-bottom:4px}
+  .panel:has(.nonogram-game) .toolbar{margin:5px 0 3px;gap:5px}
+  .panel:has(.nonogram-game) .status{min-height:14px;margin:2px 0}
+  .nonogram-tools{margin:3px auto 4px;gap:5px}
+  .nonogram-tools .ng-tool{min-height:44px;padding:6px 4px;font-size:11px}
+  .ng-col-clue{min-height:32px;padding-bottom:3px}
+  .ng-row-clue{padding-right:3px}
+  .nonogram-legend{display:none}
 }
 @media(pointer:coarse){.nonogram-board>.ng-cell{touch-action:manipulation!important}.nonogram-tools .ng-tool{min-height:44px}}
 @media(prefers-reduced-motion:reduce){.nonogram-tools .ng-tool,.nonogram-board>.ng-cell{transition:none!important}}

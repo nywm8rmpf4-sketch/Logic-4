@@ -84,7 +84,6 @@ function createAdapter(deps){
         <div class="ng-row-clues">${rowClues}</div>
         <div class="board nonogram-board" id="ngboard"></div>
       </div>
-      <div class="legend nonogram-legend">■ ${labels.filled} · × ${labels.empty}</div>
     </div>`
   }
   function syncAccessibility(){

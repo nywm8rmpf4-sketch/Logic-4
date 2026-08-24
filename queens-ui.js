@@ -109,7 +109,7 @@
 
     function render(session){
       const colors=regionColors;
-      shell(gameLabel('queens'),`${session.n}×${session.n} · ${difficultyLabel(session.diff)} · ${tr('generated')}`,session.diff,`<div class="queen-options"><label class="switch-row"><input type="checkbox" id="queenAutoCross" ${autoCrossEnabled()?'checked':''}><span>${tr('autoCross')}</span></label></div><div class="board-wrap"><div class="board" id="qboard" style="grid-template-columns:repeat(${session.n},minmax(0,1fr));grid-template-rows:repeat(${session.n},minmax(0,1fr))"></div></div><div class="legend">${tr('queensLegend')}</div>`,gameRules('queens'));
+      shell(gameLabel('queens'),`${session.n}×${session.n} · ${difficultyLabel(session.diff)} · ${tr('generated')}`,session.diff,`<div class="queen-options"><label class="switch-row"><input type="checkbox" id="queenAutoCross" ${autoCrossEnabled()?'checked':''}><span>${tr('autoCross')}</span></label></div><div class="board-wrap"><div class="board" id="qboard" style="grid-template-columns:repeat(${session.n},minmax(0,1fr));grid-template-rows:repeat(${session.n},minmax(0,1fr))"></div></div>`,gameRules('queens'));
       const board=query('#qboard');
       let dragging=false,pointerId=null,startCell=null,dragAxis=null,dragged=false,dragMode='add',visited=new Set(),historyBefore=null;
 

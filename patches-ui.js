@@ -289,7 +289,7 @@
     function render(session){
       session.patchSelectedRects=session.patchSelectedRects||{};session.patchLogicEvidence=session.patchLogicEvidence||patchEmptyEvidence();
       shell(gameLabel('patches'),`${session.n}×${session.n} · ${tr('generated')}`,session.diff,
-        `<div class="board-wrap patch-board-wrap"><div class="board" id="pboard" style="grid-template-columns:repeat(${session.n},minmax(0,1fr));grid-template-rows:repeat(${session.n},minmax(0,1fr))"></div><div class="patch-drag-badge" id="patchDragBadge" hidden aria-live="polite"></div></div><div class="legend patch-gesture-legend">↘︎ ${tr('patchesLegend')}<br><span aria-hidden="true">⌨︎ ↑ ↓ ← → · Enter ×2 · Delete · Esc</span></div><div class="patch-corner-controls"><button class="btn" id="patchCornerMode" aria-pressed="false" aria-keyshortcuts="Enter Space">⌜↘⌟ ${tr('regionSelection')}</button></div>`,
+        `<div class="board-wrap patch-board-wrap"><div class="board" id="pboard" style="grid-template-columns:repeat(${session.n},minmax(0,1fr));grid-template-rows:repeat(${session.n},minmax(0,1fr))"></div><div class="patch-drag-badge" id="patchDragBadge" hidden aria-live="polite"></div></div>`,
         gameRules('patches'));
       getApp()?.querySelector('.panel')?.classList.add('patch-game-panel');
       const clueAt=new Map(session.ids.map(id=>[session.clues[id].pos.join(','),id])),board=query('#pboard');
@@ -304,7 +304,6 @@
         if(clueId!=null){cell.classList.add('clue');cell.dataset.clueId=clueId;cell.innerHTML=clueHTML(session.clues[clueId])}else cell.dataset.clueId='';board.appendChild(cell)
       }
       a11ySetupGrid(board,session.n,session.n,{keyshortcuts:'ArrowUp ArrowDown ArrowLeft ArrowRight Home End Enter Space Delete Backspace Escape',activate:cell=>cornerActivate(+cell.dataset.r,+cell.dataset.c),onFocus:cell=>{if(cornerAnchor)renderPreview(cornerAnchor,[+cell.dataset.r,+cell.dataset.c],cornerLockedId)},onKey:(event,cell)=>{const current=getCurrent();if(event.key==='Escape'&&cornerAnchor){clearCorner();a11yAnnounce(tr('regionSelection'));return true}if((event.key==='Delete'||event.key==='Backspace')&&current.paint[+cell.dataset.r][+cell.dataset.c]!=null){cornerRemove(+cell.dataset.r,+cell.dataset.c);return true}return false}});
-      const cornerBtn=query('#patchCornerMode');cornerBtn.onclick=()=>{cornerMode=!cornerMode;cornerBtn.setAttribute('aria-pressed',String(cornerMode));if(!cornerMode)clearCorner();a11yAnnounce(`${tr('regionSelection')} · ${cornerMode?tr('on'):tr('off')}`)};
       observeResponsiveClues(board,session.n);
 
       board.onpointerdown=event=>{
