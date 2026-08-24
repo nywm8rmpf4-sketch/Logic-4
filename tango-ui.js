@@ -98,7 +98,7 @@
       }
       a11ySetupGrid(board,6,6,{activate:cell=>{if(!cell.classList.contains('fixed'))cell.click()}});
       draw();
-      query('#checkBtn').onclick=checkVictory;query('#hintBtn').onclick=hint;query('#solutionBtn').onclick=revealSolution;
+      {const check=query('#checkBtn');if(check)check.onclick=checkVictory;}query('#hintBtn').onclick=hint;query('#solutionBtn').onclick=revealSolution;
       return board
     }
 

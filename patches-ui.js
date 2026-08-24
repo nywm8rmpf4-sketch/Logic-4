@@ -322,7 +322,7 @@
         const finalCell=pointToCellHysteresis(event.clientX+done.offsetX,event.clientY+done.offsetY,done.end,board);if(finalCell)done.end=finalCell;if(patchDragPending)patchDragPending=null;if(patchDragFrame){try{cancelFrame(patchDragFrame)}catch(_){};patchDragFrame=0}commitRectangle(done.anchor,done.end,null,done.lockedId)
       };
       board.onpointerup=event=>finishDrag(event,false);board.onpointercancel=event=>finishDrag(event,true);
-      draw();query('#checkBtn').onclick=checkVictory;query('#hintBtn').onclick=hint;query('#solutionBtn').onclick=revealSolution;return board
+      draw();{const check=query('#checkBtn');if(check)check.onclick=checkVictory;}query('#hintBtn').onclick=hint;query('#solutionBtn').onclick=revealSolution;return board
     }
 
     return Object.freeze({

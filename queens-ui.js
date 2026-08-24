@@ -193,7 +193,7 @@
           draw();historyRecord({type:'AUTO_CROSS_ENABLE'},before);saveCurrent();showToast(tr('autoCrossOn'))
         }else showToast(tr('autoCrossOff'))
       };
-      query('#checkBtn').onclick=checkVictory;query('#hintBtn').onclick=hint;query('#solutionBtn').onclick=revealSolution;
+      {const check=query('#checkBtn');if(check)check.onclick=checkVictory;}query('#hintBtn').onclick=hint;query('#solutionBtn').onclick=revealSolution;
       return board
     }
 

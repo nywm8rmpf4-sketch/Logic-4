@@ -103,7 +103,7 @@
       });
       query('#numpad').querySelectorAll('button').forEach(button=>button.onclick=touchSave(()=>setSelectedDigit(+button.dataset.n)));
       draw();
-      query('#checkBtn').onclick=checkVictory;query('#hintBtn').onclick=hint;query('#solutionBtn').onclick=revealSolution;
+      {const check=query('#checkBtn');if(check)check.onclick=checkVictory;}query('#hintBtn').onclick=hint;query('#solutionBtn').onclick=revealSolution;
       return board
     }
 
