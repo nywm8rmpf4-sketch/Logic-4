@@ -6,12 +6,7 @@
  */
 'use strict';
 
-const QueenQpool4=(()=>{
-  if(typeof module!=='undefined'&&module.exports)return require('./queens-qpool4.js');
-  if(typeof globalThis!=='undefined'&&globalThis.QuadludQueensQpool4)return globalThis.QuadludQueensQpool4;
-  if(typeof importScripts==='function'){importScripts('./queens-qpool4.js?v=3.0.1');return typeof globalThis!=='undefined'?globalThis.QuadludQueensQpool4:null}
-  return null
-})();
+const QuadludQueensQpool4=(typeof module!=='undefined'&&module.exports)?require('./queens-qpool4.js'):(typeof globalThis!=='undefined'?globalThis.QuadludQueensQpool4:null);
 
 function queenRegionSizeCount(reg,size){
   let sizes={};for(let id of reg.flat())sizes[id]=(sizes[id]||0)+1;
@@ -149,7 +144,7 @@ function queenRandomStructuralCandidateV223(cfg){
 function queenCertifiedStructureMatchesV223(reg,cfg){
   return reg.length===cfg.n&&(cfg.maxSingles>=99||queenSingletonRegions(reg)<=cfg.maxSingles)&&(cfg.maxTwos>=99||queenTwoCellRegions(reg)<=cfg.maxTwos)
 }
-function generateQueensPuzzleLegacyV223(diff){
+function generateQueensPuzzleHistoricalV223(diff){
   const cfg=queenCertifiedGenerationConfigV223[diff];if(!cfg)throw new Error('Unknown Queens difficulty');
   let stats=queenGenerationStatsV223(diff,cfg),base=queenCertifiedTemplatesV223[diff];
   for(let t=0;t<cfg.attempts;t++){
@@ -170,17 +165,22 @@ function generateQueensPuzzleLegacyV223(diff){
   if(!queenExactDifficultyMatchV223(rate,diff))throw new Error(`Queens certified generation failed exact difficulty match (${diff})`);
   return queenCertifiedResultV223(fallback,rate,stats)
 }
+
+const QUEEN_QPOOL4_TIERS=Object.freeze(new Set(['medium','hard','expert']));
+function queenQpool4Available(){return !!QuadludQueensQpool4&&typeof QuadludQueensQpool4.size==='function'&&typeof QuadludQueensQpool4.entryAt==='function'}
 function queenQpool4Candidate(diff){
-  if(!QueenQpool4||typeof QueenQpool4.size!=='function'||typeof QueenQpool4.entryAt!=='function')throw new Error('Queens qpool4 runtime data unavailable');
-  let size=QueenQpool4.size(diff),index=Math.floor(Math.random()*size),entry=QueenQpool4.entryAt(diff,index),profile=entry.difficultyProfile;
-  if(!profile||profile.status!=='solved'||profile.difficulty!==diff||profile.minimumRequiredTier!==(typeof DifficultyRating!=='undefined'?DifficultyRating.tierIndex(diff):profile.minimumRequiredTier)||profile.budgetHit)throw new Error(`Queens qpool4 profile mismatch (${diff}/${entry.id})`);
-  let stats={generatorVersion:typeof DifficultyRating!=='undefined'?DifficultyRating.GENERATOR_VERSION:1,targetDifficulty:diff,strategy:'qpool4-certified-pool',attempts:1,rejected:{structure:0,uniqueness:0,ratingMismatch:0,budgetExhausted:0,invalid:0},fallbackUsed:false,poolVersion:QueenQpool4.POOL_VERSION,poolEntryId:entry.id,poolIndex:index,fingerprint:profile.fingerprint,minimumRequiredTier:profile.minimumRequiredTier,totalLogicalSteps:profile.totalLogicalSteps};
-  return {n:entry.n,sol:[...entry.sol],reg:entry.reg.map(r=>[...r]),difficultyProfile:JSON.parse(JSON.stringify(profile)),generationStats:stats}
+  if(!QUEEN_QPOOL4_TIERS.has(diff))throw new Error(`Queens qpool4 does not support difficulty: ${diff}`);
+  if(!queenQpool4Available())throw new Error('Queens qpool4 runtime data unavailable');
+  const size=QuadludQueensQpool4.size(diff);if(!Number.isInteger(size)||size<1)throw new Error(`Queens qpool4 is empty for difficulty: ${diff}`);
+  const index=Math.floor(Math.random()*size),entry=QuadludQueensQpool4.entryAt(diff,index);
+  if(!entry||!Array.isArray(entry.reg)||!Array.isArray(entry.sol)||!entry.difficultyProfile)throw new Error(`Queens qpool4 entry unavailable: ${diff}/${index}`);
+  const profile=JSON.parse(JSON.stringify(entry.difficultyProfile));
+  const stats={generatorVersion:typeof DifficultyRating!=='undefined'?DifficultyRating.GENERATOR_VERSION:1,targetDifficulty:diff,strategy:'qpool4',attempts:1,rejected:{structure:0,uniqueness:0,ratingMismatch:0,budgetExhausted:0,invalid:0},fallbackUsed:false,fingerprint:profile.fingerprint,minimumRequiredTier:profile.minimumRequiredTier,totalLogicalSteps:profile.totalLogicalSteps,poolVersion:QuadludQueensQpool4.POOL_VERSION,poolEntryId:entry.id,poolIndex:index};
+  return {n:entry.n,sol:[...entry.sol],reg:entry.reg.map(r=>[...r]),difficultyProfile:profile,generationStats:stats}
 }
-function generateQueensPuzzle(diff,options={}){
-  if(!queenCertifiedGenerationConfigV223[diff])throw new Error('Unknown Queens difficulty');
-  if(options?.protocolGeneration===1||diff==='easy')return generateQueensPuzzleLegacyV223(diff);
-  if(diff==='medium'||diff==='hard'||diff==='expert')return queenQpool4Candidate(diff);
+function generateQueensPuzzle(diff,options){
+  if(diff==='easy'||options?.protocolGeneration===1)return generateQueensPuzzleHistoricalV223(diff);
+  if(QUEEN_QPOOL4_TIERS.has(diff))return queenQpool4Candidate(diff);
   throw new Error('Unknown Queens difficulty')
 }
 
@@ -203,12 +203,12 @@ function queenCanonicalSignature(reg){
   return signatures[0]
 }
 
-function queenCandidate(diff){return generateQueensPuzzle(diff)}
+function queenCandidate(diff,options){return generateQueensPuzzle(diff,options)}
 
 function queenPublicPuzzleFromCandidate(candidate){return {game:'queens',n:candidate.n,reg:candidate.reg}}
 function queenPublicPuzzleFromSession(session){return {game:'queens',n:session.n,reg:session.reg}}
 function queenGenerationIdentity(candidate){return queenCanonicalSignature(candidate.reg)}
 
-const QuadludQueensGenerator=Object.freeze({generateQueensPuzzle,queenCandidate,countQueensGenerated,randomQueenSolution,queenRegionsFromSolution,queenRegionConnectedAfterMove,queenSingletonRegions,queenTwoCellRegions,normalizeQueenRegionIds,queenRegionSignature,queenCanonicalSignature,publicPuzzleFromCandidate:queenPublicPuzzleFromCandidate,publicPuzzleFromSession:queenPublicPuzzleFromSession,generationIdentity:queenGenerationIdentity});
+const QuadludQueensGenerator=Object.freeze({generateQueensPuzzle,generateQueensPuzzleHistoricalV223,queenQpool4Candidate,queenCandidate,countQueensGenerated,randomQueenSolution,queenRegionsFromSolution,queenRegionConnectedAfterMove,queenSingletonRegions,queenTwoCellRegions,normalizeQueenRegionIds,queenRegionSignature,queenCanonicalSignature,publicPuzzleFromCandidate:queenPublicPuzzleFromCandidate,publicPuzzleFromSession:queenPublicPuzzleFromSession,generationIdentity:queenGenerationIdentity});
 if(typeof globalThis!=='undefined')globalThis.QuadludQueensGenerator=QuadludQueensGenerator;
 if(typeof module!=='undefined'&&module.exports)module.exports=QuadludQueensGenerator;

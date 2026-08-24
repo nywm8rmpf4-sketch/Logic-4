@@ -49,13 +49,14 @@ function createAdapter(deps){
   const {document,query,shell,getCurrent,isPaused,a11ySetupGrid,a11yAnnounce,a11yCoord,a11ySetCell,applyLogicalMove}=deps;
   const maybeAutoFinish=typeof deps.maybeAutoFinish==='function'?deps.maybeAutoFinish:()=>false;
   const haptic=typeof deps.haptic==='function'?deps.haptic:()=>{};
+  const recordDiagnostic=typeof deps.recordDiagnostic==='function'?deps.recordDiagnostic:()=>{};
   const labels=labelSet(deps.labels,deps.tr);
   let mode=MODES.FILL;
 
   function currentSession(){const s=getCurrent();return s?.game==='nonogram'?s:null}
   function clueDomId(axis,index){return `ng-${axis}-clue-${index}`}
   function cellElement(r,c){return query(`#ngboard .cell[data-r="${r}"][data-c="${c}"]`)}
-  function setMode(next){if(!Object.values(MODES).includes(next))throw new Error(`Invalid Nonogram UI mode ${next}`);mode=next;syncModeButtons();a11yAnnounce(`${labels.tools}: ${next===MODES.FILL?labels.fill:next===MODES.CROSS?labels.cross:labels.erase}`);return mode}
+  function setMode(next){if(!Object.values(MODES).includes(next))throw new Error(`Invalid Nonogram UI mode ${next}`);let changed=mode!==next;mode=next;syncModeButtons();if(changed)recordDiagnostic('ui.tool-change',{game:'nonogram',tool:mode});a11yAnnounce(`${labels.tools}: ${next===MODES.FILL?labels.fill:next===MODES.CROSS?labels.cross:labels.erase}`);return mode}
   function syncModeButtons(){for(const [id,m] of [['#ngFillMode',MODES.FILL],['#ngCrossMode',MODES.CROSS],['#ngEraseMode',MODES.ERASE]]){const el=query(id);if(el)el.setAttribute('aria-pressed',String(mode===m))}}
   function desiredState(current){if(mode===MODES.ERASE)return Logic.UNKNOWN;const target=mode===MODES.FILL?Logic.FILLED:Logic.EMPTY;return current===target?Logic.UNKNOWN:target}
   function applyAt(r,c){

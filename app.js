@@ -5,8 +5,29 @@
  */
 'use strict';
 const $=s=>document.querySelector(s), app=$('#app'), toast=$('#toast'), timerEl=$('#timer');
-const VERSION='3.0.1';
+const VERSION='3.1.1';
 const WebPlatform=QuadludWebPlatform.getWebPlatform();
+const DiagnosticRecorder=QuadludDiagnosticRecorder;
+const DiagnosticUiStructural=QuadludDiagnosticUiStructural;
+const DiagnosticAttachments=QuadludDiagnosticAttachments;
+const Diagnostic=DiagnosticRecorder.createRecorder({capacity:256,maxErrors:32,uiCapacity:64,nowMs:()=>WebPlatform.clock.nowMs(),nowIso:()=>WebPlatform.clock.nowIso()});
+const DIAGNOSTIC_BUILD='v3.1.1-queens-diversity-certified';
+const DIAGNOSTIC_UI_EVENT_TYPES=new Set(['action.applied','action.not-applied','history.undo','history.redo','history.branch','session.reset','coach.stage','tutor.open','tutor.next','tutor.previous','tutor.restart','tutor.close','ui.tool-change','viewport.resize','viewport.orientation']);
+function diagnosticOrientation(){try{return String(screen?.orientation?.type||((innerWidth||0)>=(innerHeight||0)?'landscape':'portrait'))}catch(_){return 'unknown'}}
+function diagnosticEnvironment(){return {lang:lang(),theme:resolvedTheme(),viewport:{width:Math.max(0,Number(innerWidth)||0),height:Math.max(0,Number(innerHeight)||0)},dpr:Math.max(0,Number(devicePixelRatio)||1),orientation:diagnosticOrientation(),userAgent:String(navigator?.userAgent||'')}}
+function diagnosticActive(){try{return !!Diagnostic.stats().active}catch(_){return false}}
+function diagnosticView(session=current){try{return reasoningViewForSession(session)}catch(_){return null}}
+function diagnosticSurfaceDescriptors(){const out=[];const add=(id,element,cssVars=[])=>{if(element)out.push({id,element,cssVars})};add('game.panel',$('.panel'));add('game.toolbar',$('.toolbar'));add('game.board',$('.panel .board'),['--ng-cols','--ng-rows','--patch-cell-size']);add('control.undo',$('#undoBtn'));add('control.redo',$('#redoBtn'));add('control.coach',$('#hintBtn'));add('control.tutor',$('#walkthroughBtn'));add('game.status',$('#status'));add('nonogram.tools',$('.nonogram-tools'));return out}
+function diagnosticCaptureUi(reason='manual'){if(!diagnosticActive())return {recorded:false,reason:'inactive'};try{const snapshot=DiagnosticUiStructural.capture({window,document,surfaces:diagnosticSurfaceDescriptors()});return Diagnostic.recordUiSnapshot(snapshot,String(reason||'manual'))}catch(_){return {recorded:false,reason:'failed'}}}
+function diagnosticRecord(type,payload={},session=current){if(!diagnosticActive())return {recorded:false,reason:'inactive'};try{let result=Diagnostic.record(type,payload,{reasoningView:diagnosticView(session)});if(result?.recorded&&DIAGNOSTIC_UI_EVENT_TYPES.has(type))diagnosticCaptureUi(type);return result}catch(_){return {recorded:false,reason:'failed'}}}
+function diagnosticAction(action){return action&&typeof action==='object'?action:{type:String(action||'MOVE')}}
+function diagnosticRecordedHistory(rec){if(!rec?.changed)return false;let {node,parent,normalized,existing,hadAlternative}=rec;if(!node||!parent||!normalized)return false;diagnosticRecord('action.applied',{action:normalized,historyNode:node.id,parentNode:parent.id,branchCreated:!!hadAlternative,existingNode:!!existing});if(hadAlternative)diagnosticRecord('history.branch',{parentNode:parent.id,historyNode:node.id});return true}
+function diagnosticStart(context='normal',{resumed=false,previousGame=null,previousDifficulty=null}={}){let view=diagnosticView(current);if(!view)return false;let fingerprint=null;try{fingerprint=persistenceFingerprint(current)}catch(_){};let result=Diagnostic.start({app:{name:'QUADLUD',version:VERSION,build:DIAGNOSTIC_BUILD},environment:diagnosticEnvironment(),reasoningView:view,difficulty:String(current?.diff||''),fingerprint,context,resumed,previousGame,previousDifficulty});if(result?.recorded)diagnosticCaptureUi('session.start');return !!result?.recorded}
+function diagnosticPedagogy(domain,action,technique=null){return diagnosticRecord('pedagogy.event',{domain:String(domain),action:String(action),technique:technique==null?null:String(technique)})}
+function diagnosticFilename(){let iso=WebPlatform.clock.nowIso().replace(/[-:]/g,'').replace(/\.\d{3}Z$/,'Z');let m=/^(\d{8})T(\d{6})Z$/.exec(iso);return `QUADLUD-diagnostic-${m?`${m[1]}-${m[2]}`:Math.floor(WebPlatform.clock.nowMs())}.qbug.json`}
+function diagnosticAttachmentSummary(){try{let a=Diagnostic.buildQbug().attachments?.[0];return a?`PNG · ${a.width}×${a.height} · ${Math.ceil(a.bytes/1024)} KB`:''}catch(_){return ''}}
+async function handleDiagnosticImageFile(file){if(!file||!diagnosticActive())return false;try{let attachment=await DiagnosticAttachments.normalizeImageFile(file,{scope:window}),result=Diagnostic.setAttachment(attachment);if(!result?.recorded)throw new Error(result?.reason||'attachment-rejected');settingsView();return true}catch(_){showToast(`${tr('importFailed')} · PNG`);let input=$('#diagnosticImageFile');if(input)input.value='';return false}}
+async function downloadDiagnostic(){try{if(!diagnosticActive()){showToast(tr('exportFailed'));return false}diagnosticCaptureUi('export');let qbug=Diagnostic.buildQbug();if(qbug.attachments?.length)await DiagnosticAttachments.verifyAttachment(qbug.attachments[0],window);let ok=WebPlatform.files.downloadText(JSON.stringify(qbug,null,2),{filename:diagnosticFilename(),type:'application/json'});showToast(tr(ok?'exportDone':'exportFailed'));return ok}catch(_){showToast(tr('exportFailed'));return false}}
 const DataSerialization=QuadludDataSerialization;
 const SessionCore=QuadludSessionCore;
 const GameRegistry=QuadludGameRegistry;
@@ -101,8 +122,9 @@ function settingsView(){
   <div class="setting-row"><span><b>${tr('coachMode')}</b><small>${tr('coachModeSub')}</small></span><select id="coachModeSelect" class="difficulty" aria-label="${tr('coachMode')}"><option value="minimal" ${p.coachMode==='minimal'?'selected':''}>${tr('coachMinimal')}</option><option value="normal" ${p.coachMode==='normal'?'selected':''}>${tr('coachNormal')} · ${tr('recommended')}</option><option value="pedagogical" ${p.coachMode==='pedagogical'?'selected':''}>${tr('coachPedagogical')}</option></select></div>
   <div class="setting-row"><span><b>${tr('illegalAlerts')}</b><small>${tr('illegalAlertsSub')}</small></span><button class="btn" id="illegalAlertsToggle" aria-pressed="${p.notifyIllegal?'true':'false'}">${p.notifyIllegal?tr('on'):tr('off')}</button></div>
   <div class="setting-row"><span><b>${tr('unjustifiedAlerts')}</b><small>${tr('unjustifiedAlertsSub')}</small></span><button class="btn" id="unjustifiedAlertsToggle" aria-pressed="${p.notifyUnjustified?'true':'false'}">${p.notifyUnjustified?tr('on'):tr('off')}</button></div>
-  <div class="setting-row data-setting-row"><span><b>${tr('dataManage')}</b><small>${tr('dataManageSub')}</small></span><div class="data-actions"><button class="btn" id="storageInfo">${tr('privacy')}</button><button class="btn" id="dataExportBtn">${tr('exportData')}</button><button class="btn" id="dataImportBtn">${tr('importData')}</button><button class="btn danger" id="dataEraseBtn">${tr('eraseData')}</button></div><input class="sr-only" id="dataImportFile" type="file" accept="application/json,.json" /></div></section>`;
-  $('#settingsBack').onclick=home;$('#langSelect').onchange=e=>{let q=prefs();q.lang=e.target.value;savePrefs(q);updateI18n();settingsView()};$('#themeSelect').onchange=e=>{let q=prefs();q.theme=e.target.value;savePrefs(q)};$('#soundToggle').onclick=()=>{let on=toggleSound(),b=$('#soundToggle');b.textContent=on?tr('on'):tr('off');b.setAttribute('aria-pressed',String(on))};$('#coachModeSelect').onchange=e=>{let q=prefs();q.coachMode=e.target.value;savePrefs(q)};$('#illegalAlertsToggle').onclick=()=>{let q=prefs();q.notifyIllegal=!q.notifyIllegal;savePrefs(q);let b=$('#illegalAlertsToggle');b.textContent=q.notifyIllegal?tr('on'):tr('off');b.setAttribute('aria-pressed',String(q.notifyIllegal))};$('#unjustifiedAlertsToggle').onclick=()=>{let q=prefs();q.notifyUnjustified=!q.notifyUnjustified;savePrefs(q);let b=$('#unjustifiedAlertsToggle');b.textContent=q.notifyUnjustified?tr('on'):tr('off');b.setAttribute('aria-pressed',String(q.notifyUnjustified))};$('#storageInfo').onclick=privacyInfoModal;$('#dataExportBtn').onclick=downloadUserDataExport;$('#dataImportBtn').onclick=()=>$('#dataImportFile').click();$('#dataImportFile').onchange=handleUserDataFileImport;$('#dataEraseBtn').onclick=confirmEraseUserData;app.querySelectorAll('button').forEach(pressFeedback)
+  <div class="setting-row data-setting-row"><span><b>${tr('dataManage')}</b><small>${tr('dataManageSub')}</small></span><div class="data-actions"><button class="btn" id="storageInfo">${tr('privacy')}</button><button class="btn" id="dataExportBtn">${tr('exportData')}</button><button class="btn" id="dataImportBtn">${tr('importData')}</button><button class="btn danger" id="dataEraseBtn">${tr('eraseData')}</button></div><input class="sr-only" id="dataImportFile" type="file" accept="application/json,.json" /></div>
+  <div class="setting-row data-setting-row"><span><b>QBUG · PNG</b><small>${tr('visibleOnly')} ${tr('challengeNoAccount')}${diagnosticAttachmentSummary()?`<br>${diagnosticAttachmentSummary()}`:''}</small></span><div class="data-actions"><button class="btn" id="diagnosticImageBtn" ${diagnosticActive()?'':'disabled'}>${tr('importData')} PNG</button>${diagnosticAttachmentSummary()?`<button class="btn" id="diagnosticImageClear">${tr('erase')}</button>`:''}<button class="btn" id="diagnosticExportBtn" ${diagnosticActive()?'':'disabled'}>${tr('exportData')}</button></div><input class="sr-only" id="diagnosticImageFile" type="file" accept="image/*" /></div></section>`;
+  $('#settingsBack').onclick=home;$('#langSelect').onchange=e=>{let q=prefs();q.lang=e.target.value;savePrefs(q);updateI18n();settingsView()};$('#themeSelect').onchange=e=>{let q=prefs();q.theme=e.target.value;savePrefs(q)};$('#soundToggle').onclick=()=>{let on=toggleSound(),b=$('#soundToggle');b.textContent=on?tr('on'):tr('off');b.setAttribute('aria-pressed',String(on))};$('#coachModeSelect').onchange=e=>{let q=prefs();q.coachMode=e.target.value;savePrefs(q)};$('#illegalAlertsToggle').onclick=()=>{let q=prefs();q.notifyIllegal=!q.notifyIllegal;savePrefs(q);let b=$('#illegalAlertsToggle');b.textContent=q.notifyIllegal?tr('on'):tr('off');b.setAttribute('aria-pressed',String(q.notifyIllegal))};$('#unjustifiedAlertsToggle').onclick=()=>{let q=prefs();q.notifyUnjustified=!q.notifyUnjustified;savePrefs(q);let b=$('#unjustifiedAlertsToggle');b.textContent=q.notifyUnjustified?tr('on'):tr('off');b.setAttribute('aria-pressed',String(q.notifyUnjustified))};$('#storageInfo').onclick=privacyInfoModal;$('#diagnosticImageBtn').onclick=()=>$('#diagnosticImageFile').click();$('#diagnosticImageFile').onchange=e=>handleDiagnosticImageFile(e.target.files?.[0]);let clear=$('#diagnosticImageClear');if(clear)clear.onclick=()=>{Diagnostic.clearAttachments();settingsView()};$('#diagnosticExportBtn').onclick=downloadDiagnostic;$('#dataExportBtn').onclick=downloadUserDataExport;$('#dataImportBtn').onclick=()=>$('#dataImportFile').click();$('#dataImportFile').onchange=handleUserDataFileImport;$('#dataEraseBtn').onclick=confirmEraseUserData;app.querySelectorAll('button').forEach(pressFeedback)
 }
 function aboutView(){
  if(current&&!current.completed)saveCurrent();stopTimer();timerEl.textContent='00:00';current=null;
@@ -304,7 +326,7 @@ function returnBeforeLastError(){
   let e=current?.lastError,h=current?.moveHistory;if(!e?.canReturn||!h||!e.historyNode||!e.parentNode)return false;
   let node=h.nodes[e.historyNode],parent=h.nodes[e.parentNode];if(!node||!parent)return false;
   parent.preferred=node.id;h.cursor=parent.id;h.stats.undos=(h.stats.undos||0)+1;markBacktrack();errorUsage('returned');
-  restorePuzzleSnapshot(parent.snapshot);syncErrorFromHistory();updateHistoryButtons();saveCurrent();showToast(tr('errorReturned'));haptic(7);return true
+  restorePuzzleSnapshot(parent.snapshot);syncErrorFromHistory();updateHistoryButtons();diagnosticRecord('history.undo',{requested:1,moved:1,cursor:h.cursor});diagnosticPedagogy('audit','return-before-error',e.technique||null);saveCurrent();showToast(tr('errorReturned'));haptic(7);return true
 }
 
 
@@ -385,7 +407,7 @@ function launchChallenge(value){
   closePreviousAttempt();clearSaved();stopTimer();paused=false;setBusy(true);
   requestAnimationFrame(()=>{try{
     let g=challengeBuildCandidate(ch);if(!g)throw new Error('challenge generation failed');challengeInstall(ch,g);
-    historyInit(true);updateHistoryButtons();statsStart(current);startTimer(true,0,false);saveCurrent();haptic(8)
+    historyInit(true);diagnosticStart('challenge');updateHistoryButtons();statsStart(current);startTimer(true,0,false);saveCurrent();haptic(8)
   }catch(_){showToast(tr('invalidChallengeCode'));home()}finally{setBusy(false);startBackgroundPrecompute(ch.game,ch.diff)}});return true
 }
 function challengeDiffOptions(game,selected='medium'){
@@ -532,7 +554,7 @@ function launchDaily(game,day=localDay()){
   closePreviousAttempt();clearSaved();stopTimer();paused=false;setBusy(true);current={game,diff:DAILY_DIFFICULTY,daily:true,dailyDay:day};
   requestAnimationFrame(()=>{try{
     let g=dailyBuildCandidate(day,game);if(!g)throw new Error('Daily generation failed');dailyInstallCandidate(game,g,day);
-    historyInit(true);updateHistoryButtons();statsStart(current);startTimer(true,0,false);saveCurrent();haptic(8)
+    historyInit(true);diagnosticStart('daily');updateHistoryButtons();statsStart(current);startTimer(true,0,false);saveCurrent();haptic(8)
   }finally{setBusy(false);startBackgroundPrecompute(game,DAILY_DIFFICULTY)}});return true
 }
 const coarsePointer=()=>window.matchMedia&&window.matchMedia('(pointer:coarse)').matches;
@@ -879,7 +901,7 @@ function launchLessonPhase(id,phase){
     if(!buildTrainingExercise(id)){showToast(tr('trainingUnavailable'));lessonView(id);return}
     current.learning=true;current.learningTechnique=id;current.learningPhase=phase;current.learningStatsClosed=false;current.learningMasteryMerged=false;
     current.coachModeOverride=phase===4?'minimal':'pedagogical';learningStatsStart(id,phase);
-    trainingRender();historyInit(true);updateHistoryButtons();startTimer(true,0,false);saveCurrent();haptic(8)
+    trainingRender();historyInit(true);diagnosticStart('learning');diagnosticPedagogy('learning','start',id);updateHistoryButtons();startTimer(true,0,false);saveCurrent();haptic(8)
   }finally{setBusy(false)}})
 }
 function learningHintWhy(h){return h?.why!=null?h.why:h.rank===3?rank3Why(h):h.rank===2?rank2Why(h):h.rank===1?rank1Why(h):h.why}
@@ -1012,7 +1034,7 @@ function decorateTrainingShell(){
   if(current.learning)decorateLearningShell()
 }
 function launchTraining(id){
-  if(!PEDAGOGY_TECHNIQUES[id])return trainingView();if(current&&!current.completed)clearSaved();stopTimer();paused=false;setBusy(true);requestAnimationFrame(()=>{let ok=false;try{ok=!!buildTrainingExercise(id);if(!ok){showToast(tr('trainingUnavailable'));trainingView();return}trainingStatsStart(id);trainingRender();historyInit(true);updateHistoryButtons();startTimer(true,0,false);saveCurrent();haptic(8)}finally{setBusy(false)}})
+  if(!PEDAGOGY_TECHNIQUES[id])return trainingView();if(current&&!current.completed)clearSaved();stopTimer();paused=false;setBusy(true);requestAnimationFrame(()=>{let ok=false;try{ok=!!buildTrainingExercise(id);if(!ok){showToast(tr('trainingUnavailable'));trainingView();return}trainingStatsStart(id);trainingRender();historyInit(true);diagnosticStart('training');diagnosticPedagogy('training','start',id);updateHistoryButtons();startTimer(true,0,false);saveCurrent();haptic(8)}finally{setBusy(false)}})
 }
 function resetTrainingExercise(){
   if(!current?.training||!current.trainingStartSnapshot)return;paused=false;current.trainingCompleted=false;current.trainingOffPath=false;current.hintFlow=null;current.lastError=null;current.masteryPendingAid=null;restorePuzzleSnapshot(current.trainingStartSnapshot);historyInit(true);updateHistoryButtons();stopTimer(false);elapsedBase=0;startedAt=0;startTimer(true,0,false);decorateTrainingShell();saveCurrent();status('',true)
@@ -1320,14 +1342,14 @@ function startExploration(){
   if(!current||current.completed||paused||current.training)return false;
   let h=historyInit(),cursor=h.cursor;
   current.exploration={schema:1,active:true,branchPoint:cursor,startedAt:WebPlatform.clock.nowMs(),returns:0,analyses:0,kept:0};
-  closeHintNotice();refreshExplorationPanel();saveCurrent();showToast(tr('testHypothesis'));return true
+  closeHintNotice();refreshExplorationPanel();diagnosticPedagogy('exploration','start');saveCurrent();showToast(tr('testHypothesis'));return true
 }
 function closeExploration(){
-  let e=explorationState();if(!e)return false;e.active=false;e.closedAt=WebPlatform.clock.nowMs();refreshExplorationPanel();saveCurrent();return true
+  let e=explorationState();if(!e)return false;e.active=false;e.closedAt=WebPlatform.clock.nowMs();refreshExplorationPanel();diagnosticPedagogy('exploration','close');saveCurrent();return true
 }
 function setHistoryCursor(id){
   let h=current?.moveHistory,n=h?.nodes?.[id];if(!n||current.completed||paused)return false;
-  h.cursor=id;restorePuzzleSnapshot(n.snapshot);syncErrorFromHistory();syncReasoningAuditFromHistory();trainingSyncPath();updateHistoryButtons();refreshExplorationPanel();saveCurrent();haptic(7);return true
+  h.cursor=id;restorePuzzleSnapshot(n.snapshot);syncErrorFromHistory();syncReasoningAuditFromHistory();trainingSyncPath();updateHistoryButtons();refreshExplorationPanel();diagnosticPedagogy('exploration','branch-change');saveCurrent();haptic(7);return true
 }
 function goToExplorationNode(rootId){
   let e=explorationState(),h=current?.moveHistory;if(!e?.active||!h?.nodes?.[rootId]||!h.nodes[e.branchPoint]?.children?.includes(rootId))return false;
@@ -1341,7 +1363,7 @@ function keepExplorationBranch(){
   let e=explorationState(),h=current?.moveHistory;if(!e?.active||h.cursor===e.branchPoint)return false;
   let path=historyPathFrom(e.branchPoint,h.cursor),parent=e.branchPoint;
   for(let id of path){let p=h.nodes[parent];if(p?.children?.includes(id))p.preferred=id;parent=id}
-  e.kept=(e.kept||0)+1;e.keptNode=h.cursor;e.active=false;e.closedAt=WebPlatform.clock.nowMs();refreshExplorationPanel();saveCurrent();showToast(tr('branchKept'));return true
+  e.kept=(e.kept||0)+1;e.keptNode=h.cursor;e.active=false;e.closedAt=WebPlatform.clock.nowMs();refreshExplorationPanel();diagnosticPedagogy('exploration','keep-branch');saveCurrent();showToast(tr('branchKept'));return true
 }
 function explorationContradiction(){
   let errors=currentVisibleErrors();if(errors.length)return {bad:true,kind:'rules',html:errors.map(e=>`<b>${errorRuleTitle(e)}</b><br>${errorDetailedMessage(e)}`).join('<hr>')};
@@ -1351,7 +1373,7 @@ function explorationContradiction(){
 function analyzeExplorationBranch(){
   let e=explorationState();if(!e?.active)return false;e.analyses=(e.analyses||0)+1;
   let result=explorationContradiction(),box=$('#explorationAnalysis');if(box){box.hidden=false;box.classList.toggle('bad',result.bad);box.innerHTML=`<b>${result.bad?'⚠ '+tr('contradictionFound'):'✓ '+tr('analyzeBranch')}</b><div>${result.html}</div>`}
-  saveCurrent();return result
+  diagnosticPedagogy('exploration','analyze');saveCurrent();return result
 }
 function showExplorationContradictionBeforeHint(){
   let e=explorationState();if(!e?.active||current?.moveHistory?.cursor===e.branchPoint)return false;
@@ -1376,12 +1398,13 @@ function historyChanges(beforeKey,after){return SessionHistory.historyChanges(cu
 function normalizeHistoryAction(action,beforeKey=null,after=null){return SessionHistory.normalizeHistoryAction(current,action,beforeKey,after)}
 function historyRecord(action='MOVE',beforeKey=null){
   if(!current)return false;
-  let rec=SessionHistory.recordHistory(current,action,beforeKey);if(!rec.changed){updateHistoryButtons();return false}
-  let {node,parent,normalized,existing}=rec;
+  let rec=SessionHistory.recordHistory(current,action,beforeKey);if(!rec.changed){diagnosticRecord('action.not-applied',{action:diagnosticAction(action),reason:rec.reason||'not-applied'});updateHistoryButtons();return false}
+  let {node,parent,normalized,existing,hadAlternative}=rec;
   let err=analyzeCurrentError(normalized);node.error=err?{...err,historyNode:node.id,parentNode:parent.id}:null;
   current.lastError=node.error?{...node.error}:null;if(node.error)errorUsage('detected',node.error.technique||null);
   let audit=evaluateMoveJustification(beforeKey,normalized,node.error);applyAuditResult(node,audit);explorationOnRecordedNode(node);
-  masteryRecognizePlayerMove(beforeKey,normalized,node.error,audit);if(current.training&&!node.error)trainingMoveCompleted(normalized);refreshErrorCoach();updateHistoryButtons();return true
+  masteryRecognizePlayerMove(beforeKey,normalized,node.error,audit);if(current.training&&!node.error)trainingMoveCompleted(normalized);refreshErrorCoach();updateHistoryButtons();
+  diagnosticRecordedHistory(rec);return true
 }
 function restorePuzzleSnapshot(s){
   if(!current||!s||s.game!==current.game)return false;
@@ -1393,12 +1416,12 @@ function restorePuzzleSnapshot(s){
 function undoMoves(count=1){
   if(!current||current.completed||paused)return 0;
   let step=SessionHistory.undoHistory(current,count),moved=step.moved;if(!moved){updateHistoryButtons();return 0}
-  markBacktrack();restorePuzzleSnapshot(step.snapshot);syncErrorFromHistory();syncReasoningAuditFromHistory();trainingSyncPath();updateHistoryButtons();refreshExplorationPanel();saveCurrent();haptic(7);return moved
+  markBacktrack();restorePuzzleSnapshot(step.snapshot);syncErrorFromHistory();syncReasoningAuditFromHistory();trainingSyncPath();updateHistoryButtons();refreshExplorationPanel();diagnosticRecord('history.undo',{requested:count,moved,cursor:step.history.cursor});saveCurrent();haptic(7);return moved
 }
 function redoMoves(count=1){
   if(!current||current.completed||paused)return 0;
   let step=SessionHistory.redoHistory(current,count),moved=step.moved;if(!moved){updateHistoryButtons();return 0}
-  restorePuzzleSnapshot(step.snapshot);syncErrorFromHistory();syncReasoningAuditFromHistory();trainingSyncPath();updateHistoryButtons();refreshExplorationPanel();saveCurrent();haptic(7);return moved
+  restorePuzzleSnapshot(step.snapshot);syncErrorFromHistory();syncReasoningAuditFromHistory();trainingSyncPath();updateHistoryButtons();refreshExplorationPanel();diagnosticRecord('history.redo',{requested:count,moved,cursor:step.history.cursor});saveCurrent();haptic(7);return moved
 }
 function updateHistoryButtons(){
   let u=$('#undoBtn'),r=$('#redoBtn');
@@ -1576,23 +1599,23 @@ function renderWalkthrough(){
   app.innerHTML=`<section class="panel walkthrough-panel"><div class="stats-head walkthrough-head"><div><h1>${tr('walkthrough')}</h1><p>${gameLabel(s.base.game)} · ${DIFF[s.base.diff]}</p></div><button class="btn" id="walkthroughClose">${tr('walkthroughClose')}</button></div>${walkthroughBoardHtml(snap,target,deduction)}<div class="walkthrough-actions walkthrough-actions-top"><button class="btn" id="walkthroughPrev" ${i===0?'disabled':''}>← ${tr('walkthroughPrevious')}</button><button class="btn walkthrough-step-counter" id="walkthroughRestart" ${i===0?'disabled':''} title="${tr('walkthroughRestart')}">${tr('walkthroughStep')} ${progress} · ↺</button><button class="btn primary" id="walkthroughNext" ${(s.done||s.stalled)&&i===s.moves.length?'disabled':''}>${tr('walkthroughNext')} →</button></div><div class="walkthrough-scroll" aria-live="polite" aria-atomic="false"><p class="walkthrough-help-note">💡 ${tr('walkthroughCountsAsHelp')}</p>${walkthroughExplanationHtml(i)}${stateNote}</div></section>`;
   a11ySyncWalkthroughBoard();
   gamePedagogy(s.base.game).walkthrough.afterRender(app.querySelector('.walkthrough-board'),s.base);
-  $('#walkthroughClose').onclick=closeWalkthrough;$('#walkthroughPrev').onclick=()=>{if(s.index>0){s.index--;renderWalkthrough()}};$('#walkthroughRestart').onclick=()=>{s.index=0;renderWalkthrough()};$('#walkthroughNext').onclick=()=>{if(s.index<s.moves.length)s.index++;else if(walkthroughGenerateNext())s.index++;renderWalkthrough()};app.querySelectorAll('button').forEach(pressFeedback)
+  $('#walkthroughClose').onclick=closeWalkthrough;$('#walkthroughPrev').onclick=()=>{if(s.index>0){s.index--;diagnosticRecord('tutor.previous',{index:s.index,moves:s.moves.length});renderWalkthrough()}};$('#walkthroughRestart').onclick=()=>{s.index=0;diagnosticRecord('tutor.restart',{index:s.index,moves:s.moves.length});renderWalkthrough()};$('#walkthroughNext').onclick=()=>{if(s.index<s.moves.length)s.index++;else if(walkthroughGenerateNext())s.index++;diagnosticRecord('tutor.next',{index:s.index,moves:s.moves.length});renderWalkthrough()};app.querySelectorAll('button').forEach(pressFeedback)
 }
 function openWalkthrough(){
   if(!current||current.training)return false;let root=walkthroughRootSnapshot(),work=walkthroughVisibleClone(current,root);if(!work)return false;
   let elapsed=timerSeconds(),wasPaused=paused;stopTimer(true);current.walkthroughUsed=true;markHintUsed();updateScoreFlags();saveCurrent();
   walkthroughSession={schema:2,base:work,work,initial:walkthroughSnapshot(work),moves:[],index:0,done:false,stalled:false,elapsed,wasPaused};
   gamePedagogy(work.game).walkthrough.initialize(walkthroughSession);
-  renderWalkthrough();return true
+  diagnosticRecord('tutor.open',{index:0,moves:0});renderWalkthrough();return true
 }
 function closeWalkthrough(){
   let s=walkthroughSession;if(!s||!current)return false;let elapsed=s.elapsed,wasPaused=s.wasPaused;walkthroughSession=null;document.body.classList.remove('tutor-active');
   renderGameUi(current);
-  startTimer(true,elapsed,wasPaused);updatePauseButton();saveCurrent();return true
+  diagnosticRecord('tutor.close',{index:s.index,moves:s.moves.length});startTimer(true,elapsed,wasPaused);updatePauseButton();saveCurrent();return true
 }
 
 function shell(name,subtitle,diff,content,rules){let challengeTag=current?.challenge?` · <span class="challenge-shell-tag">↗ <b>${current.challengeCode}</b></span>`:'';let trainingTag=current?.learning?` · <span class="training-shell-tag">${tr('lesson')} ${current.learningPhase}/4 : <b>${techniqueTitle(current.learningTechnique)}</b></span>`:current?.training?` · <span class="training-shell-tag">${tr('trainingTarget')} : <b>${techniqueTitle(current.trainingTechnique)}</b></span>`:'';app.innerHTML=`<section class="panel"><div class="game-head"><div><h1>${name}</h1><p>${subtitle}${trainingTag}${challengeTag}${current?` · <span class="live-aids">${aidBadges(current,true)}</span>`:''}</p></div><select class="difficulty" id="difficulty" aria-label="${tr('difficulty')}">${Object.entries(DIFF).map(([k,v])=>`<option value="${k}" ${k===diff?'selected':''}>${v}</option>`).join('')}</select></div><div class="toolbar" role="group" aria-label="${tr('actions')}"><button class="btn primary" id="newBtn">${tr('newGame')}</button><button class="btn" id="resetBtn">${tr('reset')}</button><button class="btn history-action" id="undoBtn" title="${tr('undo')}" aria-label="${tr('undo')}">↶ ${tr('undo')}</button><button class="btn history-action" id="redoBtn" title="${tr('redo')}" aria-label="${tr('redo')}">↷ ${tr('redo')}</button><button class="btn" id="pauseBtn">${tr('pause')}</button><button class="btn" id="checkBtn">${tr('check')}</button><button class="btn" id="hintBtn">${tr('logicCoach')}</button><button class="btn" id="exploreBtn">◇ ${tr('exploration')}</button><button class="btn secondary-action" id="shareChallengeBtn" style="${current?.challenge?'':'display:none'}">↗ ${tr('shareChallenge')}</button><button class="btn tutor-action" id="walkthroughBtn">▹ ${tr('walkthrough')}</button><button class="btn secondary-action" id="solutionBtn">${tr('solution')}</button><button class="btn secondary-action" id="rulesBtn">${tr('rules')}</button><button class="btn secondary-action" id="techniquesBtn">${tr('techniques')}</button></div><div id="status" class="status" aria-live="polite"></div><div id="errorCoach" class="error-coach" hidden aria-live="polite"></div><div id="reasoningAudit" class="reasoning-audit" hidden aria-live="polite"></div><div id="explorationPanel" class="exploration-panel" hidden aria-live="polite"></div><div id="learningGuide" class="learning-guide" hidden aria-live="polite"></div>${content}<div class="rules">${rules}</div></section>`;
-$('#difficulty').onchange=e=>launch(current.game,e.target.value);$('#newBtn').onclick=()=>current?.challengeCode?launchChallenge(current.challengeCode):launch(current.game,current.diff);if(current?.challenge){$('#difficulty').disabled=true}$('#resetBtn').onclick=resetCurrent;$('#undoBtn').onclick=()=>undoMoves(1);$('#redoBtn').onclick=()=>redoMoves(1);$('#pauseBtn').onclick=togglePause;$('#exploreBtn').onclick=()=>explorationState()?.active?refreshExplorationPanel():startExploration();let scb=$('#shareChallengeBtn');if(scb&&current?.challenge)scb.onclick=()=>shareChallenge(challengeParse(current.challengeCode));let wb=$('#walkthroughBtn');if(wb)wb.onclick=openWalkthrough;$('#rulesBtn').onclick=()=>modal(`${tr('rules')} — ${name}`,rules);$('#techniquesBtn').onclick=()=>modal(`${tr('techniques')} — ${name}`,techniqueLibraryHtml(current.game));app.querySelectorAll('button').forEach(pressFeedback);updatePauseButton();updateHistoryButtons();refreshErrorCoach();refreshReasoningAudit();refreshExplorationPanel();if(current?.training)decorateTrainingShell()}
+let coachDiag=$('#hintBtn');if(coachDiag)coachDiag.addEventListener('click',()=>current?.game&&diagnosticRecord('coach.request',{game:current.game}),{capture:true});$('#difficulty').onchange=e=>launch(current.game,e.target.value);$('#newBtn').onclick=()=>current?.challengeCode?launchChallenge(current.challengeCode):launch(current.game,current.diff);if(current?.challenge){$('#difficulty').disabled=true}$('#resetBtn').onclick=resetCurrent;$('#undoBtn').onclick=()=>undoMoves(1);$('#redoBtn').onclick=()=>redoMoves(1);$('#pauseBtn').onclick=togglePause;$('#exploreBtn').onclick=()=>explorationState()?.active?refreshExplorationPanel():startExploration();let scb=$('#shareChallengeBtn');if(scb&&current?.challenge)scb.onclick=()=>shareChallenge(challengeParse(current.challengeCode));let wb=$('#walkthroughBtn');if(wb)wb.onclick=openWalkthrough;$('#rulesBtn').onclick=()=>modal(`${tr('rules')} — ${name}`,rules);$('#techniquesBtn').onclick=()=>modal(`${tr('techniques')} — ${name}`,techniqueLibraryHtml(current.game));app.querySelectorAll('button').forEach(pressFeedback);updatePauseButton();updateHistoryButtons();refreshErrorCoach();refreshReasoningAudit();refreshExplorationPanel();if(current?.training)decorateTrainingShell()}
 
 function resetCurrent(){
   if(!current)return;
@@ -1605,7 +1628,7 @@ function resetCurrent(){
   current.completed=false;
   if(wasCompleted||current.statsClosed){current.backtrackUsed=false;current.hintUsed=false;current.attemptId=null;current.statsClosed=false;statsStart(current)}
   stopTimer(false);elapsedBase=0;startedAt=0;paused=false;startTimer(true,0,false);historyInit(true);updateHistoryButtons();
-  saveCurrent();updatePauseButton();status('',true);showToast(tr('resetDone'));haptic(8)
+  diagnosticRecord('session.reset',{hadProgress});saveCurrent();updatePauseButton();status('',true);showToast(tr('resetDone'));haptic(8)
 }
 
 // ===== v2.7.0 — background precomputation =====
@@ -1637,7 +1660,7 @@ function ensurePrecomputeWorker(){
   if(precomputeWorker)return precomputeWorker;
   if(!WebPlatform.workers.supported())return null;
   try{
-    let w=WebPlatform.workers.create('./precompute-worker.js?v=3.0.1');if(!w)return null;
+    let w=WebPlatform.workers.create('./precompute-worker.js?v=3.1.1');if(!w)return null;
     w.onmessage=e=>{
       let m=e.data||{};precomputeBusy=false;
       if(m.ok&&m.day===precomputeDay&&m.candidate&&precomputeCandidateCertified(m.game,m.diff,m.candidate)){
@@ -1710,8 +1733,8 @@ function precomputeStatus(){
 }
 WebPlatform.lifecycle.onVisibilityChange(()=>{if(!WebPlatform.lifecycle.isHidden()&&precomputeStarted)setTimeout(()=>schedulePrecompute(),150)});
 
-function launch(game,diff){if(!GameRegistry.hasGame(game))throw new Error(`Unknown QUADLUD game: ${game}`);closePreviousAttempt();clearSaved();stopTimer();paused=false;setBusy(true);current={game,diff};requestAnimationFrame(()=>{try{let candidate=normalLaunchCandidate(game,diff);installGeneratedSession(game,diff,candidate,{context:'normal'});historyInit(true);updateHistoryButtons();statsStart(current);startTimer(true,0,false);saveCurrent();haptic(8)}finally{setBusy(false);startBackgroundPrecompute(game,diff)}})}
-function resumeSaved(){let s=getSaved();if(!s)return home();stopTimer();let c=DataSerialization.deserializeCurrentState(s.current);current=c;historyInit(false);renderGameUi(c);startTimer(true,s.elapsed||0,!!s.paused);updatePauseButton();refreshExplorationPanel();showToast(tr('restored'));if(!c.training)startBackgroundPrecompute(c.game,c.diff)}
+function launch(game,diff){if(!GameRegistry.hasGame(game))throw new Error(`Unknown QUADLUD game: ${game}`);let previousGame=current?.game||null,previousDifficulty=current?.diff||null;closePreviousAttempt();clearSaved();stopTimer();paused=false;setBusy(true);current={game,diff};requestAnimationFrame(()=>{try{let candidate=normalLaunchCandidate(game,diff);installGeneratedSession(game,diff,candidate,{context:'normal'});historyInit(true);diagnosticStart('normal',{previousGame,previousDifficulty});updateHistoryButtons();statsStart(current);startTimer(true,0,false);saveCurrent();haptic(8)}finally{setBusy(false);startBackgroundPrecompute(game,diff)}})}
+function resumeSaved(){let s=getSaved();if(!s)return home();stopTimer();let c=DataSerialization.deserializeCurrentState(s.current);current=c;historyInit(false);renderGameUi(c);startTimer(true,s.elapsed||0,!!s.paused);diagnosticStart('resume',{resumed:true});updatePauseButton();refreshExplorationPanel();showToast(tr('restored'));if(!c.training)startBackgroundPrecompute(c.game,c.diff)}
 
 
 
@@ -1840,7 +1863,7 @@ function hintStage(kind,target,message,apply){
   }
   let h=current.hintFlow,previous=h.stage||0,next=isNew?Math.max(1,Math.min(2,h.plan?.entryStage||1)):Math.min(3,previous+1);
   h.stage=next;
-  for(let s=previous+1;s<=next;s++)coachUsage(s,technique);
+  diagnosticRecord('coach.stage',{stage:h.stage,technique:technique||null});for(let s=previous+1;s<=next;s++)coachUsage(s,technique);
   if(technique)current.masteryPendingAid={technique,stage:h.stage,target:[...target]};
   clearHintFocus();
   if(h.stage===1)focusHintContext(kind,target,message);else focusHint(target);
@@ -1893,10 +1916,10 @@ function webGameUiDependencies(game){
     difficultyLabel:diff=>DIFF[diff],tr,gameRules,getCurrent:()=>current,getWalkthroughSession:()=>walkthroughSession,
     isPaused:()=>paused,getPrefs:prefs,savePrefs,touchSave,historySnapshotKey,historyRecord,saveCurrent,closeHintNotice,clearHintFocus,
     markBacktrack,haptic,maybeAutoFinish,a11ySetupGrid,a11yAnnounce,a11yCoord,a11ySetCell,keyCell,
-    applyLogicalMove:move=>{const applied=LogicalTransactions.apply(current,move);updateHistoryButtons();saveCurrent();return applied},
+    applyLogicalMove:move=>{const applied=LogicalTransactions.apply(current,move);diagnosticRecordedHistory(applied.recorded);updateHistoryButtons();saveCurrent();return applied},
     applyIllegalClasses,applyConfiguredIllegalClasses,applyUnjustifiedHighlights,updateScoreFlags,coarsePointer,checkVictory:checkRegisteredVictory,
     hint:()=>pedagogicalHintForGame(game),finish,showToast,requestFrame:cb=>requestAnimationFrame(cb),cancelFrame:id=>cancelAnimationFrame(id),
-    setTimer:(cb,ms)=>setTimeout(cb,ms),getResizeObserver:()=>typeof ResizeObserver==='function'?ResizeObserver:null
+    setTimer:(cb,ms)=>setTimeout(cb,ms),recordDiagnostic:(type,payload)=>diagnosticRecord(type,payload),getResizeObserver:()=>typeof ResizeObserver==='function'?ResizeObserver:null
   }
 }
 function createWebGameUiAdapter(game){
@@ -1934,7 +1957,7 @@ function keyboardInput(e){if(!current?.game)return false;let handler=gameWebUi(c
 document.addEventListener('keydown',keyboardInput);
 function status(t,ok){let s=$('#status');if(!s)return;s.textContent=t;s.className='status '+(ok?'ok':'bad');if(!ok)playTone('error')}
 function finish(t,outcome='solved'){let total=timerSeconds(),snapshot=current?{...current}:null;stopTimer(false);elapsedBase=total;startedAt=0;paused=true;if(current){statsFinish(current,total,outcome);markDaily(current,outcome,total);current.completed=true;gamePedagogy(current.game).lifecycle.afterFinish({current})}clearSaved();renderTimer();status(`${t} — ${fmt(elapsedBase)}`,true);updatePauseButton();if(outcome==='solved'&&snapshot)requestAnimationFrame(()=>{celebrateBoard();setTimeout(()=>victoryOverlay(snapshot,total),2100)})}
-WebPlatform.lifecycle.onVisibilityChange(()=>{if(WebPlatform.lifecycle.isHidden()&&current&&!current.completed)saveCurrent()});WebPlatform.lifecycle.onPageHide(()=>{if(current&&!current.completed)saveCurrent()});if(WebPlatform.serviceWorker.supported())WebPlatform.lifecycle.onLoad(()=>WebPlatform.serviceWorker.register('./sw.js').catch(()=>{}));
+WebPlatform.lifecycle.onVisibilityChange(()=>{diagnosticRecord('lifecycle.visibility',{hidden:WebPlatform.lifecycle.isHidden()});if(WebPlatform.lifecycle.isHidden()&&current&&!current.completed)saveCurrent()});WebPlatform.lifecycle.onPageHide(()=>{if(current&&!current.completed)saveCurrent()});Diagnostic.attachGlobalErrors(window,()=>({reasoningView:diagnosticView(current)}));window.addEventListener('resize',()=>diagnosticRecord('viewport.resize',{viewport:{width:Math.max(0,Number(innerWidth)||0),height:Math.max(0,Number(innerHeight)||0)},dpr:Math.max(0,Number(devicePixelRatio)||1)}));window.addEventListener('orientationchange',()=>diagnosticRecord('viewport.orientation',{orientation:diagnosticOrientation()}));if(WebPlatform.serviceWorker.supported())WebPlatform.lifecycle.onLoad(()=>WebPlatform.serviceWorker.register('./sw.js').catch(()=>{}));
 discardLegacyPersistence();applyPrefs();try{window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{if(prefs().theme==='auto')applyPrefs()})}catch(_){}initialView();
 
 
