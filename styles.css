@@ -61,6 +61,7 @@ body.busy{pointer-events:none}
   .toolbar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:10px 0}
   .toolbar .btn{padding:8px 4px;min-height:42px;font-size:12px;border-radius:10px}
   .toolbar .secondary-action{display:none}
+  .toolbar #rulesBtn{display:block}
   .board-wrap{max-width:calc(100vw - 44px)}
   .cell{font-size:clamp(17px,5.4vw,30px)}
   .queen{font-size:clamp(24px,8vw,40px)}
