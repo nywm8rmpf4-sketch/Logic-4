@@ -11,13 +11,13 @@
 })(typeof globalThis!=='undefined'?globalThis:this,function(){
   'use strict';
 
-  const VERSION=2;
+  const VERSION=3;
   const DOMAIN_METHODS=Object.freeze({
     coach:Object.freeze(['genericHintFallbackAllowed','localizedHint','pieceName','lookText','contextCells','runHint','action']),
     audit:Object.freeze(['visibleErrors','errorFromAction','errorRuleTitle','errorDetailedMessage','masteryActionEligible','actionEligible','allowsNoPrimaryChange','historyActionText','neutralValue','constructiveValue','moveText','firstKnownLogicalMove','justifyMove','suppressUnjustifiedAfterComplete','historyChangeText']),
     exploration:Object.freeze(['canAcceptHypothesis','contradiction']),
     learning:Object.freeze(['masteryDirectHint','moveText','applyMove']),
-    training:Object.freeze(['hintForTechnique','randomProgress','prepareBase','buildDirect','targetStillCorrect','coachText','revealLabel','applyMove']),
+    training:Object.freeze(['hintForTechnique','randomProgress','prepareBase','buildDirect','exerciseDifficulty','buildGenerated','targetStillCorrect','coachText','revealLabel','applyMove']),
     walkthrough:Object.freeze(['rootSnapshot','visibleClone','snapshot','complete','generateNext','board','contradictionText','afterRender','initialize']),
     lifecycle:Object.freeze(['afterFinish'])
   });
@@ -52,7 +52,7 @@
     }),
     exploration:Object.freeze({canAcceptHypothesis:()=>false}),
     learning:Object.freeze({masteryDirectHint:()=>null,moveText:()=>''}),
-    training:Object.freeze({randomProgress:()=>false,prepareBase:()=>false,buildDirect:()=>null,targetStillCorrect:()=>false,coachText:()=>'',revealLabel:()=>''}),
+    training:Object.freeze({randomProgress:()=>false,prepareBase:()=>false,buildDirect:()=>null,exerciseDifficulty:()=>null,buildGenerated:()=>null,targetStillCorrect:()=>false,coachText:()=>'',revealLabel:()=>''}),
     walkthrough:Object.freeze({rootSnapshot:({historyRoot,puzzleSnapshot}={})=>historyRoot||(typeof puzzleSnapshot==='function'?puzzleSnapshot():null),visibleClone:()=>null,complete:()=>false,board:()=>Object.freeze({boardClass:'',cellsHtml:''}),contradictionText:()=>'',afterRender:()=>undefined,initialize:session=>session}),
     lifecycle:Object.freeze({afterFinish:()=>undefined})
   });

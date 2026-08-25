@@ -5,14 +5,14 @@
  */
 'use strict';
 const $=s=>document.querySelector(s), app=$('#app'), toast=$('#toast'), timerEl=$('#timer');
-const VERSION='3.1.2';
+const VERSION='3.1.4';
 const UI_FEATURES=Object.freeze({inlineRules:false,exploration:false,pause:false,liveTimer:false,unjustifiedHighlights:false,verifyAction:false});
 const WebPlatform=QuadludWebPlatform.getWebPlatform();
 const DiagnosticRecorder=QuadludDiagnosticRecorder;
 const DiagnosticUiStructural=QuadludDiagnosticUiStructural;
 const DiagnosticAttachments=QuadludDiagnosticAttachments;
 const Diagnostic=DiagnosticRecorder.createRecorder({capacity:256,maxErrors:32,uiCapacity:64,nowMs:()=>WebPlatform.clock.nowMs(),nowIso:()=>WebPlatform.clock.nowIso()});
-const DIAGNOSTIC_BUILD='v3.1.2-ui-cleanup';
+const DIAGNOSTIC_BUILD='v3.1.4-queens-unified-generation';
 const DIAGNOSTIC_UI_EVENT_TYPES=new Set(['action.applied','action.not-applied','history.undo','history.redo','history.branch','session.reset','coach.stage','tutor.open','tutor.next','tutor.previous','tutor.restart','tutor.close','ui.tool-change','viewport.resize','viewport.orientation']);
 function diagnosticOrientation(){try{return String(screen?.orientation?.type||((innerWidth||0)>=(innerHeight||0)?'landscape':'portrait'))}catch(_){return 'unknown'}}
 function diagnosticEnvironment(){return {lang:lang(),theme:resolvedTheme(),viewport:{width:Math.max(0,Number(innerWidth)||0),height:Math.max(0,Number(innerHeight)||0)},dpr:Math.max(0,Number(devicePixelRatio)||1),orientation:diagnosticOrientation(),userAgent:String(navigator?.userAgent||'')}}
@@ -344,6 +344,12 @@ const CHALLENGE_GAME_TO_CODE=Object.freeze(Object.fromEntries(GAME_IDS.map(game=
 const CHALLENGE_CODE_TO_GAME=Object.freeze(Object.fromEntries(Object.entries(CHALLENGE_GAME_TO_CODE).map(([game,code])=>[code,game])));
 const CHALLENGE_DIFF_TO_CODE={easy:'E',medium:'M',hard:'H',expert:'X'};
 const CHALLENGE_CODE_TO_DIFF={E:'easy',M:'medium',H:'hard',X:'expert'};
+function challengeExpectedGenerator(game,diff){
+  if(!CHALLENGE_GAME_TO_CODE[game]||!CHALLENGE_DIFF_TO_CODE[diff])return null;
+  if(!GameRegistry.hasCapability(game,'challengeGeneratorVersion'))return CHALLENGE_GENERATOR;
+  let version=Number(GameRegistry.requireCapability(game,'challengeGeneratorVersion')(diff));
+  return Number.isInteger(version)&&version>=1&&version<=9?version:null
+}
 function challengeNormalizeCode(raw=''){return String(raw).toUpperCase().replace(/[^A-Z0-9]/g,'')}
 function challengeChecksum(payload){
   let h=hash32(`quadlud-challenge-check:${payload}`),a=CHALLENGE_ALPHABET;
@@ -355,9 +361,9 @@ function challengeRandomSeed(len=8){
   for(let i=0;i<len;i++){let n=bytes?bytes[i]:Math.floor(Math.random()*0x100000000);out+=a[n%a.length]}
   return out
 }
-function challengeMake(game,diff,seed=challengeRandomSeed(),generator=CHALLENGE_GENERATOR){
-  if(!CHALLENGE_GAME_TO_CODE[game]||!CHALLENGE_DIFF_TO_CODE[diff])return null;
-  generator=Number(generator);if(generator!==CHALLENGE_GENERATOR)return null;
+function challengeMake(game,diff,seed=challengeRandomSeed(),generator=null){
+  let expected=challengeExpectedGenerator(game,diff);if(expected==null)return null;
+  generator=generator==null?expected:Number(generator);if(generator!==expected)return null;
   seed=challengeNormalizeCode(seed).slice(0,8);if(seed.length!==8||[...seed].some(c=>!CHALLENGE_ALPHABET.includes(c)))return null;
   let payload=`QL${CHALLENGE_SCHEMA}${generator}${CHALLENGE_GAME_TO_CODE[game]}${CHALLENGE_DIFF_TO_CODE[diff]}${seed}`,check=challengeChecksum(payload);
   return {schema:CHALLENGE_SCHEMA,generator,game,diff,seed,code:`QL${CHALLENGE_SCHEMA}${generator}-${CHALLENGE_GAME_TO_CODE[game]}${CHALLENGE_DIFF_TO_CODE[diff]}-${seed}-${check}`}
@@ -367,7 +373,7 @@ function challengeParse(raw){
   // QL + schema + generator + game + difficulty + 8 canonical seed chars + 2 checksum chars.
   if(n.length!==16||n.slice(0,2)!=='QL')return null;
   let schema=Number(n[2]),generator=Number(n[3]),game=CHALLENGE_CODE_TO_GAME[n[4]],diff=CHALLENGE_CODE_TO_DIFF[n[5]],seed=n.slice(6,14),check=n.slice(14);
-  if(schema!==CHALLENGE_SCHEMA||generator!==CHALLENGE_GENERATOR||!game||!diff)return null;
+  if(schema!==CHALLENGE_SCHEMA||!game||!diff||generator!==challengeExpectedGenerator(game,diff))return null;
   if([...seed].some(c=>!CHALLENGE_ALPHABET.includes(c)))return null;
   let payload=n.slice(0,14);if(challengeChecksum(payload)!==check)return null;
   return challengeMake(game,diff,seed,generator)
@@ -392,9 +398,9 @@ function validateRegisteredVictory(session=current,options={}){
 }
 function checkRegisteredVictory(){let result=validateRegisteredVictory(current);if(result.solved)finish(`${tr('congrats')} ${gameLabel(current.game)}`);else status(tr(result.reasonKey||'gridIncomplete'),false);return result.solved}
 function challengeBuildCandidate(ch){
-  if(!ch||ch.schema!==CHALLENGE_SCHEMA||ch.generator!==CHALLENGE_GENERATOR||!CHALLENGE_GAME_TO_CODE[ch.game]||!CHALLENGE_DIFF_TO_CODE[ch.diff])return null;
+  if(!ch||ch.schema!==CHALLENGE_SCHEMA||ch.generator!==challengeExpectedGenerator(ch.game,ch.diff)||!CHALLENGE_GAME_TO_CODE[ch.game]||!CHALLENGE_DIFF_TO_CODE[ch.diff])return null;
   return withSeed(challengeSeedString(ch),()=>{
-    let g=generateRegisteredCandidate(ch.game,ch.diff,{protocolGeneration:1});
+    let g=generateRegisteredCandidate(ch.game,ch.diff,{protocolGeneration:ch.generator,context:'challenge'});
     if(!challengeCandidateCertified(ch,g))throw new Error('Challenge candidate is not certified at the requested difficulty');
     return g
   })
@@ -900,7 +906,7 @@ function launchLessonPhase(id,phase){
   let s=safeStats(),b=learningBucket(s,id);if(phase===3&&!b.guided)return lessonView(id);if(phase===4&&!b.assisted)return lessonView(id);
   if(current&&!current.completed)clearSaved();stopTimer();paused=false;setBusy(true);
   requestAnimationFrame(()=>{try{
-    if(!buildTrainingExercise(id)){showToast(tr('trainingUnavailable'));lessonView(id);return}
+    if(!buildTrainingExercise(id,{context:'learning',phase})){showToast(tr('trainingUnavailable'));lessonView(id);return}
     current.learning=true;current.learningTechnique=id;current.learningPhase=phase;current.learningStatsClosed=false;current.learningMasteryMerged=false;
     current.coachModeOverride=phase===4?'minimal':'pedagogical';learningStatsStart(id,phase);
     trainingRender();historyInit(true);diagnosticStart('learning');diagnosticPedagogy('learning','start',id);updateHistoryButtons();startTimer(true,0,false);saveCurrent();haptic(8)
@@ -1011,10 +1017,16 @@ function trainingBuildAdvanced(id,deadline){
   }
   return null
 }
-function buildTrainingExercise(id){
-  let x=PEDAGOGY_TECHNIQUES[id];if(!x)return null;let deadline=WebPlatform.clock.nowMs()+5500,h=trainingLoadAdvancedFixture(id,deadline);
-  if(!h&&x.rank===0)h=gamePedagogy(x.game).training.buildDirect(id,deadline);
-  else if(!h&&x.rank>0)h=trainingBuildAdvanced(id,deadline);
+function buildTrainingExercise(id,{context='training',phase=null}={}){
+  let x=PEDAGOGY_TECHNIQUES[id];if(!x)return null;let deadline=WebPlatform.clock.nowMs()+5500,p=gamePedagogy(x.game),h=null;
+  let generatedDifficulty=typeof p.training.exerciseDifficulty==='function'?p.training.exerciseDifficulty({id,context,phase}):null;
+  if(generatedDifficulty){
+    let generated=p.training.buildGenerated({id,difficulty:generatedDifficulty,context,phase,deadline});if(generated?.status!=='found'||!generated.hint)return null;h=generated.hint;
+  }else{
+    h=trainingLoadAdvancedFixture(id,deadline);
+    if(!h&&x.rank===0)h=p.training.buildDirect(id,deadline);
+    else if(!h&&x.rank>0)h=trainingBuildAdvanced(id,deadline);
+  }
   if(!h)return null;
   current.training=true;current.trainingTechnique=id;current.trainingTargetHint={...h,technique:id};current.trainingCompleted=false;current.trainingOffPath=false;current.trainingStatsClosed=false;current.trainingMasteryMerged=false;current.coachUsage=null;current.masterySession=null;current.errorCoachUsage=null;current.lastError=null;current.hintFlow=null;current.lastReasoning=null;
   current.trainingStartSnapshot=puzzleSnapshot();return current
@@ -1036,7 +1048,7 @@ function decorateTrainingShell(){
   if(current.learning)decorateLearningShell()
 }
 function launchTraining(id){
-  if(!PEDAGOGY_TECHNIQUES[id])return trainingView();if(current&&!current.completed)clearSaved();stopTimer();paused=false;setBusy(true);requestAnimationFrame(()=>{let ok=false;try{ok=!!buildTrainingExercise(id);if(!ok){showToast(tr('trainingUnavailable'));trainingView();return}trainingStatsStart(id);trainingRender();historyInit(true);diagnosticStart('training');diagnosticPedagogy('training','start',id);updateHistoryButtons();startTimer(true,0,false);saveCurrent();haptic(8)}finally{setBusy(false)}})
+  if(!PEDAGOGY_TECHNIQUES[id])return trainingView();if(current&&!current.completed)clearSaved();stopTimer();paused=false;setBusy(true);requestAnimationFrame(()=>{let ok=false;try{ok=!!buildTrainingExercise(id,{context:'training'});if(!ok){showToast(tr('trainingUnavailable'));trainingView();return}trainingStatsStart(id);trainingRender();historyInit(true);diagnosticStart('training');diagnosticPedagogy('training','start',id);updateHistoryButtons();startTimer(true,0,false);saveCurrent();haptic(8)}finally{setBusy(false)}})
 }
 function resetTrainingExercise(){
   if(!current?.training||!current.trainingStartSnapshot)return;paused=false;current.trainingCompleted=false;current.trainingOffPath=false;current.hintFlow=null;current.lastError=null;current.masteryPendingAid=null;restorePuzzleSnapshot(current.trainingStartSnapshot);historyInit(true);updateHistoryButtons();stopTimer(false);elapsedBase=0;startedAt=0;startTimer(true,0,false);decorateTrainingShell();saveCurrent();status('',true)
@@ -1662,7 +1674,7 @@ function ensurePrecomputeWorker(){
   if(precomputeWorker)return precomputeWorker;
   if(!WebPlatform.workers.supported())return null;
   try{
-    let w=WebPlatform.workers.create('./precompute-worker.js?v=3.1.2');if(!w)return null;
+    let w=WebPlatform.workers.create('./precompute-worker.js?v=3.1.4');if(!w)return null;
     w.onmessage=e=>{
       let m=e.data||{};precomputeBusy=false;
       if(m.ok&&m.day===precomputeDay&&m.candidate&&precomputeCandidateCertified(m.game,m.diff,m.candidate)){

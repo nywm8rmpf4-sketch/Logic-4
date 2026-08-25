@@ -1226,3 +1226,12 @@ html{scroll-padding-top:82px;scroll-padding-bottom:110px}
   .panel:has(.sudoku) .board-wrap{width:min(calc(100vw - 44px),calc(100dvh - 398px))}
   .panel:has(.sudoku) .numpad{grid-template-columns:repeat(4,minmax(0,1fr))}
 }
+
+@media(max-width:480px) and (max-height:700px){
+  .panel:has(.nonogram-game){padding-top:6px;padding-bottom:6px}
+  .panel:has(.nonogram-game) .game-head{margin-bottom:2px}
+  .panel:has(.nonogram-game) .toolbar{margin:3px 0 2px;gap:4px}
+  .panel:has(.nonogram-game) .status{min-height:8px;margin:0}
+  .nonogram-tools{margin:2px auto 2px;gap:4px}
+  .nonogram-layout{width:min(100%,calc(100dvh - 326px))}
+}

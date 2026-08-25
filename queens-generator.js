@@ -178,8 +178,21 @@ function queenQpool4Candidate(diff){
   const stats={generatorVersion:typeof DifficultyRating!=='undefined'?DifficultyRating.GENERATOR_VERSION:1,targetDifficulty:diff,strategy:'qpool4',attempts:1,rejected:{structure:0,uniqueness:0,ratingMismatch:0,budgetExhausted:0,invalid:0},fallbackUsed:false,fingerprint:profile.fingerprint,minimumRequiredTier:profile.minimumRequiredTier,totalLogicalSteps:profile.totalLogicalSteps,poolVersion:QuadludQueensQpool4.POOL_VERSION,poolEntryId:entry.id,poolIndex:index};
   return {n:entry.n,sol:[...entry.sol],reg:entry.reg.map(r=>[...r]),difficultyProfile:profile,generationStats:stats}
 }
+const QUEENS_CHALLENGE_GENERATOR_LEGACY=1,QUEENS_CHALLENGE_GENERATOR_QPOOL4=2;
+function queenChallengeGeneratorVersion(diff){
+  if(diff==='easy')return QUEENS_CHALLENGE_GENERATOR_LEGACY;
+  if(QUEEN_QPOOL4_TIERS.has(diff))return QUEENS_CHALLENGE_GENERATOR_QPOOL4;
+  return null
+}
 function generateQueensPuzzle(diff,options){
-  if(diff==='easy'||options?.protocolGeneration===1)return generateQueensPuzzleHistoricalV223(diff);
+  const protocolGeneration=options?.protocolGeneration==null?null:Number(options.protocolGeneration);
+  if(protocolGeneration===QUEENS_CHALLENGE_GENERATOR_LEGACY)return generateQueensPuzzleHistoricalV223(diff);
+  if(protocolGeneration===QUEENS_CHALLENGE_GENERATOR_QPOOL4){
+    if(!QUEEN_QPOOL4_TIERS.has(diff))throw new Error(`Queens protocol generation ${protocolGeneration} does not support difficulty: ${diff}`);
+    return queenQpool4Candidate(diff)
+  }
+  if(protocolGeneration!=null)throw new Error(`Unsupported Queens protocol generation: ${protocolGeneration}`);
+  if(diff==='easy')return generateQueensPuzzleHistoricalV223(diff);
   if(QUEEN_QPOOL4_TIERS.has(diff))return queenQpool4Candidate(diff);
   throw new Error('Unknown Queens difficulty')
 }
@@ -209,6 +222,6 @@ function queenPublicPuzzleFromCandidate(candidate){return {game:'queens',n:candi
 function queenPublicPuzzleFromSession(session){return {game:'queens',n:session.n,reg:session.reg}}
 function queenGenerationIdentity(candidate){return queenCanonicalSignature(candidate.reg)}
 
-const QuadludQueensGenerator=Object.freeze({generateQueensPuzzle,generateQueensPuzzleHistoricalV223,queenQpool4Candidate,queenCandidate,countQueensGenerated,randomQueenSolution,queenRegionsFromSolution,queenRegionConnectedAfterMove,queenSingletonRegions,queenTwoCellRegions,normalizeQueenRegionIds,queenRegionSignature,queenCanonicalSignature,publicPuzzleFromCandidate:queenPublicPuzzleFromCandidate,publicPuzzleFromSession:queenPublicPuzzleFromSession,generationIdentity:queenGenerationIdentity});
+const QuadludQueensGenerator=Object.freeze({generateQueensPuzzle,generateQueensPuzzleHistoricalV223,queenQpool4Candidate,queenChallengeGeneratorVersion,challengeGeneratorVersion:queenChallengeGeneratorVersion,queenCandidate,countQueensGenerated,randomQueenSolution,queenRegionsFromSolution,queenRegionConnectedAfterMove,queenSingletonRegions,queenTwoCellRegions,normalizeQueenRegionIds,queenRegionSignature,queenCanonicalSignature,publicPuzzleFromCandidate:queenPublicPuzzleFromCandidate,publicPuzzleFromSession:queenPublicPuzzleFromSession,generationIdentity:queenGenerationIdentity});
 if(typeof globalThis!=='undefined')globalThis.QuadludQueensGenerator=QuadludQueensGenerator;
 if(typeof module!=='undefined'&&module.exports)module.exports=QuadludQueensGenerator;

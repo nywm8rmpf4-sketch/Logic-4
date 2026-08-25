@@ -11,7 +11,7 @@
 })(typeof globalThis!=='undefined'?globalThis:this,function(){
   'use strict';
 
-  const VERSION=7;
+  const VERSION=8;
   const ID_PATTERN=/^[a-z][a-z0-9-]*$/;
   const METADATA_FIELDS=Object.freeze({
     labelKey:Object.freeze({required:true,type:'string'}),
@@ -27,6 +27,7 @@
     canonicalizePublicPuzzle:Object.freeze({required:false,type:'function'}),
     publicPuzzleFromCandidate:Object.freeze({required:false,type:'function'}),
     generationIdentity:Object.freeze({required:false,type:'function'}),
+    challengeGeneratorVersion:Object.freeze({required:false,type:'function'}),
     publicPuzzleFromSession:Object.freeze({required:false,type:'function'}),
     sessionLifecycle:Object.freeze({required:false,type:'object',methods:Object.freeze(['createGeneratedSession','snapshot','applySnapshot','hasProgress','resetState','historyChanges','normalizeHistoryAction','validateVictory']),optionalMethods:Object.freeze(['reasoningView','applyLogicalMove'])}),
     uiLifecycle:Object.freeze({required:false,type:'object',methods:Object.freeze(['createAdapter'])}),

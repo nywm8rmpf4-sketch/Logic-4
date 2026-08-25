@@ -40,29 +40,146 @@ function queenVisibleErrors(){
   return out
 }
 
-function trainingSetQueenBase(g,diff){current={game:'queens',diff,n:g.n,reg:g.reg,sol:g.sol,difficultyProfile:g.difficultyProfile,generationStats:g.generationStats,state:Array.from({length:g.n},()=>Array(g.n).fill(0)),generated:true,unique:true,completed:false,training:true}}
+const QUEEN_PEDAGOGICAL_RANK0_TECHNIQUES=Object.freeze(new Set([
+  'Q_EXCLUSION_ROW','Q_EXCLUSION_COLUMN','Q_EXCLUSION_REGION','Q_EXCLUSION_ADJACENCY',
+  'Q_UNIQUE_ROW','Q_UNIQUE_COLUMN','Q_UNIQUE_REGION'
+]));
+const QUEEN_PEDAGOGICAL_ADVANCED_RANK=Object.freeze({Q_CONTRADICTION_R1:1,Q_CONTRADICTION_R2:2,Q_CONTRADICTION_R3:3});
+const QUEEN_PEDAGOGICAL_DIFFICULTY_INDEX=Object.freeze({medium:1,hard:2,expert:3});
+const QUEEN_PEDAGOGICAL_CONTEXTS=Object.freeze(new Set(['learning','training']));
 
-function trainingBuildQueensDirect(id,deadline){
-  for(let attempt=0;attempt<5&&WebPlatform.clock.nowMs()<deadline;attempt++){
-    let g=queenCandidate('medium');
-    // Exclusions and unique-position exercises are constructed only from valid queen solution/regions; validation below uses visible state only.
-    if(id==='Q_EXCLUSION_ROW'){
-      for(let r=0;r<g.n;r++){trainingSetQueenBase(g,'medium');let q=g.sol[r],c=(q+2)%g.n;if(c===q)c=(c+1)%g.n;current.state[r][q]=2;let h=trainingHintForId(id,deadline);if(h)return h}
-    }else if(id==='Q_EXCLUSION_COLUMN'){
-      for(let r=0;r<g.n;r++){trainingSetQueenBase(g,'medium');let c=g.sol[r],rr=(r+2)%g.n;current.state[r][c]=2;let h=trainingHintForId(id,deadline);if(h)return h}
-    }else if(id==='Q_EXCLUSION_REGION'){
-      for(let r=0;r<g.n;r++){let q=[r,g.sol[r]],z=g.reg[q[0]][q[1]];for(let rr=0;rr<g.n;rr++)for(let cc=0;cc<g.n;cc++)if(g.reg[rr][cc]===z&&rr!==q[0]&&cc!==q[1]){trainingSetQueenBase(g,'medium');current.state[q[0]][q[1]]=2;let h=trainingHintForId(id,deadline);if(h)return h}}
-    }else if(id==='Q_EXCLUSION_ADJACENCY'){
-      for(let r=0;r<g.n;r++){let q=[r,g.sol[r]];for(let dr of [-1,1])for(let dc of [-1,1]){let rr=r+dr,cc=q[1]+dc;if(rr>=0&&rr<g.n&&cc>=0&&cc<g.n&&g.reg[rr][cc]!==g.reg[r][q[1]]){trainingSetQueenBase(g,'medium');current.state[r][q[1]]=2;let h=trainingHintForId(id,deadline);if(h)return h}}}
-    }else if(id==='Q_UNIQUE_ROW'){
-      for(let r=0;r<g.n;r++){trainingSetQueenBase(g,'medium');for(let c=0;c<g.n;c++)if(c!==g.sol[r])current.state[r][c]=1;let h=trainingHintForId(id,deadline);if(h)return h}
-    }else if(id==='Q_UNIQUE_COLUMN'){
-      for(let c=0;c<g.n;c++){let qr=g.sol.indexOf(c);if(qr<0)continue;trainingSetQueenBase(g,'medium');for(let r=0;r<g.n;r++)if(r!==qr)current.state[r][c]=1;let h=trainingHintForId(id,deadline);if(h)return h}
-    }else if(id==='Q_UNIQUE_REGION'){
-      for(let z of [...new Set(g.reg.flat())]){let q=null;for(let r=0;r<g.n;r++)if(g.reg[r][g.sol[r]]===z)q=[r,g.sol[r]];if(!q)continue;trainingSetQueenBase(g,'medium');for(let r=0;r<g.n;r++)for(let c=0;c<g.n;c++)if(g.reg[r][c]===z&&(r!==q[0]||c!==q[1]))current.state[r][c]=1;let h=trainingHintForId(id,deadline);if(h)return h}
-    }
+function queenPedagogicalNow(){return WebPlatform?.clock?.nowMs?WebPlatform.clock.nowMs():(typeof performance!=='undefined'&&performance.now?performance.now():Date.now())}
+function queenPedagogicalClone(value){return value==null?value:JSON.parse(JSON.stringify(value))}
+function queenPedagogicalEmptyState(n){return Array.from({length:n},()=>Array(n).fill(0))}
+function queenPedagogicalPublicCurrent(puzzle,difficulty,state){return {game:'queens',diff:difficulty,n:puzzle.n,reg:cloneGrid(puzzle.reg),state:cloneGrid(state),generated:true,unique:true,completed:false,training:true}}
+function queenPedagogicalWithCurrent(puzzle,difficulty,state,fn){let previous=current;current=queenPedagogicalPublicCurrent(puzzle,difficulty,state);try{return fn(current)}finally{current=previous}}
+function queenPedagogicalHintForTechnique(techniqueId,deadline){
+  if(QUEEN_PEDAGOGICAL_RANK0_TECHNIQUES.has(techniqueId))return findQueenLogicalHint();
+  let rank=QUEEN_PEDAGOGICAL_ADVANCED_RANK[techniqueId];
+  return rank===1?findQueenRank1Hint(deadline):rank===2?findQueenRank2Hint(deadline):rank===3?findQueenRank3Hint(deadline):null
+}
+function queenPedagogicalTechniqueRank(techniqueId){return QUEEN_PEDAGOGICAL_RANK0_TECHNIQUES.has(techniqueId)?0:(QUEEN_PEDAGOGICAL_ADVANCED_RANK[techniqueId]??null)}
+function queenPedagogicalCanonicalTechnique(d){
+  if(!d)return null;
+  if(d.rule==='ASSUMPTION_CONTRADICTION')return 'Q_CONTRADICTION_R2';
+  if(d.rule!=='SINGLETON')return null;
+  let family=d.explanationData?.unit?.family||d.premises?.find?.(p=>p?.unit?.family)?.unit?.family;
+  return family==='row'?'Q_UNIQUE_ROW':family==='column'?'Q_UNIQUE_COLUMN':family==='region'?'Q_UNIQUE_REGION':null
+}
+function queenPedagogicalCanonicalDescriptor(puzzle,difficulty,state,techniqueId,hint){
+  let out={available:false,techniqueId:null,rule:null,target:null,value:null,sameMove:false,sameTechnique:false,canonicalPriority:false};
+  try{
+    if(typeof QueensLogic==='undefined'||!QueensLogic?.createSession||typeof QueensDifficulty==='undefined'||typeof QueensDifficulty?.nextAllowedDeduction!=='function')return out;
+    let session=QueensLogic.createSession({n:puzzle.n,reg:cloneGrid(puzzle.reg),state:cloneGrid(state)}),tier=QUEEN_PEDAGOGICAL_DIFFICULTY_INDEX[difficulty],next=QueensDifficulty.nextAllowedDeduction(session,tier,false),d=next?.deduction;
+    if(!d)return out;
+    let c=(d.conclusions||[])[0]||null,canonicalTechnique=queenPedagogicalCanonicalTechnique(d),sameMove=!!c&&c.cell?.[0]===hint?.r&&c.cell?.[1]===hint?.c&&c.value===hint?.v,sameTechnique=canonicalTechnique===techniqueId;
+    return {available:true,techniqueId:canonicalTechnique,rule:d.rule,target:c?.cell?[...c.cell]:null,value:c?.value??null,sameMove,sameTechnique,canonicalPriority:sameMove&&sameTechnique}
+  }catch(_error){return out}
+}
+function queenPedagogicalSanitizeGeneration(candidate,difficulty){
+  let profile=candidate?.difficultyProfile||{},stats=candidate?.generationStats||{};
+  return {
+    difficulty,
+    fingerprint:profile.fingerprint||stats.fingerprint||null,
+    minimumRequiredTier:profile.minimumRequiredTier??stats.minimumRequiredTier??null,
+    strategy:stats.strategy||null,
+    generatorVersion:stats.generatorVersion??null,
+    poolVersion:stats.poolVersion??null,
+    poolEntryId:stats.poolEntryId??null,
+    poolIndex:stats.poolIndex??null
   }
-  return null
+}
+function queenPedagogicalNormalizeBudget(budget){
+  if(!budget||typeof budget!=='object')throw new TypeError('Queens pedagogical extraction requires an explicit budget');
+  let totalMs=Number(budget.totalMs),maxAttempts=Number(budget.maxAttempts),maxStates=Number(budget.maxStates),maxMicroSteps=Number(budget.maxMicroSteps??64);
+  if(!Number.isFinite(totalMs)||totalMs<=0)throw new TypeError('Queens pedagogical extraction budget.totalMs must be > 0');
+  if(!Number.isInteger(maxAttempts)||maxAttempts<1)throw new TypeError('Queens pedagogical extraction budget.maxAttempts must be >= 1');
+  if(!Number.isInteger(maxStates)||maxStates<1)throw new TypeError('Queens pedagogical extraction budget.maxStates must be >= 1');
+  if(!Number.isInteger(maxMicroSteps)||maxMicroSteps<1)throw new TypeError('Queens pedagogical extraction budget.maxMicroSteps must be >= 1');
+  return {totalMs,maxAttempts,maxStates,maxMicroSteps}
+}
+function queenPedagogicalFoundResult(base,puzzle,state,hint,source,canonical,search={}){
+  return Object.freeze({...base,status:'found',puzzle:Object.freeze({game:'queens',n:puzzle.n,reg:cloneGrid(puzzle.reg)}),visibleState:cloneGrid(state),hint:queenPedagogicalClone(hint),proof:Object.freeze({source,canonicalPriority:!!canonical?.canonicalPriority,canonical:queenPedagogicalClone(canonical),canonicalStateIndex:Number.isInteger(search.stateIndex)?search.stateIndex:null,priorHintSequence:Object.freeze([...(search.sequence||[])])})})
+}
+function queenPedagogicalRank0Search(puzzle,difficulty,techniqueId,state,deadline,maxMicroSteps){
+  let work=cloneGrid(state),sequence=[];
+  for(let step=0;step<maxMicroSteps;step++){
+    if(queenPedagogicalNow()>=deadline)return {status:'budget_exhausted',budgetKind:'time'};
+    let h=queenPedagogicalWithCurrent(puzzle,difficulty,work,()=>findQueenLogicalHint());
+    if(!h)return {status:'not_found',sequence};
+    if(h.technique===techniqueId)return {status:'found',hint:h,state:cloneGrid(work),sequence};
+    sequence.push(h.technique||null);
+    if(!Number.isInteger(h.r)||!Number.isInteger(h.c)||![1,2].includes(h.v)||work[h.r]?.[h.c]!==0)return {status:'not_found',sequence};
+    work[h.r][h.c]=h.v
+  }
+  return {status:'budget_exhausted',budgetKind:'micro_steps',sequence}
+}
+function queenPedagogicalAdvancedSearch(puzzle,difficulty,techniqueId,state,deadline){
+  let h=queenPedagogicalWithCurrent(puzzle,difficulty,state,()=>queenPedagogicalHintForTechnique(techniqueId,deadline));
+  if(h?.timeout)return {status:'budget_exhausted',budgetKind:'time'};
+  if(!h)return {status:'not_found'};
+  let expected=QUEEN_PEDAGOGICAL_ADVANCED_RANK[techniqueId];
+  if(h.rank!==expected)return {status:'not_found'};
+  return {status:'found',hint:h,state:cloneGrid(state)}
+}
+function queenPedagogicalSearchCandidate(candidate,techniqueId,difficulty,deadline,budget){
+  if(typeof QueensDifficulty==='undefined'||typeof QueensDifficulty?.canonicalizePublicPuzzle!=='function'||typeof QueensDifficulty?.nextAllowedDeduction!=='function')throw new Error('Queens difficulty service unavailable');
+  if(typeof QueensLogic==='undefined'||!QueensLogic?.createSession)throw new Error('Queens inference engine unavailable');
+  let publicPuzzle=QueensDifficulty.canonicalizePublicPuzzle({n:candidate.n,reg:candidate.reg}),tier=QUEEN_PEDAGOGICAL_DIFFICULTY_INDEX[difficulty],session=QueensLogic.createSession({n:publicPuzzle.n,reg:cloneGrid(publicPuzzle.reg),state:queenPedagogicalEmptyState(publicPuzzle.n)}),rank=queenPedagogicalTechniqueRank(techniqueId);
+  for(let stateIndex=0;stateIndex<budget.maxStates;stateIndex++){
+    if(queenPedagogicalNow()>=deadline)return {status:'budget_exhausted',budgetKind:'time'};
+    let state=cloneGrid(session.state),searched=rank===0?queenPedagogicalRank0Search(publicPuzzle,difficulty,techniqueId,state,deadline,budget.maxMicroSteps):queenPedagogicalAdvancedSearch(publicPuzzle,difficulty,techniqueId,state,deadline);
+    if(searched.status==='budget_exhausted')return searched;
+    if(searched.status==='found')return {...searched,publicPuzzle,stateIndex,source:rank===0?'rank0-next-hint':'targeted-rank-analyzer'};
+    let next=QueensDifficulty.nextAllowedDeduction(session,tier,false),d=next?.deduction;
+    if(!d)return {status:next?.budgetHit?'budget_exhausted':'not_found',budgetKind:next?.budgetHit?'logic_budget':null};
+    if(rank===0){
+      for(let c of (d.conclusions||[]).filter(x=>x?.value===2&&Array.isArray(x.cell))){
+        let micro=cloneGrid(state),[r,col]=c.cell;if(micro[r]?.[col]!==0)continue;micro[r][col]=2;
+        let direct=queenPedagogicalRank0Search(publicPuzzle,difficulty,techniqueId,micro,deadline,budget.maxMicroSteps);
+        if(direct.status==='budget_exhausted')return direct;
+        if(direct.status==='found')return {...direct,publicPuzzle,stateIndex,source:'proven-queen-rank0-next-hint'}
+      }
+    }
+    let applied=session.applyDeduction(d);if(!applied?.deduction)return {status:'not_found'}
+  }
+  return {status:'budget_exhausted',budgetKind:'state_steps'}
+}
+function extractQueenPedagogicalExercise(options={}){
+  let techniqueId=String(options.techniqueId||''),difficulty=String(options.difficulty||'').toLowerCase(),context=String(options.context||'').toLowerCase(),rank=queenPedagogicalTechniqueRank(techniqueId);
+  if(rank==null)throw new Error(`Unsupported Queens pedagogical technique: ${techniqueId}`);
+  if(!Object.prototype.hasOwnProperty.call(QUEEN_PEDAGOGICAL_DIFFICULTY_INDEX,difficulty))throw new Error('Queens pedagogical extraction supports Medium/Hard/Expert only; Easy remains unchanged');
+  if(!QUEEN_PEDAGOGICAL_CONTEXTS.has(context))throw new Error('Queens pedagogical extraction context must be learning or training');
+  let budget=queenPedagogicalNormalizeBudget(options.budget),forbidden=new Set(Array.from(options.forbiddenFingerprints||[],String)),seenFingerprints=new Set(),started=queenPedagogicalNow(),deadline=started+budget.totalMs,attempts=0,rejectedForbidden=0,rejectedRepeat=0,lastGeneration=null;
+  while(attempts<budget.maxAttempts){
+    if(queenPedagogicalNow()>=deadline)return Object.freeze({schema:1,game:'queens',techniqueId,difficulty,context,status:'budget_exhausted',budgetKind:'time',attempts,rejectedForbidden,rejectedRepeat,elapsedMs:queenPedagogicalNow()-started,generation:lastGeneration});
+    attempts++;
+    let candidate=queenCandidate(difficulty,{context}),generation=queenPedagogicalSanitizeGeneration(candidate,difficulty),fingerprint=generation.fingerprint;
+    lastGeneration=generation;
+    if(fingerprint&&forbidden.has(fingerprint)){rejectedForbidden++;continue}
+    if(fingerprint&&seenFingerprints.has(fingerprint)){rejectedRepeat++;continue}
+    if(fingerprint)seenFingerprints.add(fingerprint);
+    let searched=queenPedagogicalSearchCandidate(candidate,techniqueId,difficulty,deadline,budget),base={schema:1,game:'queens',techniqueId,difficulty,context,attempts,rejectedForbidden,rejectedRepeat,elapsedMs:queenPedagogicalNow()-started,generation};
+    if(searched.status==='found'){
+      let canonical=queenPedagogicalCanonicalDescriptor(searched.publicPuzzle,difficulty,searched.state,techniqueId,searched.hint);
+      return queenPedagogicalFoundResult(base,searched.publicPuzzle,searched.state,searched.hint,searched.source,canonical,searched)
+    }
+    if(searched.status==='budget_exhausted')return Object.freeze({...base,status:'budget_exhausted',budgetKind:searched.budgetKind||'time'})
+  }
+  return Object.freeze({schema:1,game:'queens',techniqueId,difficulty,context,status:'not_found',attempts,rejectedForbidden,rejectedRepeat,elapsedMs:queenPedagogicalNow()-started,generation:lastGeneration})
+}
+
+function trainingBuildQueensGenerated({id,difficulty,context,deadline}={}){
+  let end=Number(deadline),remaining=Number.isFinite(end)?Math.max(1,end-queenPedagogicalNow()):5500;
+  let result=extractQueenPedagogicalExercise({techniqueId:id,difficulty,context,budget:{totalMs:remaining,maxAttempts:6,maxStates:96,maxMicroSteps:64}});
+  if(result?.status!=='found')return Object.freeze({status:result?.status||'not_found',budgetKind:result?.budgetKind||null,hint:null,extraction:result||null});
+  current={
+    game:'queens',diff:difficulty,n:result.puzzle.n,reg:cloneGrid(result.puzzle.reg),state:cloneGrid(result.visibleState),
+    generated:true,unique:true,completed:false,training:true,
+    pedagogicalGeneration:queenPedagogicalClone(result.generation),
+    pedagogicalExtraction:Object.freeze({schema:1,source:'visible-state',context,techniqueId:id,canonicalPriority:!!result.proof?.canonicalPriority})
+  };
+  return Object.freeze({status:'found',hint:queenPedagogicalClone(result.hint),extraction:result});
 }
 
 function queenReasoningPresenter(){return reasoningPresenter(globalThis.QuadludQueensReasoningPresenter.GAME)}
@@ -479,4 +596,4 @@ function queenLogicalComplete(){
   return !queenStateContradiction()
 }
 
-if(typeof globalThis!=='undefined')globalThis.QuadludQueensRuntime=Object.freeze({regionColors:Object.freeze([...QUEEN_REGION_COLORS])});
+if(typeof globalThis!=='undefined')globalThis.QuadludQueensRuntime=Object.freeze({VERSION:2,regionColors:Object.freeze([...QUEEN_REGION_COLORS]),extractPedagogicalExercise:extractQueenPedagogicalExercise});

@@ -17,7 +17,7 @@
   if(!contract)throw new Error('QUADLUD game contract unavailable');
   if(!manifest)throw new Error('QUADLUD game manifest unavailable');
 
-  const VERSION=6;
+  const VERSION=7;
   function moduleCapability(globalName,nodePath,property=null){
     return ()=>{let module=resolveModule(globalName,nodePath);return property==null?module:module[property]};
   }
@@ -31,7 +31,7 @@
     const frozen=Object.freeze(proxy);return ()=>frozen
   }
   const BINDINGS=Object.freeze({
-    queens:Object.freeze({logic:'QueensLogic',difficulty:'QueensDifficulty',generator:'QuadludQueensGenerator',generate:'generateQueensPuzzle',ui:'QuadludQueensUI',pedagogy:'QuadludQueensPedagogy',reasoning:'QuadludQueensReasoningPresenter',i18n:'QuadludQueensI18n',generationIdentity:'generationIdentity'}),
+    queens:Object.freeze({logic:'QueensLogic',difficulty:'QueensDifficulty',generator:'QuadludQueensGenerator',generate:'generateQueensPuzzle',ui:'QuadludQueensUI',pedagogy:'QuadludQueensPedagogy',reasoning:'QuadludQueensReasoningPresenter',i18n:'QuadludQueensI18n',generationIdentity:'generationIdentity',challengeGeneratorVersion:'challengeGeneratorVersion'}),
     tango:Object.freeze({logic:'TangoLogic',difficulty:'TangoDifficulty',generator:'QuadludTangoGenerator',generate:'generateTangoPuzzle',ui:'QuadludTangoUI',pedagogy:'QuadludTangoPedagogy',reasoning:'QuadludTangoReasoningPresenter',i18n:'QuadludTangoI18n'}),
     sudoku:Object.freeze({logic:'SudokuLogic',difficulty:'SudokuDifficulty',generator:'QuadludSudokuGenerator',generate:'generateSudokuPuzzle',ui:'QuadludSudokuUI',pedagogy:'QuadludSudokuPedagogy',reasoning:'QuadludSudokuReasoningPresenter',i18n:'QuadludSudokuI18n'}),
     patches:Object.freeze({logic:'PatchesLogic',difficulty:'PatchesDifficulty',generator:'QuadludPatchesGenerator',generate:'generatePatchesPuzzle',ui:'QuadludPatchesUI',pedagogy:'QuadludPatchesPedagogy',reasoning:'QuadludPatchesReasoningPresenter',i18n:'QuadludPatchesI18n'}),
@@ -54,6 +54,7 @@
       i18n:moduleCapability(b.i18n,gameModulePath(id,'i18n'))
     };
     if(b.generationIdentity)capabilities.generationIdentity=moduleCapability(b.generator,gameModulePath(id,'generator'),b.generationIdentity);
+    if(b.challengeGeneratorVersion)capabilities.challengeGeneratorVersion=moduleCapability(b.generator,gameModulePath(id,'generator'),b.challengeGeneratorVersion);
     return Object.freeze({id,metadata:game.metadata,capabilities:Object.freeze(capabilities)})
   }
   const CATALOG=Object.freeze(manifest.listGames().map(manifestEntryToCatalog));

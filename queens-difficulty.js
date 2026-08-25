@@ -130,6 +130,6 @@ function ratePuzzle(puzzle,options={}){
   return {...run,profile};
 }
 
-root.QueensDifficulty={VERSION:1,TIER_POLICY,canonicalizePublicPuzzle:canonicalizeQueensPublicPuzzle,solveTier:solveQueensTier,createAdapter,ratePuzzle,_test:{canonicalQueens,initialBoard,solved,directCandidates,nextAllowedDeduction,sessionMetrics}};
+root.QueensDifficulty={VERSION:2,TIER_POLICY,canonicalizePublicPuzzle:canonicalizeQueensPublicPuzzle,nextAllowedDeduction,solveTier:solveQueensTier,createAdapter,ratePuzzle,_test:{canonicalQueens,initialBoard,solved,directCandidates,nextAllowedDeduction,sessionMetrics}};
 if(typeof module!=='undefined'&&module.exports)module.exports=root.QueensDifficulty;
 })(typeof globalThis!=='undefined'?globalThis:this);
