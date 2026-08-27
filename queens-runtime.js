@@ -212,12 +212,27 @@ function queenCellCoordinate(r,c){let p=globalThis?.QuadludQueensReasoningPresen
 
 function queenCellListHuman(cells,limit=8){let a=(cells||[]).map(x=>queenCellCoordinate(x[0],x[1]));if(a.length<=limit)return a.join(', ');return a.slice(0,limit).join(', ')+queenFormat('qlMore',{count:a.length-limit})}
 
-function queenRegionFocusPlan(d,context=current){
-  let reg=context?.reg,n=Number(context?.n)||reg?.length||0;if(!d||!Array.isArray(reg)||!n)return [];
-  let ids=new Set(),addRef=ref=>{if(ref?.family==='region'&&Number.isInteger(Number(ref.id)))ids.add(Number(ref.id))},x=d.explanationData||{};
+function queenPedagogyUnitRefs(d){
+  if(!d)return [];
+  let x=d.explanationData||{},out=[],seen=new Set(),addRef=ref=>{let family=ref?.family,id=Number(ref?.id);if(!['row','column','region'].includes(family)||!Number.isInteger(id))return;let key=`${family}:${id}`;if(!seen.has(key)){seen.add(key);out.push({family,id})}};
   for(let ref of d.focusUnits||[])addRef(ref);
   for(let ref of [x.unit,x.sourceUnit,x.targetUnit,x.supportUnit,x.witness?.unit])addRef(ref);
   for(let refs of [x.sourceUnits,x.targetUnits])for(let ref of refs||[])addRef(ref);
+  return out
+}
+
+function queenLinearFocusPlan(d,context=current){
+  let n=Number(context?.n)||Number(context?.reg?.length)||0,rows=new Set(),columns=new Set();if(!d||!n)return {rows:[],columns:[]};
+  for(let ref of queenPedagogyUnitRefs(d)){
+    if(ref.family==='row'&&ref.id>=0&&ref.id<n)rows.add(ref.id);
+    else if(ref.family==='column'&&ref.id>=0&&ref.id<n)columns.add(ref.id)
+  }
+  return {rows:[...rows].sort((a,b)=>a-b),columns:[...columns].sort((a,b)=>a-b)}
+}
+
+function queenRegionFocusPlan(d,context=current){
+  let reg=context?.reg,n=Number(context?.n)||reg?.length||0;if(!d||!Array.isArray(reg)||!n)return [];
+  let ids=new Set();for(let ref of queenPedagogyUnitRefs(d))if(ref.family==='region')ids.add(ref.id);
   let out=[];
   for(let id of [...ids].sort((a,b)=>a-b)){
     let cells=[];for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(reg[r]?.[c]===id)cells.push([r,c]);if(!cells.length)continue;
@@ -229,13 +244,25 @@ function queenRegionFocusPlan(d,context=current){
 
 function queenConflictReasonHuman(reasons){let r=reasons?.[0],key=r==='ROW'?'qlConflictRow':r==='COLUMN'?'qlConflictColumn':r==='REGION'?'qlConflictRegion':r==='ADJACENCY'?'qlConflictAdjacency':'qlConflictRule';return tr(key)}
 
+function queenCoordinateFocusRoot(board){return board?.closest?.('.queens-coordinate-wrap,.walkthrough-queens-coordinate-wrap')||board?.parentElement||null}
+
+function queenApplyLinearFocus(board,plan,n){
+  let focused=new Set(),rows=new Set(plan?.rows||[]),columns=new Set(plan?.columns||[]),markCell=(r,c,cls)=>{let el=board.children[r*n+c];if(el)el.classList.add(cls)};
+  for(let r of rows)for(let c=0;c<n;c++){focused.add(`${r},${c}`);markCell(r,c,'queen-line-focus');markCell(r,c,'queen-line-focus-row')}
+  for(let c of columns)for(let r=0;r<n;r++){focused.add(`${r},${c}`);markCell(r,c,'queen-line-focus');markCell(r,c,'queen-line-focus-column')}
+  let root=queenCoordinateFocusRoot(board),rowLabels=root?.querySelectorAll?.('.queens-row-coordinates span')||[],columnLabels=root?.querySelectorAll?.('.queens-column-coordinates span')||[];
+  for(let r of rows){let el=rowLabels[r];if(el)el.classList.add('queen-unit-focus-label','queen-unit-focus-row-label')}
+  for(let c of columns){let el=columnLabels[c];if(el)el.classList.add('queen-unit-focus-label','queen-unit-focus-column-label')}
+  return focused
+}
+
 function queenApplyRegionFocus(board,regions,n){
   let regionCells=new Set();for(let z of regions||[])for(let cell of z.cells||[]){let [r,c]=cell,k=`${r},${c}`,el=board.children[r*n+c];if(!el)continue;regionCells.add(k);el.classList.add('queen-region-focus');for(let edge of z.edges?.[k]||[])el.classList.add(`queen-region-focus-${edge}`);if(z.badge?.[0]===r&&z.badge?.[1]===c)el.setAttribute('data-region-focus-badge',z.label)}return regionCells
 }
 
 function queenFocusDeduction(d,reveal=false){
-  clearHintFocus();let board=$('#qboard')||document.querySelector('.board');if(!board||!current||!d)return;let n=current.n,ctx=queenReasoningPresenter().premiseCells(d,current),conclusions=(d.conclusions||[]).map(x=>x.cell),regionCells=queenApplyRegionFocus(board,queenRegionFocusPlan(d,current),n),mark=(cell,cls)=>{let x=board.children[cell[0]*n+cell[1]];if(x)x.classList.add(cls)};
-  for(let cell of ctx)if(!regionCells.has(cell.join(',')))mark(cell,'hint-context');if(reveal)for(let cell of conclusions)mark(cell,'hint-focus')
+  clearHintFocus();let board=$('#qboard')||document.querySelector('.board');if(!board||!current||!d)return;let n=current.n,ctx=queenReasoningPresenter().premiseCells(d,current),conclusions=(d.conclusions||[]).map(x=>x.cell),lineCells=queenApplyLinearFocus(board,queenLinearFocusPlan(d,current),n),regionCells=queenApplyRegionFocus(board,queenRegionFocusPlan(d,current),n),mark=(cell,cls)=>{let x=board.children[cell[0]*n+cell[1]];if(x)x.classList.add(cls)};
+  for(let cell of ctx){let key=cell.join(',');if(!regionCells.has(key)&&!lineCells.has(key))mark(cell,'hint-context')}if(reveal)for(let cell of conclusions)mark(cell,'hint-focus')
 }
 
 function queenApplyDeductionToCurrent(d){
@@ -256,7 +283,7 @@ function queenShowLogicalContradiction(w){
 function queenCoachHandleDeduction(d){
   let presenter=queenReasoningPresenter(),boardKey=historySnapshotKey(),sig=d.id+'|'+d.rank,flow=current.hintFlow,isSame=flow?.kind==='queens-proof'&&flow.boardKey===boardKey&&flow.signature===sig,view=presenter.presentation(d);
   if(!isSame){current.hintFlow={kind:'queens-proof',boardKey,signature:sig,stage:1,deduction:JSON.parse(JSON.stringify(d))};coachUsage(1,view.technique);queenFocusDeduction(d,false);showHintNotice(`<span class="coach-progress">1/2</span><b>${tr('where')} :</b> ${view.explanation.where}`);saveCurrent();return}
-  let proof=flow.deduction||d,before=historySnapshotKey();coachUsage(2,view.technique);coachUsage(3,view.technique);markHintUsed();updateScoreFlags();queenFocusDeduction(proof,true);let application=queenApplyDeductionToCurrent(proof);if(!application){current.hintFlow=null;showHintNotice(tr('hintError'));return}drawGameUi();let appliedView=presenter.presentation(application.deduction,application.automatic);historyRecord({type:'COACH_APPLY',reasoning:presenter.legacyReasoning(application.deduction,application.automatic),coachStage:2,coachFlowVersion:3},before);current.hintFlow=null;
+  let proof=flow.deduction||d,before=historySnapshotKey();coachUsage(2,view.technique);coachUsage(3,view.technique);markHintUsed();updateScoreFlags();queenFocusDeduction(proof,true);let application=queenApplyDeductionToCurrent(proof);if(!application){current.hintFlow=null;showHintNotice(tr('hintError'));return}let animatedCell=[...(application.deduction?.conclusions||[]),...(application.automatic||[]).flatMap(a=>a.conclusions||[])].find(x=>x?.value===2)?.cell||null,ui=typeof gameWebUi==='function'&&current?.game?gameWebUi(current.game):null;if(ui&&typeof ui.draw==='function')ui.draw(animatedCell);else drawGameUi();let appliedView=presenter.presentation(application.deduction,application.automatic);historyRecord({type:'COACH_APPLY',reasoning:presenter.legacyReasoning(application.deduction,application.automatic),coachStage:2,coachFlowVersion:3},before);current.hintFlow=null;
   showHintNotice(`<span class="coach-progress">2/2</span><b>${appliedView.explanation.title}</b><br>${appliedView.explanation.why}`);maybeAutoFinish();saveCurrent();haptic(12)
 }
 

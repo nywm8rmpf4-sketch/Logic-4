@@ -36,13 +36,13 @@
     function lighthouseTitleMarkup(){return '<span class="lighthouses-title-icon" aria-hidden="true"><svg class="lighthouses-title-svg" viewBox="0 0 64 64" focusable="false" aria-hidden="true"><path class="lh-beam" d="M21 16 L5 11 L5 21 Z"/><path class="lh-beam" d="M43 16 L59 11 L59 21 Z"/><path class="lh-roof" d="M23 14 L32 7 L41 14 Z"/><rect class="lh-lantern" x="24" y="14" width="16" height="10" rx="2"/><rect class="lh-light" x="29" y="16" width="6" height="6" rx="2"/><path class="lh-tower" d="M25 24 H39 L43 51 H21 Z"/><rect class="lh-window" x="29" y="31" width="6" height="8" rx="1.5"/><path class="lh-base" d="M18 51 H46 V56 H18 Z"/><path class="lh-base" d="M14 57 H50 V60 H14 Z"/></svg></span>'}
 
     function reducedMotionRequested(){return typeof root?.matchMedia==='function'&&root.matchMedia('(prefers-reduced-motion: reduce)').matches}
+    function nextFrame(fn){return typeof root?.requestAnimationFrame==='function'?root.requestAnimationFrame(fn):setTimeout(fn,16)}
     function animateLighthouse(cell){
       if(!cell||reducedMotionRequested())return false;
       const piece=cell.querySelector?.('.lighthouse-piece');
       if(!piece)return false;
       piece.classList.remove('lighthouse-enter');
-      void piece.offsetWidth;
-      piece.classList.add('lighthouse-enter');
+      nextFrame(()=>{if(!piece.isConnected)return;void piece.offsetWidth;nextFrame(()=>{if(!piece.isConnected)return;piece.classList.add('lighthouse-enter');piece.addEventListener('animationend',()=>piece.classList.remove('lighthouse-enter'),{once:true})})});
       return true
     }
 

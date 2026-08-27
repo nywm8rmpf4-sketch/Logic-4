@@ -204,6 +204,51 @@
 .walkthrough-queens-coordinate-wrap .queens-column-coordinates span,.walkthrough-queens-coordinate-wrap .queens-row-coordinates span{display:grid;place-items:center;color:var(--muted)!important;font-size:clamp(10px,1.8vw,11px);font-weight:700;line-height:1;letter-spacing:.01em;user-select:none}
 .walkthrough-queens-coordinate-wrap .walkthrough-board{grid-column:2;grid-row:2;width:100%;max-width:100%}
 .walkthrough-cell{position:relative}
+/* v3.1.5-LH8E — line/column pedagogical focus: subtle hatching + edge label */
+#qboard .cell>*,.walkthrough-board .cell>*{position:relative;z-index:2}
+.queen-line-focus{position:relative;z-index:3}
+.queen-line-focus::before{
+  content:"";
+  position:absolute;
+  inset:1px;
+  border-radius:4px;
+  pointer-events:none;
+  z-index:1;
+  opacity:.78;
+  background-repeat:repeat;
+  background-size:10px 10px
+}
+.queen-line-focus-row::before{
+  background-image:repeating-linear-gradient(-45deg,rgba(11,41,72,.18) 0 2px,rgba(11,41,72,0) 2px 7px)
+}
+.queen-line-focus-column::before{
+  background-image:repeating-linear-gradient(45deg,rgba(11,41,72,.18) 0 2px,rgba(11,41,72,0) 2px 7px)
+}
+.queen-line-focus-row.queen-line-focus-column::before{
+  background-image:repeating-linear-gradient(-45deg,rgba(11,41,72,.16) 0 2px,rgba(11,41,72,0) 2px 7px),repeating-linear-gradient(45deg,rgba(11,41,72,.16) 0 2px,rgba(11,41,72,0) 2px 7px)
+}
+.queen-unit-focus-label{
+  position:relative;
+  display:grid!important;
+  place-items:center;
+  min-width:16px;
+  min-height:16px;
+  padding:0 3px;
+  border-radius:999px;
+  border:1px solid rgba(11,41,72,.34);
+  background:rgba(255,247,231,.92);
+  color:#0b2948!important;
+  box-shadow:0 1px 2px rgba(5,25,45,.12);
+  font-weight:850!important
+}
+.queen-unit-focus-row-label{
+  background-image:repeating-linear-gradient(-45deg,rgba(11,41,72,.12) 0 2px,rgba(11,41,72,0) 2px 7px)
+}
+.queen-unit-focus-column-label{
+  background-image:repeating-linear-gradient(45deg,rgba(11,41,72,.12) 0 2px,rgba(11,41,72,0) 2px 7px)
+}
+@media(max-width:390px){.queen-unit-focus-label{min-width:14px;min-height:14px;padding:0 2px;font-size:9px}}
+
 /* v3.1.5-LH8C — global pedagogical focus for Lighthouses regions */
 .queen-region-focus{--queen-region-focus-color:#0b2948;z-index:4}
 .queen-region-focus-top{border-top:3px solid var(--queen-region-focus-color)!important}
