@@ -38,23 +38,12 @@
     function reducedMotionRequested(){return typeof root?.matchMedia==='function'&&root.matchMedia('(prefers-reduced-motion: reduce)').matches}
     function animateLighthouse(cell){
       if(!cell||reducedMotionRequested())return false;
-      const svg=cell.querySelector?.('.lighthouse-svg'),halo=cell.querySelector?.('.lighthouse-halo');
-      let animated=false;
-      if(svg&&typeof svg.animate==='function'){
-        svg.animate([
-          {opacity:.28,transform:'translateY(2px) scale(.82)'},
-          {opacity:1,transform:'translateY(0) scale(1.055)',offset:.65},
-          {opacity:1,transform:'translateY(0) scale(1)'}
-        ],{duration:300,easing:'cubic-bezier(.2,.8,.25,1)',fill:'none'});animated=true
-      }
-      if(halo&&typeof halo.animate==='function'){
-        halo.animate([
-          {opacity:0,transform:'scale(.45)'},
-          {opacity:.55,transform:'scale(.82)',offset:.35},
-          {opacity:0,transform:'scale(1.25)'}
-        ],{duration:460,easing:'ease-out',fill:'none'});animated=true
-      }
-      return animated
+      const piece=cell.querySelector?.('.lighthouse-piece');
+      if(!piece)return false;
+      piece.classList.remove('lighthouse-enter');
+      void piece.offsetWidth;
+      piece.classList.add('lighthouse-enter');
+      return true
     }
 
     function coordinateMarkup(n){

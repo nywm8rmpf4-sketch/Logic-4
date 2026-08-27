@@ -513,6 +513,33 @@ body .panel .toolbar .btn{min-height:44px;border-radius:12px}
   box-shadow:0 3px 9px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.65);
 }
 @media(prefers-reduced-motion:reduce){.btn{transition:none!important}}
+
+/* v3.1.5-LH8D — Safari-robust LIGHTHOUSES placement animation, normal + Tutor */
+@keyframes lighthousePlaceIn{
+  0%{opacity:.28;transform:translateY(2px) scale(.82)}
+  65%{opacity:1;transform:translateY(0) scale(1.055)}
+  100%{opacity:1;transform:translateY(0) scale(1)}
+}
+@keyframes lighthouseHaloIn{
+  0%{opacity:0;transform:scale(.45)}
+  35%{opacity:.55;transform:scale(.82)}
+  100%{opacity:0;transform:scale(1.25)}
+}
+#qboard .lighthouse-piece.lighthouse-enter,
+.walkthrough-board .lighthouse-piece.lighthouse-enter{
+  transform-origin:center;
+  animation:lighthousePlaceIn 300ms cubic-bezier(.2,.8,.25,1) both
+}
+#qboard .lighthouse-piece.lighthouse-enter .lighthouse-halo,
+.walkthrough-board .lighthouse-piece.lighthouse-enter .lighthouse-halo{
+  animation:lighthouseHaloIn 460ms ease-out both
+}
+@media(prefers-reduced-motion:reduce){
+  #qboard .lighthouse-piece.lighthouse-enter,
+  .walkthrough-board .lighthouse-piece.lighthouse-enter,
+  #qboard .lighthouse-piece.lighthouse-enter .lighthouse-halo,
+  .walkthrough-board .lighthouse-piece.lighthouse-enter .lighthouse-halo{animation:none!important}
+}
 @media(forced-colors:active){
   .btn{background:ButtonFace;color:ButtonText;border-color:ButtonText;box-shadow:none}
   .btn.primary{background:Highlight;color:HighlightText;border-color:Highlight;box-shadow:none}
