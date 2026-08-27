@@ -73,7 +73,7 @@ body.busy{pointer-events:none}
   .hero h1{font-size:34px}.cards{gap:8px}.game-card{min-height:136px;padding:14px;border-radius:16px}
 }
 @media (max-height:720px) and (orientation:portrait){
-  #app{padding-top:8px}.toolbar{margin:7px 0}.game-head{margin-bottom:5px}.rules{margin-top:10px}
+  #app{padding-top:8px;padding-bottom:calc(22px + env(safe-area-inset-bottom))}.toolbar{margin:7px 0}.game-head{margin-bottom:5px}.rules{margin-top:10px}
 }
 @media (orientation:landscape) and (max-height:520px){
   .topbar{position:relative}.panel{display:grid;grid-template-columns:minmax(260px,1fr) minmax(300px,58vh);column-gap:14px}
@@ -426,4 +426,53 @@ body:has(#qboard) .topbar .brand-dot{
   .lighthouses-panel .game-head h1{font-size:22px;gap:6px;letter-spacing:.025em}
   .lighthouses-panel .difficulty{max-width:70px;padding:6px 3px;font-size:11px}
   .lighthouses-title-icon{width:25px;height:25px;flex-basis:25px}
+}
+
+/* v3.1.5-LH7 — generic premium action buttons; shared CSS only */
+:root{
+  --btn-edge:color-mix(in srgb,var(--ink) 22%,var(--paper));
+  --btn-fill-top:color-mix(in srgb,var(--paper) 97%,white 3%);
+  --btn-fill-bottom:color-mix(in srgb,var(--paper) 91%,var(--soft) 9%);
+  --btn-shadow:0 2px 7px rgba(33,28,20,.10),inset 0 1px 0 rgba(255,255,255,.72);
+  --btn-shadow-hover:0 4px 11px rgba(33,28,20,.14),inset 0 1px 0 rgba(255,255,255,.78);
+}
+.btn{
+  border-color:var(--btn-edge);
+  background:linear-gradient(180deg,var(--btn-fill-top),var(--btn-fill-bottom));
+  border-radius:13px;
+  box-shadow:var(--btn-shadow);
+  font-weight:700;
+}
+.btn.primary{
+  background:linear-gradient(180deg,color-mix(in srgb,var(--ink) 88%,var(--accent) 12%),var(--ink));
+  border-color:color-mix(in srgb,var(--ink) 88%,black 12%);
+  color:#fff;
+  box-shadow:0 3px 9px rgba(20,24,22,.20),inset 0 1px 0 rgba(255,255,255,.16);
+}
+@media(hover:hover) and (pointer:fine){
+  .btn:hover:not(:disabled){box-shadow:var(--btn-shadow-hover)}
+  .btn.primary:hover:not(:disabled){box-shadow:0 5px 13px rgba(20,24,22,.25),inset 0 1px 0 rgba(255,255,255,.20)}
+}
+.btn:active:not(:disabled){transform:translateY(1px);box-shadow:0 1px 3px rgba(33,28,20,.12),inset 0 1px 0 rgba(255,255,255,.55)}
+.btn:disabled{opacity:.42;box-shadow:none}
+body .panel .toolbar .btn{min-height:44px;border-radius:12px}
+:root[data-theme="dark"] .btn{
+  --btn-edge:#596159;
+  --btn-fill-top:#313630;
+  --btn-fill-bottom:#292d28;
+  --btn-shadow:0 2px 7px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.06);
+  --btn-shadow-hover:0 4px 11px rgba(0,0,0,.32),inset 0 1px 0 rgba(255,255,255,.08);
+  color:var(--ink);
+}
+:root[data-theme="dark"] .btn.primary{
+  background:linear-gradient(180deg,#f7f4ec,#e8e4da);
+  color:#1d1f1c;
+  border-color:#f0ede5;
+  box-shadow:0 3px 9px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.65);
+}
+@media(prefers-reduced-motion:reduce){.btn{transition:none!important}}
+@media(forced-colors:active){
+  .btn{background:ButtonFace;color:ButtonText;border-color:ButtonText;box-shadow:none}
+  .btn.primary{background:Highlight;color:HighlightText;border-color:Highlight;box-shadow:none}
+  .btn:disabled{color:GrayText;border-color:GrayText;box-shadow:none}
 }

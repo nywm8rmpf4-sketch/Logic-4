@@ -5,14 +5,14 @@
  */
 'use strict';
 const $=s=>document.querySelector(s), app=$('#app'), toast=$('#toast'), timerEl=$('#timer');
-const VERSION='3.1.4';
+const VERSION='3.1.5';
 const UI_FEATURES=Object.freeze({inlineRules:false,exploration:false,pause:false,liveTimer:false,unjustifiedHighlights:false,verifyAction:false});
 const WebPlatform=QuadludWebPlatform.getWebPlatform();
 const DiagnosticRecorder=QuadludDiagnosticRecorder;
 const DiagnosticUiStructural=QuadludDiagnosticUiStructural;
 const DiagnosticAttachments=QuadludDiagnosticAttachments;
 const Diagnostic=DiagnosticRecorder.createRecorder({capacity:256,maxErrors:32,uiCapacity:64,nowMs:()=>WebPlatform.clock.nowMs(),nowIso:()=>WebPlatform.clock.nowIso()});
-const DIAGNOSTIC_BUILD='v3.1.4-queens-unified-generation';
+const DIAGNOSTIC_BUILD='v3.1.5-lighthouses';
 const DIAGNOSTIC_UI_EVENT_TYPES=new Set(['action.applied','action.not-applied','history.undo','history.redo','history.branch','session.reset','coach.stage','tutor.open','tutor.next','tutor.previous','tutor.restart','tutor.close','ui.tool-change','viewport.resize','viewport.orientation']);
 function diagnosticOrientation(){try{return String(screen?.orientation?.type||((innerWidth||0)>=(innerHeight||0)?'landscape':'portrait'))}catch(_){return 'unknown'}}
 function diagnosticEnvironment(){return {lang:lang(),theme:resolvedTheme(),viewport:{width:Math.max(0,Number(innerWidth)||0),height:Math.max(0,Number(innerHeight)||0)},dpr:Math.max(0,Number(devicePixelRatio)||1),orientation:diagnosticOrientation(),userAgent:String(navigator?.userAgent||'')}}
