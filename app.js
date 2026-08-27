@@ -35,12 +35,15 @@ const GameRegistry=QuadludGameRegistry;
 const SessionHistory=SessionCore.createHistoryController(game=>gameSessionLifecycle(game));
 const LogicalTransactions=QuadludLogicalMove.createTransactionController({history:SessionHistory,resolveLifecycle:game=>gameSessionLifecycle(game)});
 const PedagogyMetadata=QuadludPedagogyMetadata;
+const MasteryModel=QuadludMasteryModel;
 const GAME_IDS=GameRegistry.IDS;
 const PersistentData=globalThis.QuadludPersistentDataServices||QuadludPersistenceServices.createServices({storage:QuadludWebStorage.getLocalStorageAdapter(),serialization:DataSerialization});
 const PERSISTENCE_BASELINE=PersistentData.baseline, SAVE_SCHEMA=PersistentData.schemas.save, SAVE_KEY=PersistentData.keys.save;
 const LEGACY_PERSISTENCE_KEYS=PersistentData.legacyKeys;
 const I18nCatalog=QuadludI18nCatalog,{I18N,SUPPORTED_LANGS,RTL_LANGS,LANGUAGE_OPTIONS,A11Y_SKIP_LABELS,GAME_RULES,TECHNIQUE_TERMS}=I18nCatalog;
 const ProgressionStats=QuadludProgressionStats.createStatsService({persistentData:PersistentData,gameRegistry:GameRegistry,gameIds:GAME_IDS,persistenceBaseline:PERSISTENCE_BASELINE,clock:WebPlatform.clock,cloneMasterySession,mergeMasteryIntoStats:masteryMergeIntoStats});
+const ChallengeProtocol=QuadludChallengeProtocol.create({gameIds:GAME_IDS,gameRegistry:GameRegistry,generation:QuadludGenerationCommon,cryptoProvider:globalThis.crypto,random:()=>Math.random()});
+const DailyModel=QuadludDailyModel.create({gameIds:GAME_IDS,gameManifest:QuadludGameManifest,persistentData:PersistentData,generation:QuadludGenerationCommon,clock:WebPlatform.clock,localDay});
 const {statsSchema:STATS_SCHEMA,historyLimit:HISTORY_LIMIT}=ProgressionStats,STATS_KEY=PersistentData.keys.stats;
 function blankStats(){return ProgressionStats.blankStats()}
 function safeStats(){return ProgressionStats.safeStats()}
@@ -338,51 +341,22 @@ function closePreviousAttempt(){
 }
 
 // ===== v2.23 — reproducible certified friend challenges =====
-const CHALLENGE_SCHEMA=2,CHALLENGE_GENERATOR=1,CHALLENGE_NAMESPACE='quadlud-challenge-v2.23',CHALLENGE_VERSION_LABEL='v2.23';
-const CHALLENGE_ALPHABET='23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
-const CHALLENGE_GAME_TO_CODE=Object.freeze(Object.fromEntries(GAME_IDS.map(game=>[game,GameRegistry.getMetadata(game)?.challengeCode]).filter(([,code])=>typeof code==='string'&&/^[A-Z]$/.test(code))));
-const CHALLENGE_CODE_TO_GAME=Object.freeze(Object.fromEntries(Object.entries(CHALLENGE_GAME_TO_CODE).map(([game,code])=>[code,game])));
-const CHALLENGE_DIFF_TO_CODE={easy:'E',medium:'M',hard:'H',expert:'X'};
-const CHALLENGE_CODE_TO_DIFF={E:'easy',M:'medium',H:'hard',X:'expert'};
-function challengeExpectedGenerator(game,diff){
-  if(!CHALLENGE_GAME_TO_CODE[game]||!CHALLENGE_DIFF_TO_CODE[diff])return null;
-  if(!GameRegistry.hasCapability(game,'challengeGeneratorVersion'))return CHALLENGE_GENERATOR;
-  let version=Number(GameRegistry.requireCapability(game,'challengeGeneratorVersion')(diff));
-  return Number.isInteger(version)&&version>=1&&version<=9?version:null
-}
-function challengeNormalizeCode(raw=''){return String(raw).toUpperCase().replace(/[^A-Z0-9]/g,'')}
-function challengeChecksum(payload){
-  let h=hash32(`quadlud-challenge-check:${payload}`),a=CHALLENGE_ALPHABET;
-  return a[Math.floor(h/a.length)%a.length]+a[h%a.length]
-}
-function challengeRandomSeed(len=8){
-  let a=CHALLENGE_ALPHABET,out='',bytes=null;
-  try{if(globalThis.crypto?.getRandomValues){bytes=new Uint32Array(len);globalThis.crypto.getRandomValues(bytes)}}catch(_){}
-  for(let i=0;i<len;i++){let n=bytes?bytes[i]:Math.floor(Math.random()*0x100000000);out+=a[n%a.length]}
-  return out
-}
-function challengeMake(game,diff,seed=challengeRandomSeed(),generator=null){
-  let expected=challengeExpectedGenerator(game,diff);if(expected==null)return null;
-  generator=generator==null?expected:Number(generator);if(generator!==expected)return null;
-  seed=challengeNormalizeCode(seed).slice(0,8);if(seed.length!==8||[...seed].some(c=>!CHALLENGE_ALPHABET.includes(c)))return null;
-  let payload=`QL${CHALLENGE_SCHEMA}${generator}${CHALLENGE_GAME_TO_CODE[game]}${CHALLENGE_DIFF_TO_CODE[diff]}${seed}`,check=challengeChecksum(payload);
-  return {schema:CHALLENGE_SCHEMA,generator,game,diff,seed,code:`QL${CHALLENGE_SCHEMA}${generator}-${CHALLENGE_GAME_TO_CODE[game]}${CHALLENGE_DIFF_TO_CODE[diff]}-${seed}-${check}`}
-}
-function challengeParse(raw){
-  let n=challengeNormalizeCode(raw);
-  // QL + schema + generator + game + difficulty + 8 canonical seed chars + 2 checksum chars.
-  if(n.length!==16||n.slice(0,2)!=='QL')return null;
-  let schema=Number(n[2]),generator=Number(n[3]),game=CHALLENGE_CODE_TO_GAME[n[4]],diff=CHALLENGE_CODE_TO_DIFF[n[5]],seed=n.slice(6,14),check=n.slice(14);
-  if(schema!==CHALLENGE_SCHEMA||!game||!diff||generator!==challengeExpectedGenerator(game,diff))return null;
-  if([...seed].some(c=>!CHALLENGE_ALPHABET.includes(c)))return null;
-  let payload=n.slice(0,14);if(challengeChecksum(payload)!==check)return null;
-  return challengeMake(game,diff,seed,generator)
-}
-function challengeSeedString(ch){return `${CHALLENGE_NAMESPACE}:s${ch.schema}:g${ch.generator}:${ch.game}:${ch.diff}:${ch.seed}`}
-function challengePublicPuzzleFromCandidate(ch,g){return generatedPublicPuzzleFromCandidate(ch?.game,g)}
-function challengeFingerprintFromCandidate(ch,g){return generatedCandidateFingerprint(ch?.game,g)}
-function challengeCandidateProfile(g){return generatedCandidateProfile(g)}
-function challengeCandidateCertified(ch,g){return !!ch&&generatedCandidateCertified(ch.game,ch.diff,g)}
+// Protocol/deterministic responsibilities live in challenge-protocol.js; Web/session orchestration stays here.
+const CHALLENGE_SCHEMA=ChallengeProtocol.schema,CHALLENGE_GENERATOR=ChallengeProtocol.generator,CHALLENGE_NAMESPACE=ChallengeProtocol.namespace,CHALLENGE_VERSION_LABEL=ChallengeProtocol.versionLabel;
+const CHALLENGE_ALPHABET=ChallengeProtocol.alphabet;
+const CHALLENGE_GAME_TO_CODE=ChallengeProtocol.gameToCode,CHALLENGE_CODE_TO_GAME=ChallengeProtocol.codeToGame;
+const CHALLENGE_DIFF_TO_CODE=ChallengeProtocol.diffToCode,CHALLENGE_CODE_TO_DIFF=ChallengeProtocol.codeToDiff;
+function challengeExpectedGenerator(game,diff){return ChallengeProtocol.expectedGenerator(game,diff)}
+function challengeNormalizeCode(raw=''){return ChallengeProtocol.normalizeCode(raw)}
+function challengeChecksum(payload){return ChallengeProtocol.checksum(payload)}
+function challengeRandomSeed(len=8){return ChallengeProtocol.randomSeed(len)}
+function challengeMake(game,diff,seed=challengeRandomSeed(),generator=null){return ChallengeProtocol.make(game,diff,seed,generator)}
+function challengeParse(raw){return ChallengeProtocol.parse(raw)}
+function challengeSeedString(ch){return ChallengeProtocol.seedString(ch)}
+function challengePublicPuzzleFromCandidate(ch,g){return ChallengeProtocol.publicPuzzleFromCandidate(ch,g)}
+function challengeFingerprintFromCandidate(ch,g){return ChallengeProtocol.fingerprintFromCandidate(ch,g)}
+function challengeCandidateProfile(g){return ChallengeProtocol.candidateProfile(g)}
+function challengeCandidateCertified(ch,g){return ChallengeProtocol.candidateCertified(ch,g)}
 function gameSessionLifecycle(game){return GameRegistry.requireCapability(game,'sessionLifecycle')}
 function createRegisteredGeneratedSession(game,diff,candidate,options={}){return gameSessionLifecycle(game).createGeneratedSession(diff,candidate,options)}
 // Rendering is delegated through the registered UI lifecycle; session creation remains registry-driven and separate from UI.
@@ -397,15 +371,8 @@ function validateRegisteredVictory(session=current,options={}){
   return gameSessionLifecycle(session.game).validateVictory(session,options)
 }
 function checkRegisteredVictory(){let result=validateRegisteredVictory(current);if(result.solved)finish(`${tr('congrats')} ${gameLabel(current.game)}`);else status(tr(result.reasonKey||'gridIncomplete'),false);return result.solved}
-function challengeBuildCandidate(ch){
-  if(!ch||ch.schema!==CHALLENGE_SCHEMA||ch.generator!==challengeExpectedGenerator(ch.game,ch.diff)||!CHALLENGE_GAME_TO_CODE[ch.game]||!CHALLENGE_DIFF_TO_CODE[ch.diff])return null;
-  return withSeed(challengeSeedString(ch),()=>{
-    let g=generateRegisteredCandidate(ch.game,ch.diff,{protocolGeneration:ch.generator,context:'challenge'});
-    if(!challengeCandidateCertified(ch,g))throw new Error('Challenge candidate is not certified at the requested difficulty');
-    return g
-  })
-}
-function challengePublicFingerprint(ch){return challengeFingerprintFromCandidate(ch,challengeBuildCandidate(ch))}
+function challengeBuildCandidate(ch){return ChallengeProtocol.buildCandidate(ch)}
+function challengePublicFingerprint(ch){return ChallengeProtocol.publicFingerprint(ch)}
 function challengeInstall(ch,g){
   return installGeneratedSession(ch.game,ch.diff,g,{context:'challenge',metadata:{challenge:true,challengeCode:ch.code,challengeSeed:ch.seed,challengeGenerator:ch.generator,challengeFingerprint:challengeFingerprintFromCandidate(ch,g)}})
 }
@@ -465,72 +432,34 @@ function challengeFromHash(){
 function initialView(){let ch=challengeFromHash();if(ch)return challengeView(ch,true);home()}
 
 const DAILY_KEY=PersistentData.keys.daily;
-const DAILY_SCHEMA=2,DAILY_GENERATOR=1,DAILY_NAMESPACE='quadlud-daily-v2.23',DAILY_DIFFICULTY='medium';
-const DAILY_GAMES=Object.freeze(GAME_IDS.filter(game=>QuadludGameManifest.getGame(game)?.daily!==false));
-const DAILY_LOGIC_POINTS={0:100,1:90,2:75,3:55,4:25};
-function dailyState(){return PersistentData.daily.read()}
-function saveDailyState(x){PersistentData.daily.write(x)}
-function dailyKey(day,game){return `${day}:${game}`}
-function dailyRecord(day,game,state=dailyState()){return state[dailyKey(day,game)]||null}
-function dailySeedString(day,game){
-  day=String(day||'');if(!/^\d{4}-\d{2}-\d{2}$/.test(day)||!DAILY_GAMES.includes(game))return null;
-  return `${DAILY_NAMESPACE}:s${DAILY_SCHEMA}:g${DAILY_GENERATOR}:${day}:${game}:${DAILY_DIFFICULTY}`
-}
-function dailyBuildCandidate(day,game){
-  let seed=dailySeedString(day,game);if(!seed)return null;
-  return withSeed(seed,()=>{
-    let g=generateRegisteredCandidate(game,DAILY_DIFFICULTY,{protocolGeneration:1});
-    if(!generatedCandidateCertified(game,DAILY_DIFFICULTY,g))throw new Error(`Daily candidate is not certified Medium (${game})`);
-    return g
-  })
-}
-function dailyFingerprintFromCandidate(game,g){return generatedCandidateFingerprint(game,g)}
-function dailyPublicFingerprint(day,game){let g=dailyBuildCandidate(day,game);return g?dailyFingerprintFromCandidate(game,g):null}
+// Deterministic Daily state/scoring lives in daily-model.js; rendering/session orchestration stays here.
+const DAILY_SCHEMA=DailyModel.schema,DAILY_GENERATOR=DailyModel.generator,DAILY_NAMESPACE=DailyModel.namespace,DAILY_DIFFICULTY=DailyModel.difficulty;
+const DAILY_GAMES=DailyModel.games,DAILY_LOGIC_POINTS=DailyModel.logicPoints;
+function dailyState(){return DailyModel.state()}
+function saveDailyState(x){return DailyModel.saveState(x)}
+function dailyKey(day,game){return DailyModel.key(day,game)}
+function dailyRecord(day,game,state=dailyState()){return DailyModel.record(day,game,state)}
+function dailySeedString(day,game){return DailyModel.seedString(day,game)}
+function dailyBuildCandidate(day,game){return DailyModel.buildCandidate(day,game)}
+function dailyFingerprintFromCandidate(game,g){return DailyModel.fingerprintFromCandidate(game,g)}
+function dailyPublicFingerprint(day,game){return DailyModel.publicFingerprint(day,game)}
 function dailyInstallCandidate(game,g,day){
   rememberGeneratedCandidateThisSession(game,g,day);
   return installGeneratedSession(game,DAILY_DIFFICULTY,g,{context:'daily',metadata:{daily:true,dailyDay:day,dailyCircuit:true,dailySchema:DAILY_SCHEMA,dailyGenerator:DAILY_GENERATOR,dailyFingerprint:dailyFingerprintFromCandidate(game,g)}})
 }
-function dailyHelpStage(c){
-  if(c?.walkthroughUsed)return 4;
-  let u=c?.coachUsage||{};
-  if((u.reveal||0)>0)return 4;
-  if((u.why||0)>0)return 3;
-  if((u.rule||0)>0)return 2;
-  if((u.where||0)>0)return 1;
-  return c?.hintUsed?4:0
-}
+function dailyHelpStage(c){return DailyModel.helpStage(c)}
 function dailyHelpLabel(stage){
   return [tr('dailyNoHelp'),tr('dailyOrientation'),tr('dailyRuleHelp'),tr('dailyExplanationHelp'),tr('dailyRevealHelp')][Math.max(0,Math.min(4,Number(stage)||0))]
 }
-function dailyLogicScore(c){return DAILY_LOGIC_POINTS[dailyHelpStage(c)]}
-function dailyErrorCount(c){let e=c?.errorCoachUsage||{};return Math.max(0,Number(e.detected)||0)+Math.max(0,Number(e.rejected)||0)}
-function dailyBacktrackCount(c){return Math.max(0,Number(c?.moveHistory?.stats?.undos)||0)}
-function markDaily(c,outcome,seconds){
-  if(!c?.daily)return;
-  let s=dailyState(),k=dailyKey(c.dailyDay,c.game),old=s[k]||{},solvedBefore=old.outcome==='solved',sec=Math.max(0,Math.round(seconds));
-  if(solvedBefore){
-    // The official logical score is immutable after the first successful solve.
-    old.best=old.best==null?sec:Math.min(old.best,sec);old.lastSeconds=sec;old.lastOutcome=outcome;old.lastCompletedAt=WebPlatform.clock.nowMs();s[k]=old;saveDailyState(s);return
-  }
-  let rec={day:c.dailyDay,game:c.game,outcome,seconds:sec,completedAt:WebPlatform.clock.nowMs(),best:outcome==='solved'?sec:old.best??null,dailySchema:c.dailySchema??DAILY_SCHEMA,dailyGenerator:c.dailyGenerator??DAILY_GENERATOR,fingerprint:c.dailyFingerprint||null};
-  if(outcome==='solved'){
-    rec.logicScore=dailyLogicScore(c);rec.helpStage=dailyHelpStage(c);rec.helpLabelKey=['dailyNoHelp','dailyOrientation','dailyRuleHelp','dailyExplanationHelp','dailyRevealHelp'][rec.helpStage];
-    rec.errors=dailyErrorCount(c);rec.backtracks=dailyBacktrackCount(c);rec.official=true
-  }
-  s[k]=rec;saveDailyState(s)
-}
-function dailyProgress(day=localDay()){let s=dailyState();return DAILY_GAMES.map(g=>s[dailyKey(day,g)]).filter(x=>x?.outcome==='solved').length}
+function dailyLogicScore(c){return DailyModel.logicScore(c)}
+function dailyErrorCount(c){return DailyModel.errorCount(c)}
+function dailyBacktrackCount(c){return DailyModel.backtrackCount(c)}
+function markDaily(c,outcome,seconds){return DailyModel.mark(c,outcome,seconds)}
+function dailyProgress(day=localDay()){return DailyModel.progress(day)}
 function dailyHomeLine(day=localDay()){let s=dailyCircuitSummary(day);return `${s.completed}/${DAILY_GAMES.length} · ${s.scoreKnown?`${s.totalScore}/${DAILY_GAMES.length*100}`:tr('dailyLogicScore')}`}
-function dailyCircuitSummary(day=localDay(),state=dailyState()){
-  let rows=DAILY_GAMES.map(game=>({game,record:dailyRecord(day,game,state)})),solved=rows.filter(x=>x.record?.outcome==='solved'),scored=solved.filter(x=>Number.isFinite(Number(x.record.logicScore)));
-  return {day,rows,completed:solved.length,totalScore:scored.reduce((a,x)=>a+Number(x.record.logicScore),0),scoredGames:scored.length,complete:solved.length===DAILY_GAMES.length,scoreKnown:solved.length===scored.length}
-}
-function dailyNextGame(day=localDay(),state=dailyState()){return DAILY_GAMES.find(g=>dailyRecord(day,g,state)?.outcome!=='solved')||null}
-function dailyCalendar(days=28){
-  let s=dailyState(),out=[],d=WebPlatform.clock.nowDate();d.setHours(12,0,0,0);
-  for(let i=0;i<days;i++){let day=localDay(d.getTime()),sum=dailyCircuitSummary(day,s);out.push({day,n:sum.completed,score:sum.scoreKnown?sum.totalScore:null});d.setDate(d.getDate()-1)}
-  return out
-}
+function dailyCircuitSummary(day=localDay(),state=dailyState()){return DailyModel.circuitSummary(day,state)}
+function dailyNextGame(day=localDay(),state=dailyState()){return DailyModel.nextGame(day,state)}
+function dailyCalendar(days=28){return DailyModel.calendar(days)}
 function dailyCardHtml(g,r){
   let done=r?.outcome==='solved',score=done&&Number.isFinite(Number(r.logicScore))?`${r.logicScore}/100`:done?'—/100':'',help=done&&r.logicScore!=null?dailyHelpLabel(r.helpStage):done?tr('dailyUnscoredLegacy'):'';
   return `<button class="daily-game ${done?'done':''}" data-daily="${g}"><span aria-hidden="true">${gameIcon(g)}</span><b>${gameLabel(g)}</b><small>${done?`✓ ${score} · ${help} · ${fmt(r.best??r.seconds)}`:tr('play')}</small></button>`
@@ -641,11 +570,9 @@ function techniqueLibraryHtml(game){
 
 
 // ===== v2.15.0 — logical mastery profile =====
-const MASTERY_KINDS=['encountered','solo','where','rule','why','reveal','where3','why3','reveal3','errors'];
-function emptyMasteryCounts(){return {encountered:0,solo:0,where:0,rule:0,why:0,reveal:0,where3:0,why3:0,reveal3:0,errors:0}}
-function normalizeMasteryCounts(x={}){
-  let o=emptyMasteryCounts();for(let k of MASTERY_KINDS)o[k]=Math.max(0,Number(x?.[k])||0);return o
-}
+const MASTERY_KINDS=MasteryModel.KINDS;
+function emptyMasteryCounts(){return MasteryModel.emptyCounts()}
+function normalizeMasteryCounts(x={}){return MasteryModel.normalizeCounts(x)}
 function masterySessionBucket(id){
   if(!current||!PEDAGOGY_TECHNIQUES[id])return null;
   let s=current.masterySession||(current.masterySession={schema:1,techniques:{}});
@@ -658,11 +585,8 @@ function masteryRecord(id,kind){
   if(kind==='solo'||kind==='where'||kind==='where3'||kind==='errors')b.encountered++;
   b[kind]++;return true
 }
-function cloneMasterySession(s){return s?JSON.parse(JSON.stringify(s)):null}
-function masteryMergeCounts(dst,src){
-  dst=normalizeMasteryCounts(dst);src=normalizeMasteryCounts(src);
-  for(let k of MASTERY_KINDS)dst[k]+=src[k];return dst
-}
+function cloneMasterySession(s){return MasteryModel.cloneSession(s)}
+function masteryMergeCounts(dst,src){return MasteryModel.mergeCounts(dst,src)}
 function masteryMergeIntoStats(stats,session){
   if(!stats.mastery||typeof stats.mastery!=='object')stats.mastery={schema:1,byTechnique:{},updatedAt:null};
   if(!stats.mastery.byTechnique)stats.mastery.byTechnique={};
@@ -672,19 +596,7 @@ function masteryMergeIntoStats(stats,session){
   }
   if(session?.techniques&&Object.keys(session.techniques).length)stats.mastery.updatedAt=WebPlatform.clock.nowMs()
 }
-function masteryLegacyFromHistory(history=[]){
-  let out={};
-  for(let rec of history){
-    if(rec?.masteryMerged)continue;
-    for(let [id,t] of Object.entries(rec?.coachUsage?.techniques||{})){
-      if(!PEDAGOGY_TECHNIQUES[id])continue;
-      let b=out[id]||(out[id]=emptyMasteryCounts()),where=Math.max(0,Number(t.where)||0);
-      if(rec?.coachUsage?.flowVersion===2){b.encountered+=where;b.where3+=where;b.why3+=Math.max(0,Number(t.why)||0);b.reveal3+=Math.max(0,Number(t.reveal)||0)}
-      else{b.encountered+=where;b.where+=where;b.rule+=Math.max(0,Number(t.rule)||0);b.why+=Math.max(0,Number(t.why)||0);b.reveal+=Math.max(0,Number(t.reveal)||0)}
-    }
-  }
-  return out
-}
+function masteryLegacyFromHistory(history=[]){return MasteryModel.legacyFromHistory(history,PEDAGOGY_TECHNIQUES)}
 function effectiveMasteryByTechnique(stats=safeStats()){
   let out={};
   for(let id of Object.keys(PEDAGOGY_TECHNIQUES))out[id]=normalizeMasteryCounts(stats?.mastery?.byTechnique?.[id]);
@@ -692,25 +604,8 @@ function effectiveMasteryByTechnique(stats=safeStats()){
   for(let [id,c] of Object.entries(legacy))out[id]=masteryMergeCounts(out[id],c);
   return out
 }
-function masteryMetrics(c){
-  c=normalizeMasteryCounts(c);
-  let legacyWhere=Math.max(0,c.where-c.rule),ruleOnly=Math.max(0,c.rule-c.why),legacyWhy=Math.max(0,c.why-c.reveal),legacyReveal=c.reveal;
-  let newWhere=Math.max(0,c.where3-c.why3),newWhy=Math.max(0,c.why3-c.reveal3),newReveal=c.reveal3;
-  let whereOnly=legacyWhere+newWhere,whyOnly=legacyWhy+newWhy,revealed=legacyReveal+newReveal;
-  let assisted=whereOnly+ruleOnly+whyOnly+revealed;
-  let samples=c.solo+assisted+c.errors;
-  let weighted=c.solo+whereOnly*.82+ruleOnly*.65+whyOnly*.45+revealed*.20;
-  let score=samples?Math.max(0,Math.min(100,Math.round(weighted/samples*100))):null;
-  let confidence=Math.min(100,Math.round(samples/12*100));
-  return {...c,whereOnly,ruleOnly,whyOnly,revealed,assisted,samples,score,confidence}
-}
-function masteryLevel(m){
-  if(!m||m.samples<3)return {key:'masteryInsufficient',level:0};
-  if(m.score>=90)return {key:'masteryExcellent',level:4};
-  if(m.score>=75)return {key:'masteryStrong',level:3};
-  if(m.score>=55)return {key:'masteryAcquired',level:2};
-  return {key:'masteryDeveloping',level:1}
-}
+function masteryMetrics(c){return MasteryModel.metrics(c)}
+function masteryLevel(m){return MasteryModel.level(m)}
 
 function currentTechniqueMastery(id){
   if(!PEDAGOGY_TECHNIQUES[id])return masteryMetrics(emptyMasteryCounts());
@@ -1460,11 +1355,26 @@ function persistencePublicPuzzle(c){
 }
 function persistenceFingerprint(c){try{return typeof DifficultyRating!=='undefined'?DifficultyRating.fingerprintPublicPuzzle(persistencePublicPuzzle(c)):null}catch(_){return null}}
 function persistenceNeedsCertifiedProfile(c){return !!(c?.generated&&!c.training&&!c.learning)}
+function runtimeCandidateCertified(game,diff,candidate){
+  if(generatedCandidateCertified(game,diff,candidate))return true;
+  try{
+    let difficulty=GameRegistry.requireCapability(game,'difficulty');
+    return typeof difficulty?.candidateCertified==='function'&&difficulty.candidateCertified(diff,candidate)&&generatedCandidateFingerprint(game,candidate)===candidate?.difficultyProfile?.fingerprint
+  }catch(_){return false}
+}
+function persistenceDifficultyCertified(c,p,d){
+  let tier;try{tier=d.tierIndex(c.diff)}catch(_){return false}
+  if(p.difficulty===c.diff&&p.minimumRequiredTier===tier)return true;
+  try{
+    let difficulty=GameRegistry.requireCapability(c.game,'difficulty');
+    return typeof difficulty?.candidateCertified==='function'&&difficulty.candidateCertified(c.diff,c)
+  }catch(_){return false}
+}
 function persistenceCertifiedProfileValid(c,fingerprint){
   if(!persistenceNeedsCertifiedProfile(c))return true;
   let d=typeof DifficultyRating!=='undefined'?DifficultyRating:null,p=c?.difficultyProfile;if(!d||!p||typeof p!=='object'||!fingerprint)return false;
-  let tier;try{tier=d.tierIndex(c.diff)}catch(_){return false}
-  if(p.schema!==d.SCHEMA_VERSION||p.ratingVersion!==d.RATING_VERSION||p.game!==c.game||p.status!=='solved'||p.difficulty!==c.diff||p.minimumRequiredTier!==tier||p.budgetHit||p.fingerprint!==fingerprint)return false;
+  if(p.schema!==d.SCHEMA_VERSION||p.ratingVersion!==d.RATING_VERSION||p.game!==c.game||p.status!=='solved'||p.budgetHit||p.fingerprint!==fingerprint)return false;
+  if(!persistenceDifficultyCertified(c,p,d))return false;
   if(c.generationStats?.fingerprint&&c.generationStats.fingerprint!==fingerprint)return false;
   if(c.challenge&&c.challengeFingerprint!==fingerprint)return false;
   if(c.daily&&c.dailyFingerprint!==fingerprint)return false;
@@ -1646,106 +1556,20 @@ function resetCurrent(){
 }
 
 // ===== v2.7.0 — background precomputation =====
-const PRECOMPUTE_TARGET=2;
-const PRECOMPUTE_COMBOS=GAME_IDS.flatMap(game=>['easy','medium','hard','expert'].map(diff=>[game,diff]));
-const precomputeCache=new Map();
-const precomputeReservedIdentities=new Map();
-let precomputeWorker=null,precomputeBusy=false,precomputeRequestId=0,precomputeDay=null,precomputePreferred=null,precomputeStarted=false;
-
-function precomputeKey(game,diff){return `${game}:${diff}`}
-function precomputeBucket(game,diff){
-  let k=precomputeKey(game,diff);if(!precomputeCache.has(k))precomputeCache.set(k,[]);return precomputeCache.get(k)
-}
-function precomputeReservedSet(game){if(!precomputeReservedIdentities.has(game))precomputeReservedIdentities.set(game,new Set());return precomputeReservedIdentities.get(game)}
-function resetPrecomputeDay(day=localDay()){
-  if(precomputeDay===day)return;
-  precomputeDay=day;precomputeCache.clear();precomputeReservedIdentities.clear()
-}
-function precomputeForbiddenKeys(game,day=localDay()){
-  resetPrecomputeDay(day);
-  try{
-    if(!GameRegistry.hasCapability(game,'generationIdentity'))return [];
-    let out=new Set(precomputeReservedSet(game));
-    for(let identity of generationSessionSet(game,day))out.add(identity);
-    return [...out]
-  }catch(_){return []}
-}
-function ensurePrecomputeWorker(){
-  if(precomputeWorker)return precomputeWorker;
-  if(!WebPlatform.workers.supported())return null;
-  try{
-    let w=WebPlatform.workers.create('./precompute-worker.js?v=3.1.4');if(!w)return null;
-    w.onmessage=e=>{
-      let m=e.data||{};precomputeBusy=false;
-      if(m.ok&&m.day===precomputeDay&&m.candidate&&precomputeCandidateCertified(m.game,m.diff,m.candidate)){
-        let bucket=precomputeBucket(m.game,m.diff);
-        if(bucket.length<PRECOMPUTE_TARGET){
-          let identity=generatedCandidateIdentity(m.game,m.candidate);
-          if(identity==null)bucket.push(m.candidate);
-          else{
-            let displayed=false;try{displayed=generationSessionSet(m.game,m.day).has(identity)}catch(_){}
-            let reserved=precomputeReservedSet(m.game);
-            if(!displayed&&!reserved.has(identity)){m.candidate.__generationIdentity=identity;reserved.add(identity);bucket.push(m.candidate)}
-          }
-        }
-      }
-      setTimeout(()=>schedulePrecompute(),80)
-    };
-    w.onerror=()=>{precomputeBusy=false;try{w.terminate()}catch(_){};precomputeWorker=null};
-    precomputeWorker=w;return w
-  }catch(_){return null}
-}
-function precomputeComboSupported(game,diff){return PRECOMPUTE_COMBOS.some(([g,d])=>g===game&&d===diff)}
-function precomputeCandidateCertified(game,diff,candidate){try{return precomputeComboSupported(game,diff)&&generatedCandidateCertified(game,diff,candidate)}catch(_){return false}}
-function precomputeOrder(){
-  let preferred=precomputePreferred,all=PRECOMPUTE_COMBOS.slice();
-  if(!preferred)return all.filter(x=>x[1]!=='expert').concat(all.filter(x=>x[1]==='expert'));
-  let exact=[],same=[],medium=[],rest=[],deferredExpert=[];
-  for(let x of all){
-    if(x[0]===preferred.game&&x[1]===preferred.diff)exact.push(x);
-    else if(x[1]==='expert')deferredExpert.push(x);
-    else if(x[0]===preferred.game)same.push(x);
-    else if(x[1]==='medium')medium.push(x);
-    else rest.push(x)
-  }
-  return exact.concat(same,medium,rest,deferredExpert)
-}
-function schedulePrecompute(game=null,diff=null){
-  if(game&&diff)precomputePreferred={game,diff};
-  if(!precomputeStarted||WebPlatform.lifecycle.isHidden()||precomputeBusy)return;
-  let day=localDay();resetPrecomputeDay(day);
-  let w=ensurePrecomputeWorker();if(!w)return;
-  for(let [g,d] of precomputeOrder()){
-    if(precomputeBucket(g,d).length>=PRECOMPUTE_TARGET)continue;
-    precomputeBusy=true;
-    let id=++precomputeRequestId;
-    w.postMessage({cmd:'generate',id,game:g,diff:d,day,forbiddenKeys:precomputeForbiddenKeys(g,day)});
-    return
-  }
-}
-function startBackgroundPrecompute(game=current?.game,diff=current?.diff){
-  precomputeStarted=true;if(game&&diff)precomputePreferred={game,diff};
-  resetPrecomputeDay(localDay());setTimeout(()=>schedulePrecompute(),120)
-}
-function takePrecomputed(game,diff,day=localDay()){
-  resetPrecomputeDay(day);
-  let bucket=precomputeBucket(game,diff);
-  while(bucket.length){
-    let g=bucket.shift(),identity=generatedCandidateIdentity(game,g);
-    if(identity!=null){
-      precomputeReservedSet(game).delete(identity);
-      let already=false;try{already=generationSessionSet(game,day).has(identity)}catch(_){}
-      if(already)continue;
-      rememberGeneratedCandidateThisSession(game,g,day)
-    }
-    return g
-  }
-  return null
-}
-function precomputeStatus(){
-  let out={};for(let [g,d] of PRECOMPUTE_COMBOS)out[precomputeKey(g,d)]=precomputeBucket(g,d).length;return out
-}
-WebPlatform.lifecycle.onVisibilityChange(()=>{if(!WebPlatform.lifecycle.isHidden()&&precomputeStarted)setTimeout(()=>schedulePrecompute(),150)});
+const WebPrecompute=QuadludWebPrecompute.create({gameIds:GAME_IDS,gameRegistry:GameRegistry,webPlatform:WebPlatform,localDay,generationSessionSet,rememberGeneratedCandidateThisSession,generatedCandidateCertified:runtimeCandidateCertified,generatedCandidateIdentity,workerUrl:`./precompute-worker.js?v=${VERSION}`,schedule:(fn,ms)=>setTimeout(fn,ms)});
+const PRECOMPUTE_TARGET=WebPrecompute.target,PRECOMPUTE_COMBOS=WebPrecompute.combos;
+function precomputeKey(game,diff){return WebPrecompute.key(game,diff)}
+function precomputeBucket(game,diff){return WebPrecompute.bucket(game,diff)}
+function resetPrecomputeDay(day=localDay()){return WebPrecompute.resetDay(day)}
+function precomputeForbiddenKeys(game,day=localDay()){return WebPrecompute.forbiddenKeys(game,day)}
+function ensurePrecomputeWorker(){return WebPrecompute.ensureWorker()}
+function precomputeComboSupported(game,diff){return WebPrecompute.comboSupported(game,diff)}
+function precomputeCandidateCertified(game,diff,candidate){return WebPrecompute.certified(game,diff,candidate)}
+function precomputeOrder(){return WebPrecompute.order()}
+function schedulePrecompute(game=null,diff=null){return WebPrecompute.schedule(game,diff)}
+function startBackgroundPrecompute(game=current?.game,diff=current?.diff){return WebPrecompute.start(game,diff)}
+function takePrecomputed(game,diff,day=localDay()){return WebPrecompute.take(game,diff,day)}
+function precomputeStatus(){return WebPrecompute.status()}
 
 function launch(game,diff){if(!GameRegistry.hasGame(game))throw new Error(`Unknown QUADLUD game: ${game}`);let previousGame=current?.game||null,previousDifficulty=current?.diff||null;closePreviousAttempt();clearSaved();stopTimer();paused=false;setBusy(true);current={game,diff};requestAnimationFrame(()=>{try{let candidate=normalLaunchCandidate(game,diff);installGeneratedSession(game,diff,candidate,{context:'normal'});historyInit(true);diagnosticStart('normal',{previousGame,previousDifficulty});updateHistoryButtons();statsStart(current);startTimer(true,0,false);saveCurrent();haptic(8)}finally{setBusy(false);startBackgroundPrecompute(game,diff)}})}
 function resumeSaved(){let s=getSaved();if(!s)return home();stopTimer();let c=DataSerialization.deserializeCurrentState(s.current);current=c;historyInit(false);renderGameUi(c);startTimer(true,s.elapsed||0,false);diagnosticStart('resume',{resumed:true});updatePauseButton();refreshExplorationPanel();showToast(tr('restored'));if(!c.training)startBackgroundPrecompute(c.game,c.diff)}

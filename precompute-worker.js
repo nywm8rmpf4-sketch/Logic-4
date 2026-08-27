@@ -44,9 +44,16 @@ function __build(game,diff,forbiddenKeys){
   }
   throw new Error('No fresh candidate matching logical profile')
 }
+function __workerCandidateCertified(game,diff,candidate){
+  if(generatedCandidateCertified(game,diff,candidate))return true;
+  try{
+    let difficulty=self.QuadludGameRegistry.requireCapability(game,'difficulty');
+    return typeof difficulty?.candidateCertified==='function'&&difficulty.candidateCertified(diff,candidate)&&generatedCandidateFingerprint(game,candidate)===candidate?.difficultyProfile?.fingerprint
+  }catch(_){return false}
+}
 function __buildCertified(game,diff,forbiddenKeys){
   let candidate=__build(game,diff,forbiddenKeys);
-  if(!generatedCandidateCertified(game,diff,candidate))throw new Error('Generated candidate failed certified difficulty validation');
+  if(!__workerCandidateCertified(game,diff,candidate))throw new Error('Generated candidate failed certified difficulty validation');
   return candidate
 }
 self.onmessage=e=>{

@@ -167,16 +167,68 @@ function generateQueensPuzzleHistoricalV223(diff){
 }
 
 const QUEEN_QPOOL4_TIERS=Object.freeze(new Set(['medium','hard','expert']));
+const QUEEN_HUMAN_BAND_INDEX_VERSION='HUMDIFF-INT3-nearest-v1';
+const QUEEN_HUMAN_BAND_MODEL_SHA256='55d644c18b85db877532d273c4563235782407efebc048b17a39bef988da001a';
+const QUEEN_HUMAN_BAND_CALIBRATION_SHA256='7bae112898af0bbf46236db4051d271cd44224452eead910d5289b5ba5a0d5e7';
+const QUEEN_HUMAN_BAND_EXPECTED_COUNTS=Object.freeze({medium:192,hard:159,expert:104});
+const QUEEN_HUMAN_BAND_OVERRIDES=Object.freeze({
+  'medium:128':'hard','medium:136':'hard','medium:146':'hard','medium:155':'hard','medium:162':'hard','medium:168':'hard','medium:172':'hard','medium:191':'hard','medium:195':'hard','medium:197':'hard','medium:199':'hard',
+  'hard:13':'medium','hard:15':'medium','hard:32':'expert','hard:33':'expert','hard:34':'expert','hard:36':'expert','hard:43':'expert','hard:50':'expert','hard:51':'expert','hard:53':'expert','hard:54':'expert','hard:55':'expert','hard:57':'expert','hard:77':'medium','hard:95':'expert','hard:97':'expert','hard:108':'expert',
+  'expert:1':'hard','expert:5':'hard','expert:9':'hard','expert:10':'hard','expert:16':'hard','expert:17':'hard','expert:18':'hard','expert:20':'hard','expert:48':'hard','expert:70':'hard','expert:76':'hard'
+});
+const QUEEN_HUMAN_BAND_LOGICAL_TIER=Object.freeze({easy:0,medium:1,hard:2,expert:3});
+let queenHumanBandIndexCache=null;
+function queenHumanBandForRef(tier,index){return QUEEN_HUMAN_BAND_OVERRIDES[`${tier}:${index}`]||tier}
+function queenHumanBandIndex(){
+  if(queenHumanBandIndexCache)return queenHumanBandIndexCache;
+  if(!queenQpool4Available())throw new Error('Queens qpool4 runtime data unavailable for human bands');
+  const byBand={medium:[],hard:[],expert:[]};
+  for(const tier of QUEEN_QPOOL4_TIERS)for(let index=0;index<QuadludQueensQpool4.size(tier);index++)byBand[queenHumanBandForRef(tier,index)].push(Object.freeze({tier,index}));
+  for(const band of QUEEN_QPOOL4_TIERS){if(byBand[band].length!==QUEEN_HUMAN_BAND_EXPECTED_COUNTS[band])throw new Error(`Queens human-band count mismatch (${band})`);Object.freeze(byBand[band])}
+  queenHumanBandIndexCache=Object.freeze(byBand);return queenHumanBandIndexCache
+}
+function queenHumanBandSize(band){const refs=queenHumanBandIndex()[band];if(!refs)throw new Error('Unknown Queens human difficulty band');return refs.length}
+function queenHumanBandSnapshot(){
+  const byBand=queenHumanBandIndex(),bands={};for(const band of QUEEN_QPOOL4_TIERS)bands[band]=byBand[band].map(ref=>({tier:ref.tier,index:ref.index,humanDifficultyBand:band}));
+  return {schema:1,indexVersion:QUEEN_HUMAN_BAND_INDEX_VERSION,modelSha256:QUEEN_HUMAN_BAND_MODEL_SHA256,calibrationSha256:QUEEN_HUMAN_BAND_CALIBRATION_SHA256,counts:{...QUEEN_HUMAN_BAND_EXPECTED_COUNTS},overrides:{...QUEEN_HUMAN_BAND_OVERRIDES},bands}
+}
+function queenHumanBandRefAt(band,index){const refs=queenHumanBandIndex()[band],i=Number(index);if(!refs||!Number.isInteger(i)||i<0||i>=refs.length)throw new RangeError('Invalid Queens human difficulty band index');return refs[i]}
+function queenHumanBandCandidateCertified(requestedBand,candidate){
+  const profile=candidate?.difficultyProfile,stats=candidate?.generationStats;
+  if(!QUEEN_QPOOL4_TIERS.has(requestedBand)||!profile||profile.status!=='solved'||profile.budgetHit||!stats)return false;
+  if(stats.difficultyAxis!=='human'||stats.targetDifficulty!==requestedBand||stats.humanDifficultyBand!==requestedBand||stats.humanDifficultyIndexVersion!==QUEEN_HUMAN_BAND_INDEX_VERSION||stats.humanDifficultyCalibrationSha256!==QUEEN_HUMAN_BAND_CALIBRATION_SHA256||stats.humanDifficultyModelSha256!==QUEEN_HUMAN_BAND_MODEL_SHA256)return false;
+  const sourceTier=stats.poolTier,poolIndex=Number(stats.poolIndex),humanBandIndex=Number(stats.humanBandIndex);
+  if(!QUEEN_QPOOL4_TIERS.has(sourceTier)||!Number.isInteger(poolIndex)||!Number.isInteger(humanBandIndex))return false;
+  let ref;try{ref=queenHumanBandRefAt(requestedBand,humanBandIndex)}catch(_){return false}
+  if(ref.tier!==sourceTier||ref.index!==poolIndex||profile.difficulty!==sourceTier||stats.logicalDifficulty!==profile.difficulty||profile.minimumRequiredTier!==QUEEN_HUMAN_BAND_LOGICAL_TIER[profile.difficulty]||stats.logicalMinimumRequiredTier!==profile.minimumRequiredTier)return false;
+  const expected=QuadludQueensQpool4.entryAt(sourceTier,poolIndex);
+  return !!expected?.difficultyProfile&&expected.difficultyProfile.fingerprint===profile.fingerprint&&stats.fingerprint===profile.fingerprint
+}
+const QUEEN_PEDAGOGICAL_GENERATION_CONTEXTS=Object.freeze(new Set(['learning','training']));
 function queenQpool4Available(){return !!QuadludQueensQpool4&&typeof QuadludQueensQpool4.size==='function'&&typeof QuadludQueensQpool4.entryAt==='function'}
+function queenQpool4Result(requestedDifficulty,sourceTier,index,entry,strategy,extraStats={}){
+  if(!entry||!Array.isArray(entry.reg)||!Array.isArray(entry.sol)||!entry.difficultyProfile)throw new Error(`Queens qpool4 entry unavailable: ${sourceTier}/${index}`);
+  const profile=JSON.parse(JSON.stringify(entry.difficultyProfile));
+  const stats={generatorVersion:typeof DifficultyRating!=='undefined'?DifficultyRating.GENERATOR_VERSION:1,targetDifficulty:requestedDifficulty,strategy,attempts:1,rejected:{structure:0,uniqueness:0,ratingMismatch:0,budgetExhausted:0,invalid:0},fallbackUsed:false,fingerprint:profile.fingerprint,minimumRequiredTier:profile.minimumRequiredTier,totalLogicalSteps:profile.totalLogicalSteps,poolVersion:QuadludQueensQpool4.POOL_VERSION,poolTier:sourceTier,poolEntryId:entry.id,poolIndex:index,...extraStats};
+  return {n:entry.n,sol:[...entry.sol],reg:entry.reg.map(r=>[...r]),difficultyProfile:profile,generationStats:stats}
+}
 function queenQpool4Candidate(diff){
   if(!QUEEN_QPOOL4_TIERS.has(diff))throw new Error(`Queens qpool4 does not support difficulty: ${diff}`);
   if(!queenQpool4Available())throw new Error('Queens qpool4 runtime data unavailable');
   const size=QuadludQueensQpool4.size(diff);if(!Number.isInteger(size)||size<1)throw new Error(`Queens qpool4 is empty for difficulty: ${diff}`);
   const index=Math.floor(Math.random()*size),entry=QuadludQueensQpool4.entryAt(diff,index);
-  if(!entry||!Array.isArray(entry.reg)||!Array.isArray(entry.sol)||!entry.difficultyProfile)throw new Error(`Queens qpool4 entry unavailable: ${diff}/${index}`);
-  const profile=JSON.parse(JSON.stringify(entry.difficultyProfile));
-  const stats={generatorVersion:typeof DifficultyRating!=='undefined'?DifficultyRating.GENERATOR_VERSION:1,targetDifficulty:diff,strategy:'qpool4',attempts:1,rejected:{structure:0,uniqueness:0,ratingMismatch:0,budgetExhausted:0,invalid:0},fallbackUsed:false,fingerprint:profile.fingerprint,minimumRequiredTier:profile.minimumRequiredTier,totalLogicalSteps:profile.totalLogicalSteps,poolVersion:QuadludQueensQpool4.POOL_VERSION,poolEntryId:entry.id,poolIndex:index};
-  return {n:entry.n,sol:[...entry.sol],reg:entry.reg.map(r=>[...r]),difficultyProfile:profile,generationStats:stats}
+  return queenQpool4Result(diff,diff,index,entry,'qpool4')
+}
+function queenHumanBandCandidate(diff){
+  if(!QUEEN_QPOOL4_TIERS.has(diff))throw new Error(`Queens human bands do not support difficulty: ${diff}`);
+  const size=queenHumanBandSize(diff);if(!Number.isInteger(size)||size<1)throw new Error(`Queens human difficulty band is empty: ${diff}`);
+  const humanBandIndex=Math.floor(Math.random()*size),ref=queenHumanBandRefAt(diff,humanBandIndex),entry=QuadludQueensQpool4.entryAt(ref.tier,ref.index);
+  const profile=entry?.difficultyProfile;if(!profile)throw new Error(`Queens human difficulty entry unavailable: ${diff}/${humanBandIndex}`);
+  return queenQpool4Result(diff,ref.tier,ref.index,entry,'qpool4-human-band',{
+    difficultyAxis:'human',humanDifficultyBand:diff,humanDifficultyIndexVersion:QUEEN_HUMAN_BAND_INDEX_VERSION,
+    humanDifficultyCalibrationSha256:QUEEN_HUMAN_BAND_CALIBRATION_SHA256,humanDifficultyModelSha256:QUEEN_HUMAN_BAND_MODEL_SHA256,
+    humanBandIndex,logicalDifficulty:profile.difficulty,logicalMinimumRequiredTier:profile.minimumRequiredTier
+  })
 }
 const QUEENS_CHALLENGE_GENERATOR_LEGACY=1,QUEENS_CHALLENGE_GENERATOR_QPOOL4=2;
 function queenChallengeGeneratorVersion(diff){
@@ -193,7 +245,11 @@ function generateQueensPuzzle(diff,options){
   }
   if(protocolGeneration!=null)throw new Error(`Unsupported Queens protocol generation: ${protocolGeneration}`);
   if(diff==='easy')return generateQueensPuzzleHistoricalV223(diff);
-  if(QUEEN_QPOOL4_TIERS.has(diff))return queenQpool4Candidate(diff);
+  if(QUEEN_QPOOL4_TIERS.has(diff)){
+    const context=String(options?.context||'').toLowerCase();
+    if(QUEEN_PEDAGOGICAL_GENERATION_CONTEXTS.has(context))return queenQpool4Candidate(diff);
+    return queenHumanBandCandidate(diff)
+  }
   throw new Error('Unknown Queens difficulty')
 }
 
@@ -222,6 +278,6 @@ function queenPublicPuzzleFromCandidate(candidate){return {game:'queens',n:candi
 function queenPublicPuzzleFromSession(session){return {game:'queens',n:session.n,reg:session.reg}}
 function queenGenerationIdentity(candidate){return queenCanonicalSignature(candidate.reg)}
 
-const QuadludQueensGenerator=Object.freeze({generateQueensPuzzle,generateQueensPuzzleHistoricalV223,queenQpool4Candidate,queenChallengeGeneratorVersion,challengeGeneratorVersion:queenChallengeGeneratorVersion,queenCandidate,countQueensGenerated,randomQueenSolution,queenRegionsFromSolution,queenRegionConnectedAfterMove,queenSingletonRegions,queenTwoCellRegions,normalizeQueenRegionIds,queenRegionSignature,queenCanonicalSignature,publicPuzzleFromCandidate:queenPublicPuzzleFromCandidate,publicPuzzleFromSession:queenPublicPuzzleFromSession,generationIdentity:queenGenerationIdentity});
+const QuadludQueensGenerator=Object.freeze({generateQueensPuzzle,generateQueensPuzzleHistoricalV223,queenQpool4Candidate,queenHumanBandCandidate,queenHumanBandCandidateCertified,queenHumanBandSize,queenHumanBandRefAt,queenHumanBandSnapshot,QUEEN_HUMAN_BAND_INDEX_VERSION,QUEEN_HUMAN_BAND_MODEL_SHA256,QUEEN_HUMAN_BAND_CALIBRATION_SHA256,QUEEN_HUMAN_BAND_EXPECTED_COUNTS,QUEEN_HUMAN_BAND_OVERRIDES,queenChallengeGeneratorVersion,challengeGeneratorVersion:queenChallengeGeneratorVersion,queenCandidate,countQueensGenerated,randomQueenSolution,queenRegionsFromSolution,queenRegionConnectedAfterMove,queenSingletonRegions,queenTwoCellRegions,normalizeQueenRegionIds,queenRegionSignature,queenCanonicalSignature,publicPuzzleFromCandidate:queenPublicPuzzleFromCandidate,publicPuzzleFromSession:queenPublicPuzzleFromSession,generationIdentity:queenGenerationIdentity});
 if(typeof globalThis!=='undefined')globalThis.QuadludQueensGenerator=QuadludQueensGenerator;
 if(typeof module!=='undefined'&&module.exports)module.exports=QuadludQueensGenerator;

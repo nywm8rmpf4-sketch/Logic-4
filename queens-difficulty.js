@@ -115,6 +115,10 @@ function solveQueensTier({puzzle,tierIndex},options={}){
   return {status:'budget-exhausted',budgetHit:true,...sessionMetrics(session,tierIndex,availability),trace:copy(trace)};
 }
 function createAdapter(options={}){return {solveTier(args){return solveQueensTier(args,options)}}}
+function humanBandCandidateCertified(requestedDifficulty,candidate){
+  const generator=root?.QuadludQueensGenerator;
+  return !!generator&&typeof generator.queenHumanBandCandidateCertified==='function'&&generator.queenHumanBandCandidateCertified(requestedDifficulty,candidate)
+}
 function structureOf(puzzle){let p=canonicalQueens(puzzle),sizes={};for(const id of p.reg.flat())sizes[id]=(sizes[id]||0)+1;let values=Object.values(sizes);return {n:p.n,regionCount:values.length,regionSizes:values.slice().sort((a,b)=>a-b),singletonRegions:values.filter(x=>x===1).length,twoCellRegions:values.filter(x=>x===2).length}}
 function ratePuzzle(puzzle,options={}){
   let publicPuzzle=canonicalQueens(puzzle),run=DR.runMinimumRequiredTier({puzzle:publicPuzzle,adapter:createAdapter(options)}),metrics=run.winningAttempt?.result||{};
@@ -130,6 +134,6 @@ function ratePuzzle(puzzle,options={}){
   return {...run,profile};
 }
 
-root.QueensDifficulty={VERSION:2,TIER_POLICY,canonicalizePublicPuzzle:canonicalizeQueensPublicPuzzle,nextAllowedDeduction,solveTier:solveQueensTier,createAdapter,ratePuzzle,_test:{canonicalQueens,initialBoard,solved,directCandidates,nextAllowedDeduction,sessionMetrics}};
+root.QueensDifficulty={VERSION:2,TIER_POLICY,canonicalizePublicPuzzle:canonicalizeQueensPublicPuzzle,nextAllowedDeduction,solveTier:solveQueensTier,createAdapter,ratePuzzle,candidateCertified:humanBandCandidateCertified,_test:{canonicalQueens,initialBoard,solved,directCandidates,nextAllowedDeduction,sessionMetrics}};
 if(typeof module!=='undefined'&&module.exports)module.exports=root.QueensDifficulty;
 })(typeof globalThis!=='undefined'?globalThis:this);

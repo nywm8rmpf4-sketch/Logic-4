@@ -6,7 +6,7 @@
  */
 'use strict';
 
-const QUEEN_REGION_COLORS=['#f6d68a','#c9dca5','#b9d8e9','#d9c4e8','#f3b8ad','#b5dbc9','#e7c9a3','#c6c7e9','#c4dfd7'];
+const QUEEN_REGION_COLORS=['#F2D27E','#C9B5E4','#A9D6B2','#EFAFC0','#A6CDEA','#F0B78D','#91CCC5','#C8D99E','#B6BDE5'];
 
 function queenIllegalCells(){
   let bad=new Set(),q=[];for(let r=0;r<current.n;r++)for(let c=0;c<current.n;c++)if(current.state[r][c]===2)q.push([r,c]);
