@@ -1726,7 +1726,7 @@ function focusHintContext(kind,[r,c],message={}){
   for(let i=0;i<n;i++){add(r,i);add(i,c)}
   for(let cell of gamePedagogy(kind).coach.contextCells({target:[r,c],message,current})||[])add(cell[0],cell[1])
 }
-function clearHintFocus(){document.querySelectorAll('.hint-focus,.hint-context').forEach(x=>{x.classList.remove('hint-focus');x.classList.remove('hint-context')})}
+function clearHintFocus(){document.querySelectorAll('.hint-focus,.hint-context').forEach(x=>{x.classList.remove('hint-focus');x.classList.remove('hint-context')});document.querySelectorAll('.queen-region-focus').forEach(x=>{x.classList.remove('queen-region-focus','queen-region-focus-top','queen-region-focus-right','queen-region-focus-bottom','queen-region-focus-left');x.removeAttribute('data-region-focus-badge')})}
 function touchSave(fn,action='MOVE'){return()=>{if(paused)return;let before=historySnapshotKey();closeHintNotice();current.hintFlow=null;clearHintFocus();fn();historyRecord(action,before);saveCurrent()}}
 
 
