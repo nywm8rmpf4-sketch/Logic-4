@@ -32,7 +32,30 @@
     const regionColors=deps.regionColors||root?.QuadludQueensRuntime?.regionColors||['#F2D27E','#C9B5E4','#A9D6B2','#EFAFC0','#A6CDEA','#F0B78D','#91CCC5','#C8D99E','#B6BDE5'];
     const queenIllegalCells=deps.queenIllegalCells||root?.queenIllegalCells;if(typeof queenIllegalCells!=='function')throw new Error('QUADLUD Couronnes UI dependency unavailable: queenIllegalCells');
 
-    function lighthouseMarkup(){return '<span class="queen lighthouse-piece" aria-hidden="true"><svg class="lighthouse-svg" viewBox="0 0 64 64" focusable="false" aria-hidden="true"><path class="lh-beam" d="M21 16 L5 11 L5 21 Z"/><path class="lh-beam" d="M43 16 L59 11 L59 21 Z"/><path class="lh-roof" d="M23 14 L32 7 L41 14 Z"/><rect class="lh-lantern" x="24" y="14" width="16" height="10" rx="2"/><rect class="lh-light" x="29" y="16" width="6" height="6" rx="2"/><path class="lh-tower" d="M25 24 H39 L43 51 H21 Z"/><rect class="lh-window" x="29" y="31" width="6" height="8" rx="1.5"/><path class="lh-base" d="M18 51 H46 V56 H18 Z"/><path class="lh-base" d="M14 57 H50 V60 H14 Z"/></svg></span>'}
+    function lighthouseMarkup(){return '<span class="queen lighthouse-piece" aria-hidden="true"><span class="lighthouse-halo" aria-hidden="true" style="position:absolute;width:72%;height:72%;border-radius:50%;background:radial-gradient(circle,rgba(241,184,75,.32) 0%,rgba(241,184,75,.13) 42%,rgba(241,184,75,0) 72%);opacity:0;pointer-events:none"></span><svg class="lighthouse-svg" viewBox="0 0 64 64" focusable="false" aria-hidden="true" style="transform-origin:center"><path class="lh-beam" d="M21 16 L5 11 L5 21 Z"/><path class="lh-beam" d="M43 16 L59 11 L59 21 Z"/><path class="lh-roof" d="M23 14 L32 7 L41 14 Z"/><rect class="lh-lantern" x="24" y="14" width="16" height="10" rx="2"/><rect class="lh-light" x="29" y="16" width="6" height="6" rx="2"/><path class="lh-tower" d="M25 24 H39 L43 51 H21 Z"/><rect class="lh-window" x="29" y="31" width="6" height="8" rx="1.5"/><path class="lh-base" d="M18 51 H46 V56 H18 Z"/><path class="lh-base" d="M14 57 H50 V60 H14 Z"/></svg></span>'}
+    function lighthouseTitleMarkup(){return '<span class="lighthouses-title-icon" aria-hidden="true"><svg class="lighthouses-title-svg" viewBox="0 0 64 64" focusable="false" aria-hidden="true"><path class="lh-beam" d="M21 16 L5 11 L5 21 Z"/><path class="lh-beam" d="M43 16 L59 11 L59 21 Z"/><path class="lh-roof" d="M23 14 L32 7 L41 14 Z"/><rect class="lh-lantern" x="24" y="14" width="16" height="10" rx="2"/><rect class="lh-light" x="29" y="16" width="6" height="6" rx="2"/><path class="lh-tower" d="M25 24 H39 L43 51 H21 Z"/><rect class="lh-window" x="29" y="31" width="6" height="8" rx="1.5"/><path class="lh-base" d="M18 51 H46 V56 H18 Z"/><path class="lh-base" d="M14 57 H50 V60 H14 Z"/></svg></span>'}
+
+    function reducedMotionRequested(){return typeof root?.matchMedia==='function'&&root.matchMedia('(prefers-reduced-motion: reduce)').matches}
+    function animateLighthouse(cell){
+      if(!cell||reducedMotionRequested())return false;
+      const svg=cell.querySelector?.('.lighthouse-svg'),halo=cell.querySelector?.('.lighthouse-halo');
+      let animated=false;
+      if(svg&&typeof svg.animate==='function'){
+        svg.animate([
+          {opacity:.28,transform:'translateY(2px) scale(.82)'},
+          {opacity:1,transform:'translateY(0) scale(1.055)',offset:.65},
+          {opacity:1,transform:'translateY(0) scale(1)'}
+        ],{duration:300,easing:'cubic-bezier(.2,.8,.25,1)',fill:'none'});animated=true
+      }
+      if(halo&&typeof halo.animate==='function'){
+        halo.animate([
+          {opacity:0,transform:'scale(.45)'},
+          {opacity:.55,transform:'scale(.82)',offset:.35},
+          {opacity:0,transform:'scale(1.25)'}
+        ],{duration:460,easing:'ease-out',fill:'none'});animated=true
+      }
+      return animated
+    }
 
     function coordinateMarkup(n){
       const labelStyle='display:grid;place-items:center;color:var(--muted);font-size:clamp(10px,1.8vw,11px);font-weight:700;line-height:1;letter-spacing:.01em;user-select:none';
@@ -88,13 +111,15 @@
       return true
     }
 
-    function draw(){
+    function draw(animateTarget=null){
       const current=getCurrent(),board=query('#qboard');
       if(!current||current.game!=='queens'||!board)return false;
+      const animateKey=Array.isArray(animateTarget)&&animateTarget.length===2?`${animateTarget[0]},${animateTarget[1]}`:null;
       if(current.completed)board.classList.add('queens-win');
       [...board.children].forEach((cell,i)=>{
         const r=Math.floor(i/current.n),c=i%current.n,value=current.state[r][c];
         cell.innerHTML=value===2?lighthouseMarkup():value===1?'<span class="mark" aria-hidden="true">×</span>':'';
+        if(value===2&&animateKey===`${r},${c}`)animateLighthouse(cell);
         cell.classList.remove('error')
       });
       applyConfiguredIllegalClasses(board,queenIllegalCells(),current.n);
@@ -118,7 +143,11 @@
 
     function render(session){
       const colors=regionColors;
-      shell(gameLabel('queens'),`${session.n}×${session.n} · ${difficultyLabel(session.diff)} · ${tr('generated')}`,session.diff,`<div class="queen-options"><label class="switch-row"><input type="checkbox" id="queenAutoCross" ${autoCrossEnabled()?'checked':''}><span>${tr('autoCross')}</span></label></div><div class="board-wrap queens-coordinate-wrap" style="display:grid;grid-template-columns:clamp(17px,3vw,20px) minmax(0,1fr);grid-template-rows:clamp(16px,2.5vw,18px) minmax(0,1fr);gap:2px 3px;align-items:stretch">${coordinateMarkup(session.n)}<div class="board" id="qboard" style="grid-column:2;grid-row:2;grid-template-columns:repeat(${session.n},minmax(0,1fr));grid-template-rows:repeat(${session.n},minmax(0,1fr))"></div></div>`,gameRules('queens'));
+      shell(gameLabel('queens'),`${tr('queensSub')} · ${session.n}×${session.n} · ${difficultyLabel(session.diff)} · ${tr('generated')}`,session.diff,`<div class="queen-options"><label class="switch-row"><input type="checkbox" id="queenAutoCross" ${autoCrossEnabled()?'checked':''}><span>${tr('autoCross')}</span></label></div><div class="board-wrap queens-coordinate-wrap" style="display:grid;grid-template-columns:clamp(17px,3vw,20px) minmax(0,1fr);grid-template-rows:clamp(16px,2.5vw,18px) minmax(0,1fr);gap:2px 3px;align-items:stretch">${coordinateMarkup(session.n)}<div class="board" id="qboard" style="grid-column:2;grid-row:2;grid-template-columns:repeat(${session.n},minmax(0,1fr));grid-template-rows:repeat(${session.n},minmax(0,1fr))"></div></div>`,gameRules('queens'));
+      const panel=query('.panel'),title=query('.game-head h1');
+      panel?.classList.add('lighthouses-panel');
+      title?.classList.add('lighthouses-title');
+      if(title&&!title.querySelector('.lighthouses-title-icon'))title.insertAdjacentHTML('afterbegin',lighthouseTitleMarkup());
       const board=query('#qboard');
       let dragging=false,pointerId=null,startCell=null,dragAxis=null,dragged=false,dragMode='add',visited=new Set(),historyBefore=null;
 
@@ -157,7 +186,7 @@
         closeHintNotice();current.hintFlow=null;clearHintFocus();
         const prev=current.state[r][c],next=(prev+1)%3;
         if(prev===2&&next===0)markBacktrack();
-        setCell(r,c,next);haptic(next===2?16:7);draw();
+        setCell(r,c,next);haptic(next===2?16:7);draw(next===2?[r,c]:null);
         historyRecord({type:'QUEEN_CYCLE',primaryTarget:[r,c],input:'keyboard'},before);saveCurrent();maybeAutoFinish();a11yAnnounce(cell.getAttribute('aria-label'))
       }});
 
@@ -182,7 +211,7 @@
         const cell=startCell;dragging=false;pointerId=null;
         if(!dragged&&cell){
           const current=getCurrent(),r=+cell.dataset.r,c=+cell.dataset.c;current.hintFlow=null;clearHintFocus();
-          const prev=current.state[r][c],next=(prev+1)%3;if(prev===2&&next===0)markBacktrack();setCell(r,c,next);haptic(next===2?16:7);draw()
+          const prev=current.state[r][c],next=(prev+1)%3;if(prev===2&&next===0)markBacktrack();setCell(r,c,next);haptic(next===2?16:7);draw(next===2?[r,c]:null)
         }else if(dragged)haptic(7);
         historyRecord({type:dragged?'QUEEN_DRAG':'QUEEN_CYCLE',primaryTarget:(!dragged&&cell)?[+cell.dataset.r,+cell.dataset.c]:null},historyBefore);
         saveCurrent();maybeAutoFinish();historyBefore=null;startCell=null;dragAxis=null;visited.clear()

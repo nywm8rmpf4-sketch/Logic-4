@@ -208,7 +208,9 @@ function queenFormat(key,vars={}){let text=String(tr(key)||key);return text.repl
 
 function queenUnitListHuman(units){return (units||[]).map(queenUnitHuman).join(tr('qlAnd'))}
 
-function queenCellListHuman(cells,limit=8){let a=(cells||[]).map(x=>cellName(x[0],x[1]));if(a.length<=limit)return a.join(', ');return a.slice(0,limit).join(', ')+queenFormat('qlMore',{count:a.length-limit})}
+function queenCellCoordinate(r,c){let p=globalThis?.QuadludQueensReasoningPresenter;if(p&&typeof p.cellCoordinate==='function')return p.cellCoordinate(r,c);return typeof cellName==='function'?cellName(r,c):`${r},${c}`}
+
+function queenCellListHuman(cells,limit=8){let a=(cells||[]).map(x=>queenCellCoordinate(x[0],x[1]));if(a.length<=limit)return a.join(', ');return a.slice(0,limit).join(', ')+queenFormat('qlMore',{count:a.length-limit})}
 
 function queenConflictReasonHuman(reasons){let r=reasons?.[0],key=r==='ROW'?'qlConflictRow':r==='COLUMN'?'qlConflictColumn':r==='REGION'?'qlConflictRegion':r==='ADJACENCY'?'qlConflictAdjacency':'qlConflictRule';return tr(key)}
 
@@ -308,10 +310,10 @@ function queenCellAllowed(r,c){
 
 function queenDirectExclusionReason(r,c){
   for(let rr=0;rr<current.n;rr++)for(let cc=0;cc<current.n;cc++)if(current.state[rr][cc]===2){
-    if(rr===r)return {technique:'Q_EXCLUSION_ROW',text:lang()==='fr'?`la ligne ${r+1} contient déjà une reine en ${cellName(rr,cc)}.`:`row ${r+1} already contains a queen at ${cellName(rr,cc)}.`};
-    if(cc===c)return {technique:'Q_EXCLUSION_COLUMN',text:lang()==='fr'?`la colonne ${c+1} contient déjà une reine en ${cellName(rr,cc)}.`:`column ${c+1} already contains a queen at ${cellName(rr,cc)}.`};
-    if(current.reg[rr][cc]===current.reg[r][c])return {technique:'Q_EXCLUSION_REGION',text:lang()==='fr'?`${queenZoneBadge(current.reg[r][c])} contient déjà une reine en ${cellName(rr,cc)}.`:`${queenZoneBadge(current.reg[r][c])} already contains a queen at ${cellName(rr,cc)}.`};
-    if(Math.abs(rr-r)<=1&&Math.abs(cc-c)<=1)return {technique:'Q_EXCLUSION_ADJACENCY',text:lang()==='fr'?`${cellName(r,c)} est adjacente à la reine de ${cellName(rr,cc)}.`:`${cellName(r,c)} is adjacent to the queen at ${cellName(rr,cc)}.`};
+    if(rr===r)return {technique:'Q_EXCLUSION_ROW',text:lang()==='fr'?`la ligne ${r+1} contient déjà une reine en ${queenCellCoordinate(rr,cc)}.`:`row ${r+1} already contains a queen at ${queenCellCoordinate(rr,cc)}.`};
+    if(cc===c)return {technique:'Q_EXCLUSION_COLUMN',text:lang()==='fr'?`la colonne ${c+1} contient déjà une reine en ${queenCellCoordinate(rr,cc)}.`:`column ${c+1} already contains a queen at ${queenCellCoordinate(rr,cc)}.`};
+    if(current.reg[rr][cc]===current.reg[r][c])return {technique:'Q_EXCLUSION_REGION',text:lang()==='fr'?`${queenZoneBadge(current.reg[r][c])} contient déjà une reine en ${queenCellCoordinate(rr,cc)}.`:`${queenZoneBadge(current.reg[r][c])} already contains a queen at ${queenCellCoordinate(rr,cc)}.`};
+    if(Math.abs(rr-r)<=1&&Math.abs(cc-c)<=1)return {technique:'Q_EXCLUSION_ADJACENCY',text:lang()==='fr'?`${queenCellCoordinate(r,c)} est adjacente à la reine de ${queenCellCoordinate(rr,cc)}.`:`${queenCellCoordinate(r,c)} is adjacent to the queen at ${queenCellCoordinate(rr,cc)}.`};
   }
   return null
 }
@@ -373,10 +375,10 @@ function findQueenRank1Hint(deadline=Infinity){
       });
       let badText=w&&w.text?w.text:(lang()==='fr'?'une ligne, une colonne ou une zone deviendrait impossible.':'a row, column, or region would become impossible.');
       return {r,c,v,rank:1,
-        hypothesis:lang()==='fr'?`essayons ${rej===2?'une reine ♛':'un X'} en ${cellName(r,c)}.`:`try ${rej===2?'a queen ♛':'an X'} at ${cellName(r,c)}.`,
+        hypothesis:lang()==='fr'?`essayons ${rej===2?'une reine ♛':'un X'} en ${queenCellCoordinate(r,c)}.`:`try ${rej===2?'a queen ♛':'an X'} at ${queenCellCoordinate(r,c)}.`,
         consequence:badText,
         deadend:lang()==='fr'?`ce choix ne permet donc pas de terminer la grille en respectant une reine par ligne, colonne et zone.`:`this choice cannot lead to a completed grid with one queen per row, column, and region.`,
-        conclusion:lang()==='fr'?`${cellName(r,c)} doit donc contenir ${v===2?'une reine ♛':'un X'}.`:`${cellName(r,c)} must therefore contain ${v===2?'a queen ♛':'an X'}.`,
+        conclusion:lang()==='fr'?`${queenCellCoordinate(r,c)} doit donc contenir ${v===2?'une reine ♛':'un X'}.`:`${queenCellCoordinate(r,c)} must therefore contain ${v===2?'a queen ♛':'an X'}.`,
         why:null}
     }
   }
@@ -384,12 +386,12 @@ function findQueenRank1Hint(deadline=Infinity){
 }
 
 function queenPlacementRejectReason(r,c){
-  if(current.state[r][c]===1)return lang()==='fr'?`${cellName(r,c)} est déjà barrée par X.`:`${cellName(r,c)} is already marked X.`;
+  if(current.state[r][c]===1)return lang()==='fr'?`${queenCellCoordinate(r,c)} est déjà barrée par X.`:`${queenCellCoordinate(r,c)} is already marked X.`;
   for(let rr=0;rr<current.n;rr++)for(let cc=0;cc<current.n;cc++)if(current.state[rr][cc]===2){
-    if(rr===r)return lang()==='fr'?`la ligne ${r+1} contient déjà une reine en ${cellName(rr,cc)}.`:`row ${r+1} already contains a queen at ${cellName(rr,cc)}.`;
-    if(cc===c)return lang()==='fr'?`la colonne ${c+1} contient déjà une reine en ${cellName(rr,cc)}.`:`column ${c+1} already contains a queen at ${cellName(rr,cc)}.`;
-    if(current.reg[rr][cc]===current.reg[r][c])return lang()==='fr'?`${queenZoneBadge(current.reg[r][c])} contient déjà une reine en ${cellName(rr,cc)}.`:`${queenZoneBadge(current.reg[r][c])} already contains a queen at ${cellName(rr,cc)}.`;
-    if(Math.abs(rr-r)<=1&&Math.abs(cc-c)<=1)return lang()==='fr'?`${cellName(r,c)} touche diagonalement la reine de ${cellName(rr,cc)}.`:`${cellName(r,c)} touches the queen at ${cellName(rr,cc)} diagonally.`;
+    if(rr===r)return lang()==='fr'?`la ligne ${r+1} contient déjà une reine en ${queenCellCoordinate(rr,cc)}.`:`row ${r+1} already contains a queen at ${queenCellCoordinate(rr,cc)}.`;
+    if(cc===c)return lang()==='fr'?`la colonne ${c+1} contient déjà une reine en ${queenCellCoordinate(rr,cc)}.`:`column ${c+1} already contains a queen at ${queenCellCoordinate(rr,cc)}.`;
+    if(current.reg[rr][cc]===current.reg[r][c])return lang()==='fr'?`${queenZoneBadge(current.reg[r][c])} contient déjà une reine en ${queenCellCoordinate(rr,cc)}.`:`${queenZoneBadge(current.reg[r][c])} already contains a queen at ${queenCellCoordinate(rr,cc)}.`;
+    if(Math.abs(rr-r)<=1&&Math.abs(cc-c)<=1)return lang()==='fr'?`${queenCellCoordinate(r,c)} touche diagonalement la reine de ${queenCellCoordinate(rr,cc)}.`:`${queenCellCoordinate(r,c)} touches the queen at ${queenCellCoordinate(rr,cc)} diagonally.`;
   }
   return null
 }
@@ -492,7 +494,7 @@ function queenRank3BranchSummary(w){
   if(w.reason)return w.reason;
   let unit=queenUnitName(w.unit),items=(w.failures||[]).slice(0,5).map(f=>{
     let child=f.child,why=child?.reason||(child?.unit?(lang()==='fr'?`${queenUnitName(child.unit)} devient à son tour impossible.`:`${queenUnitName(child.unit)} then becomes impossible.`):(lang()==='fr'?'la branche conduit à une impasse.':'the branch reaches a dead end.'));
-    return `• ${cellName(f.r,f.c)} : ${why}`
+    return `• ${queenCellCoordinate(f.r,f.c)} : ${why}`
   });
   return (lang()==='fr'?`${unit} doit recevoir une reine. Testons ses positions possibles :`:`${unit} must receive a queen. Test its possible positions:`)+`<br>${items.join('<br>')}`
 }
@@ -512,11 +514,11 @@ function findQueenRank3Hint(deadline=Infinity){
     if(good.length===1&&bad.length===1){
       let v=good[0],rej=bad[0],w=results[rej],first=w.unit?queenUnitName(w.unit):(lang()==='fr'?'une contrainte obligatoire':'a required constraint');
       return {r,c,v,rank:3,
-        hypothesis:lang()==='fr'?`essayons ${rej===2?'une reine ♛':'un X'} en ${cellName(r,c)}.`:`try ${rej===2?'a queen ♛':'an X'} at ${cellName(r,c)}.`,
+        hypothesis:lang()==='fr'?`essayons ${rej===2?'une reine ♛':'un X'} en ${queenCellCoordinate(r,c)}.`:`try ${rej===2?'a queen ♛':'an X'} at ${queenCellCoordinate(r,c)}.`,
         consequence:lang()==='fr'?`cette hypothèse oblige ensuite à résoudre ${first}.`:`this assumption then forces us to resolve ${first}.`,
         secondStep:queenRank3BranchSummary(w),
         deadend:lang()==='fr'?`toutes les continuations testées à ce niveau conduisent à une impasse. L’hypothèse de départ est donc impossible.`:`every continuation tested at this level reaches a dead end. The initial assumption is impossible.`,
-        conclusion:lang()==='fr'?`${cellName(r,c)} doit donc contenir ${v===2?'une reine ♛':'un X'}.`:`${cellName(r,c)} must therefore contain ${v===2?'a queen ♛':'an X'}.`,
+        conclusion:lang()==='fr'?`${queenCellCoordinate(r,c)} doit donc contenir ${v===2?'une reine ♛':'un X'}.`:`${queenCellCoordinate(r,c)} must therefore contain ${v===2?'a queen ♛':'an X'}.`,
         why:null}
     }
   }
@@ -537,13 +539,13 @@ function findQueenRank2Hint(deadline=Infinity){
     let good=surviving.filter(v=>!bad.includes(v));
     if(good.length===1&&bad.length){
       let v=good[0],rej=bad[0],w=witness[rej],unit=queenUnitName(w);
-      let details=(w.failures||[]).map(f=>`• ${cellName(f.r,f.c)} : ${f.text}`).join('<br>');
+      let details=(w.failures||[]).map(f=>`• ${queenCellCoordinate(f.r,f.c)} : ${f.text}`).join('<br>');
       if(!details)details=lang()==='fr'?`aucune case n'y reste disponible pour une reine.`:`no cell remains available there for a queen.`;
       return {r,c,v,rank:2,
-        hypothesis:lang()==='fr'?`essayons ${rej===2?'une reine ♛':'un X'} en ${cellName(r,c)}.`:`try ${rej===2?'a queen ♛':'an X'} at ${cellName(r,c)}.`,
+        hypothesis:lang()==='fr'?`essayons ${rej===2?'une reine ♛':'un X'} en ${queenCellCoordinate(r,c)}.`:`try ${rej===2?'a queen ♛':'an X'} at ${queenCellCoordinate(r,c)}.`,
         consequence:lang()==='fr'?`avec cette hypothèse, regardons ${unit}. Les emplacements de reine qui restent apparemment possibles sont testés un par un :<br>${details}`:`with that assumption, look at ${unit}. Each apparently possible queen position is tested:<br>${details}`,
         deadend:lang()==='fr'?`aucun de ces emplacements ne permet de continuer. ${unit} finirait donc sans aucune position possible pour sa reine.`:`none of these positions allows the puzzle to continue. ${unit} would therefore be left with no possible queen position.`,
-        conclusion:lang()==='fr'?`${pieceName('queens',rej)} est impossible en ${cellName(r,c)} ; il faut ${v===2?'y placer une reine ♛':'barrer cette case par X'}.`:`${pieceName('queens',rej)} is impossible at ${cellName(r,c)}; ${v===2?'place a queen ♛ there':'mark that cell X'}.`,
+        conclusion:lang()==='fr'?`${pieceName('queens',rej)} est impossible en ${queenCellCoordinate(r,c)} ; il faut ${v===2?'y placer une reine ♛':'barrer cette case par X'}.`:`${pieceName('queens',rej)} is impossible at ${queenCellCoordinate(r,c)}; ${v===2?'place a queen ♛ there':'mark that cell X'}.`,
         why:null}
     }
   }
