@@ -443,6 +443,33 @@ body:has(#qboard) .topbar .brand-dot{
   .lighthouses-title-icon{width:25px;height:25px;flex-basis:25px}
 }
 
+
+/* v3.1.5-LH8B — tutor board must render visible lighthouse SVG pieces too */
+.walkthrough-board .queen,
+.walkthrough-board .mark{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  display:grid;
+  place-items:center;
+  line-height:1;
+  margin:0;
+  padding:0;
+  pointer-events:none;
+}
+.walkthrough-board .queen{font-size:min(7vw,35px)}
+.walkthrough-board .mark{font-size:min(4.8vw,24px)}
+.walkthrough-board .lighthouse-piece{color:#0b2948}
+.walkthrough-board .lighthouse-svg{width:68%;height:68%;display:block;overflow:visible;filter:drop-shadow(0 1px 1px rgba(5,25,45,.16))}
+.walkthrough-board .lighthouse-svg .lh-tower{fill:#fff7e7;stroke:#0b2948;stroke-width:2.4;stroke-linejoin:round}
+.walkthrough-board .lighthouse-svg .lh-roof,.walkthrough-board .lighthouse-svg .lh-base{fill:#0b2948}
+.walkthrough-board .lighthouse-svg .lh-lantern{fill:#fff7e7;stroke:#0b2948;stroke-width:2.2}
+.walkthrough-board .lighthouse-svg .lh-window{fill:#0b2948}
+.walkthrough-board .lighthouse-svg .lh-light{fill:#f1b84b}
+.walkthrough-board .lighthouse-svg .lh-beam{fill:#f1b84b;opacity:.22}
+:root[data-theme="dark"] .walkthrough-board .lighthouse-svg{filter:drop-shadow(0 1px 1px rgba(0,0,0,.3))}
+
 /* v3.1.5-LH7 — generic premium action buttons; shared CSS only */
 :root{
   --btn-edge:color-mix(in srgb,var(--ink) 22%,var(--paper));

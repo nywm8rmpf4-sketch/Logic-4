@@ -23,7 +23,8 @@
       zoneBadge=h.zoneBadge||((id)=>`${tr('zone')} ${Number(id)+1}`), unitCells=h.unitCells||((ref,context)=>{let n=Number(context?.n)||0,out=[];if(!ref||!n)return out;if(ref.family==='row'){for(let c=0;c<n;c++)out.push([Number(ref.id),c])}else if(ref.family==='column'){for(let r=0;r<n;r++)out.push([r,Number(ref.id)])}else if(ref.family==='region'&&Array.isArray(context?.reg)){for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(context.reg[r]?.[c]===Number(ref.id))out.push([r,c])}return out}),
       isDetailedLanguage=h.isDetailedLanguage||(()=>false);
     const format=(key,vars={})=>String(tr(key)||key).replace(/\{([A-Za-z0-9_]+)\}/g,(_,k)=>vars[k]??'');
-    const unitHuman=ref=>{if(!ref)return '';if(ref.family==='row')return `${tr('rowLabel')} ${Number(ref.id)+1}`;if(ref.family==='column')return `${tr('columnLabel')} ${Number(ref.id)+1}`;return zoneBadge(Number(ref.id))};
+    const rowHuman=id=>String.fromCharCode(65+Number(id));
+    const unitHuman=ref=>{if(!ref)return '';if(ref.family==='row')return `${tr('rowLabel')} ${rowHuman(ref.id)}`;if(ref.family==='column')return `${tr('columnLabel')} ${Number(ref.id)+1}`;return zoneBadge(Number(ref.id))};
     const unitListHuman=units=>(units||[]).map(unitHuman).join(tr('qlAnd'));
     const cellListHuman=(cells,limit=8)=>{let a=(cells||[]).map(x=>cellCoordinate(x[0],x[1]));if(a.length<=limit)return a.join(', ');return a.slice(0,limit).join(', ')+format('qlMore',{count:a.length-limit})};
     const conflictReasonHuman=reasons=>{let r=reasons?.[0],key=r==='ROW'?'qlConflictRow':r==='COLUMN'?'qlConflictColumn':r==='REGION'?'qlConflictRegion':r==='ADJACENCY'?'qlConflictAdjacency':'qlConflictRule';return tr(key)};
