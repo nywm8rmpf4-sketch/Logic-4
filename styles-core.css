@@ -401,6 +401,21 @@ body:has(#qboard) .topbar .brand-dot{
 .lighthouses-panel .switch-row input:checked{background:#0b2948}
 .lighthouses-panel .queens-column-coordinates span,
 .lighthouses-panel .queens-row-coordinates span{color:#eef5f9!important;text-shadow:0 1px 1px rgba(5,25,45,.14)}
+
+.lighthouses-panel .toolbar .secondary-action{display:none}
+.lighthouses-panel .toolbar #rulesBtn{display:block}
+@media(orientation:landscape) and (max-height:520px){
+  .lighthouses-panel{
+    grid-template-columns:minmax(220px,1fr) minmax(0,min(72vw,calc(100svh - 68px)));
+    column-gap:12px
+  }
+  .lighthouses-panel .board-wrap{
+    width:min(72vw,calc(100svh - 68px));
+    max-width:min(72vw,calc(100svh - 68px));
+    justify-self:end;
+    margin:0 0 4px auto
+  }
+}
 .lighthouses-title-icon{
   width:31px;
   height:31px;

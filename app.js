@@ -1502,6 +1502,7 @@ function walkthroughGenerateNext(){let s=walkthroughSession;if(!s||s.done||s.sta
 function walkthroughTarget(index){return index>0?walkthroughSession?.moves?.[index-1]?.target:null}
 function walkthroughBoardHtml(snapshot,target=null,deduction=null){
   let s=walkthroughSession,c=s.base,n=c.n||6,view=gamePedagogy(c.game).walkthrough.board({base:c,initial:s.initial,snapshot,target,deduction})||{},boardClass=view.boardClass?`${view.boardClass} `:'';
+  if(view.html)return view.html;
   return `<div class="walkthrough-board-wrap"><div class="board ${boardClass}walkthrough-board" style="grid-template-columns:repeat(${n},minmax(0,1fr));grid-template-rows:repeat(${n},minmax(0,1fr))">${view.cellsHtml||''}</div></div>`
 }
 function walkthroughExplanationHtml(index){
