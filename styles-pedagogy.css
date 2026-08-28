@@ -204,6 +204,27 @@
 .walkthrough-queens-coordinate-wrap .queens-column-coordinates span,.walkthrough-queens-coordinate-wrap .queens-row-coordinates span{display:grid;place-items:center;color:var(--muted)!important;font-size:clamp(10px,1.8vw,11px);font-weight:700;line-height:1;letter-spacing:.01em;user-select:none}
 .walkthrough-queens-coordinate-wrap .walkthrough-board{grid-column:2;grid-row:2;width:100%;max-width:100%}
 .walkthrough-cell{position:relative}
+/* v3.1.6-F — distinguish temporary Tutor proof states from the real board. */
+.walkthrough-hypothetical-cell{
+  outline:2px dashed color-mix(in srgb,#0b2948 72%,transparent);
+  outline-offset:-3px
+}
+.walkthrough-hypothesis-cell{outline-width:3px}
+.walkthrough-hypothesis-badge{
+  position:absolute;top:2px;right:2px;z-index:9;
+  min-width:18px;height:18px;padding:0 4px;border-radius:999px;
+  display:grid;place-items:center;
+  background:#0b2948;color:#fff7e7;
+  border:1px solid #fff7e7;
+  box-shadow:0 1px 3px rgba(5,25,45,.25);
+  font-size:11px;font-weight:850;line-height:1;pointer-events:none
+}
+:root[data-theme="dark"] .walkthrough-hypothetical-cell{outline-color:color-mix(in srgb,#fff7e7 72%,transparent)}
+@media(max-width:390px){.walkthrough-hypothesis-badge{min-width:16px;height:16px;padding:0 3px;font-size:9px}}
+@media(forced-colors:active){
+  .walkthrough-hypothetical-cell{outline-color:CanvasText}
+  .walkthrough-hypothesis-badge{background:CanvasText;color:Canvas;border-color:Canvas}
+}
 /* v3.1.5-LH8E — line/column pedagogical focus: subtle hatching + edge label */
 #qboard .cell>*,.walkthrough-board .cell>*{position:relative;z-index:2}
 .queen-line-focus{position:relative;z-index:3}

@@ -15,6 +15,10 @@
   const EVIDENCE_SCHEMA=1;
   const PRESENTATION_SCHEMA=1;
   const EVIDENCE_KIND='engine-deduction';
+  const PROOF_NARRATIVE_SCHEMA=1;
+  const PROOF_NARRATIVE_KIND='proof-narrative';
+  const PROOF_REPLAY_SCHEMA=1;
+  const PROOF_REPLAY_KIND='proof-replay';
   const DERIVED_FIELDS=Object.freeze(['technique','focus','explanation','action']);
   const FORBIDDEN_EVIDENCE_KEYS=Object.freeze(new Set(['sol','solution','hiddenSolution','solutionGrid','answerGrid','hiddenState','validationState']));
 
@@ -152,14 +156,131 @@
     else for(const field of ['focusCells','focusUnits','focusRelations','focusClues','focusRectangles'])if(Object.prototype.hasOwnProperty.call(primary,field))refs.push(`primary.${field}`);
     return refs.length?refs:['primary.rule'];
   }
+
+  function assertCapturedEvidence(evidence,path='evidence'){
+    if(!isPlainObject(evidence)||evidence.schema!==EVIDENCE_SCHEMA||evidence.kind!==EVIDENCE_KIND)fail(`${path} must come from captureEngineEvidence()`);
+    assertNonEmptyString(evidence.game,`${path}.game`);
+    assertNonEmptyString(evidence.source,`${path}.source`);
+    assertNonEmptyString(evidence.primary?.rule,`${path}.primary.rule`);
+    assertSafeJson(evidence,path);
+    return evidence
+  }
+  function normalizeProofEvidenceRefs(evidence,refs,path,{deduction=false}={}){
+    if(!Array.isArray(refs)||refs.length===0)fail(`${path} must contain at least one evidence path`);
+    const out=[];
+    for(let i=0;i<refs.length;i++){
+      const ref=String(refs[i]);
+      const resolved=evidencePathValue(evidence,ref);
+      if(!resolved.exists)fail(`${path}[${i}] references missing evidence path "${ref}"`);
+      out.push(ref)
+    }
+    const unique=[...new Set(out)];
+    if(deduction){
+      if(unique.length!==1)fail(`${path} for a deduction step must contain exactly one engine deduction path`);
+      const resolved=evidencePathValue(evidence,unique[0]).value;
+      if(!isPlainObject(resolved)||typeof resolved.rule!=='string'||!resolved.rule.trim())fail(`${path}[0] must reference a complete engine deduction`)
+    }
+    return deepFreeze(unique)
+  }
+  function normalizeProofNode(evidence,source,path,{deduction=false}={}){
+    if(!isPlainObject(source))fail(`${path} must be a plain proof node`);
+    const allowed=new Set(['id','evidenceRefs']);
+    for(const key of Object.keys(source))if(!allowed.has(key))fail(`${path} contains unknown field "${key}"`);
+    assertNonEmptyString(source.id,`${path}.id`);
+    return deepFreeze({id:source.id.trim(),evidenceRefs:normalizeProofEvidenceRefs(evidence,source.evidenceRefs,`${path}.evidenceRefs`,{deduction})})
+  }
+  function defineProofNarrative(evidence,source){
+    assertCapturedEvidence(evidence);
+    if(!isPlainObject(source))fail('proof narrative input must be a plain object');
+    const allowed=new Set(['hypothesis','steps','contradiction','conclusion','action','metadata']);
+    for(const key of Object.keys(source))if(!allowed.has(key))fail(`unknown proof narrative field "${key}"`);
+    const steps=source.steps==null?[]:source.steps;
+    if(!Array.isArray(steps))fail('proof narrative steps must be an array');
+    if(source.conclusion==null)fail('proof narrative conclusion is required');
+    const metadata=source.metadata==null?{}:source.metadata;
+    if(!isPlainObject(metadata))fail('proof narrative metadata must be a plain object');
+    assertSafeJson(metadata,'proof narrative metadata');
+    return deepFreeze({
+      schema:PROOF_NARRATIVE_SCHEMA,
+      kind:PROOF_NARRATIVE_KIND,
+      game:evidence.game,
+      source:evidence.source,
+      hypothesis:source.hypothesis==null?null:normalizeProofNode(evidence,source.hypothesis,'proofNarrative.hypothesis'),
+      steps:deepFreeze(steps.map((step,index)=>normalizeProofNode(evidence,step,`proofNarrative.steps[${index}]`,{deduction:true}))),
+      contradiction:source.contradiction==null?null:normalizeProofNode(evidence,source.contradiction,'proofNarrative.contradiction'),
+      conclusion:normalizeProofNode(evidence,source.conclusion,'proofNarrative.conclusion'),
+      action:source.action==null?null:normalizeProofNode(evidence,source.action,'proofNarrative.action'),
+      provenance:deepFreeze({kind:EVIDENCE_KIND,source:evidence.source,evidenceSchema:EVIDENCE_SCHEMA}),
+      metadata:frozenClone(metadata)
+    })
+  }
+  function proofNarrativeSource(value){
+    return {
+      hypothesis:value.hypothesis&&{id:value.hypothesis.id,evidenceRefs:value.hypothesis.evidenceRefs},
+      steps:(value.steps||[]).map(step=>({id:step.id,evidenceRefs:step.evidenceRefs})),
+      contradiction:value.contradiction&&{id:value.contradiction.id,evidenceRefs:value.contradiction.evidenceRefs},
+      conclusion:value.conclusion&&{id:value.conclusion.id,evidenceRefs:value.conclusion.evidenceRefs},
+      action:value.action&&{id:value.action.id,evidenceRefs:value.action.evidenceRefs},
+      metadata:value.metadata||{}
+    }
+  }
+  function validateProofNarrativeAgainstEvidence(evidence,value){
+    assertCapturedEvidence(evidence);
+    if(!isPlainObject(value)||value.schema!==PROOF_NARRATIVE_SCHEMA||value.kind!==PROOF_NARRATIVE_KIND)fail('proofNarrative must come from defineProofNarrative()');
+    if(value.game!==evidence.game||value.source!==evidence.source)fail('proofNarrative must reference the same engine evidence');
+    assertSafeJson(value,'proofNarrative');
+    const normalized=defineProofNarrative(evidence,proofNarrativeSource(value));
+    if(JSON.stringify(normalized)!==JSON.stringify(value))fail('proofNarrative contains non-canonical or ungrounded fields');
+    return normalized
+  }
+  function isProofNarrative(value){
+    try{
+      if(!isPlainObject(value)||value.schema!==PROOF_NARRATIVE_SCHEMA||value.kind!==PROOF_NARRATIVE_KIND)return false;
+      assertSafeJson(value,'proofNarrative');
+      if(typeof value.game!=='string'||!value.game||typeof value.source!=='string'||!value.source)return false;
+      if(!Array.isArray(value.steps)||!isPlainObject(value.conclusion)||!isPlainObject(value.provenance))return false;
+      return value.provenance.kind===EVIDENCE_KIND
+    }catch(_){return false}
+  }
+  function normalizeReplayCallbackResult(result,path){
+    if(typeof result==='boolean')return {ok:result,details:null};
+    if(!isPlainObject(result)||typeof result.ok!=='boolean')fail(`${path} must return a boolean or {ok:boolean, details?}`);
+    const allowed=new Set(['ok','details']);for(const key of Object.keys(result))if(!allowed.has(key))fail(`${path} returned unknown field "${key}"`);
+    if(Object.prototype.hasOwnProperty.call(result,'details'))assertSafeJson(result.details,`${path}.details`);
+    return {ok:result.ok,details:Object.prototype.hasOwnProperty.call(result,'details')?frozenClone(result.details):null}
+  }
+  function replayProofNarrative(source){
+    if(!isPlainObject(source))fail('proof replay input must be a plain object');
+    const allowed=new Set(['evidence','narrative','visibleState','adapter']);
+    for(const key of Object.keys(source))if(!allowed.has(key))fail(`unknown proof replay field "${key}"`);
+    const evidence=assertCapturedEvidence(source.evidence),narrative=validateProofNarrativeAgainstEvidence(evidence,source.narrative),adapter=source.adapter;
+    if(!isPlainObject(source.visibleState))fail('proof replay visibleState must be a plain visible-state object');
+    assertSafeJson(source.visibleState,'proof replay visibleState');
+    if(!isPlainObject(adapter))fail('proof replay adapter must be a plain object');
+    const state=cloneJson(source.visibleState),initialState=frozenClone(source.visibleState),events=[];
+    const phases=[];
+    if(narrative.hypothesis)phases.push(['hypothesis',narrative.hypothesis,null]);
+    narrative.steps.forEach((node,index)=>phases.push(['step',node,index]));
+    if(narrative.contradiction)phases.push(['contradiction',narrative.contradiction,null]);
+    phases.push(['conclusion',narrative.conclusion,null]);
+    if(narrative.action)phases.push(['action',narrative.action,null]);
+    for(const [phase,node,index] of phases){
+      const callback=adapter[phase];
+      if(typeof callback!=='function')fail(`proof replay adapter.${phase} is required`);
+      const resolved=node.evidenceRefs.map(ref=>evidencePathValue(evidence,ref).value);
+      const raw=callback(state,deepFreeze({phase,index,node,evidence,narrative,resolved:deepFreeze(resolved)}));
+      const checked=normalizeReplayCallbackResult(raw,`proof replay adapter.${phase}`);
+      assertSafeJson(state,`proof replay state after ${phase}`);
+      events.push(deepFreeze({phase,index,id:node.id,evidenceRefs:node.evidenceRefs,ok:checked.ok,details:checked.details,state:frozenClone(state)}));
+      if(!checked.ok)return deepFreeze({schema:PROOF_REPLAY_SCHEMA,kind:PROOF_REPLAY_KIND,status:'FAIL',game:evidence.game,source:evidence.source,initialState,events:deepFreeze(events),failedAt:deepFreeze({phase,index,id:node.id}),finalState:frozenClone(state)})
+    }
+    return deepFreeze({schema:PROOF_REPLAY_SCHEMA,kind:PROOF_REPLAY_KIND,status:'PASS',game:evidence.game,source:evidence.source,initialState,events:deepFreeze(events),failedAt:null,finalState:frozenClone(state)})
+  }
   function defineReasoningPresentation(source){
     if(!isPlainObject(source))fail('presentation input must be a plain object');
-    const allowed=new Set(['evidence','technique','focus','explanation','action','derivation','metadata']);
+    const allowed=new Set(['evidence','technique','focus','explanation','action','derivation','metadata','proofNarrative']);
     for(const key of Object.keys(source))if(!allowed.has(key))fail(`unknown presentation field "${key}"`);
-    const evidence=source.evidence;
-    if(!isPlainObject(evidence)||evidence.schema!==EVIDENCE_SCHEMA||evidence.kind!==EVIDENCE_KIND)fail('evidence must come from captureEngineEvidence()');
-    assertNonEmptyString(evidence.game,'evidence.game');
-    assertNonEmptyString(evidence.primary?.rule,'evidence.primary.rule');
+    const evidence=assertCapturedEvidence(source.evidence);
     const derivation=source.derivation==null?{}:source.derivation;
     if(!isPlainObject(derivation))fail('derivation must be a plain object');
     for(const key of Object.keys(derivation))if(!DERIVED_FIELDS.includes(key))fail(`unknown derivation field "${key}"`);
@@ -185,6 +306,7 @@
     const metadata=source.metadata==null?{}:source.metadata;
     if(!isPlainObject(metadata))fail('presentation metadata must be a plain object');
     assertSafeJson(metadata,'presentation metadata');
+    const proofNarrative=source.proofNarrative==null?null:validateProofNarrativeAgainstEvidence(evidence,source.proofNarrative);
 
     const output={
       schema:PRESENTATION_SCHEMA,
@@ -208,6 +330,7 @@
       provenance:deepFreeze({kind:EVIDENCE_KIND,source:evidence.source,derivation:deepFreeze(normalizedDerivation)}),
       metadata:frozenClone(metadata)
     };
+    if(proofNarrative)output.proofNarrative=proofNarrative;
     return deepFreeze(output);
   }
 
@@ -215,12 +338,19 @@
     try{
       if(!isPlainObject(value)||value.schema!==PRESENTATION_SCHEMA||typeof value.game!=='string'||typeof value.rule!=='string')return false;
       assertSafeJson(value,'presentation');
-      return isPlainObject(value.proofDetails)&&isPlainObject(value.provenance)&&value.provenance.kind===EVIDENCE_KIND;
+      if(!isPlainObject(value.proofDetails)||!isPlainObject(value.provenance)||value.provenance.kind!==EVIDENCE_KIND)return false;
+      if(Object.prototype.hasOwnProperty.call(value,'proofNarrative')){
+        const evidence=captureEngineEvidence({game:value.game,source:value.proofDetails.source,primary:value.proofDetails.primary,supports:value.proofDetails.supports,final:value.proofDetails.final,automatic:value.proofDetails.automatic,metadata:value.proofDetails.evidenceMetadata});
+        validateProofNarrativeAgainstEvidence(evidence,value.proofNarrative)
+      }
+      return true
     }catch(_){return false}
   }
 
   return Object.freeze({
     VERSION,EVIDENCE_SCHEMA,PRESENTATION_SCHEMA,EVIDENCE_KIND,DERIVED_FIELDS,
-    captureEngineEvidence,defineReasoningPresentation,evidencePathValue,isReasoningPresentation
+    PROOF_NARRATIVE_SCHEMA,PROOF_NARRATIVE_KIND,PROOF_REPLAY_SCHEMA,PROOF_REPLAY_KIND,
+    captureEngineEvidence,defineReasoningPresentation,evidencePathValue,isReasoningPresentation,
+    defineProofNarrative,isProofNarrative,replayProofNarrative
   });
 });

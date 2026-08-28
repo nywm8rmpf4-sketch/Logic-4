@@ -228,7 +228,11 @@ class Session{
     add(this.findMixedHall());return best()
   }
   hypothesisEvaluation(cell,value,reportBudget=true){
-    let fork=this.clone();if(!fork.assume(cell,value))return {status:'blocked',trace:[]};let trace=[];let close=fork.closeSingletons();trace.push(...close.trace);if(close.bad)return {status:'contradictory',witness:close.bad,trace};
+    let fork=this.clone(),branchStart=fork.appliedDeductions.length;if(!fork.assume(cell,value))return {status:'blocked',trace:[]};
+    // Preserve the immediate visible-only consequences of the hypothesis itself.
+    // In particular, assuming a lighthouse may create a QUEEN_PROPAGATION deduction
+    // before the first explicit branch search step. This deduction is part of the proof.
+    let trace=fork.appliedDeductions.slice(branchStart).map(cloneBranchDeduction),close=fork.closeSingletons();trace.push(...close.trace);if(close.bad)return {status:'contradictory',witness:close.bad,trace};
     let limit=Math.min(Math.max(0,Number(this.options.maxHypothesisSteps)||0),this.n*this.n),guard=0;
     for(;guard<limit;guard++){
       let bad=fork.diagnoseLogical();if(bad)return {status:'contradictory',witness:bad,trace};let d=fork.hypothesisDirect();if(!d)return {status:'blocked',trace};let a=fork.applyDeduction(d);trace.push(a.deduction,...a.automatic);close=fork.closeSingletons();trace.push(...close.trace);if(close.bad)return {status:'contradictory',witness:close.bad,trace}
@@ -242,7 +246,7 @@ class Session{
     if(!result)return null;let witness=result.witness,conclusion=assumption===VALUE_QUEEN?VALUE_X:VALUE_QUEEN;
     let ps=[{kind:'assumption',cell:cell.slice(),value:assumption,rank:0,hypothesis:true,dependencies:[]}].concat((witness.premises||[]).filter(Boolean));
     let subtype=witness.rule==='HALL_CONTRADICTION'?'HALL_CONTRADICTION':witness.rule==='CAPACITY_CONTRADICTION'?'CAPACITY_CONTRADICTION':'ASSUMPTION_CONTRADICTION';
-    let d=this.makeDeduction('ASSUMPTION_CONTRADICTION',3,ps,[cell].concat(witness.cells||[]),witness.unit?[this.unit(witness.unit.family,witness.unit.id)]:[],[{cell,value:conclusion}],{assumption:{cell:cell.slice(),value:assumption},contradictionType:subtype,witness:stripWitness(witness),trace:result.trace.map(d=>({rule:d.rule,rank:d.rank,techniqueLevel:d.techniqueLevel,conclusions:d.conclusions}))},100,55);
+    let d=this.makeDeduction('ASSUMPTION_CONTRADICTION',3,ps,[cell].concat(witness.cells||[]),witness.unit?[this.unit(witness.unit.family,witness.unit.id)]:[],[{cell,value:conclusion}],{assumption:{cell:cell.slice(),value:assumption},contradictionType:subtype,witness:stripWitness(witness),trace:(result.trace||[]).filter(Boolean).map(cloneBranchDeduction)},100,55);
     // A hypothetical branch has its own temporary deduction ids. They belong in
     // explanationData.trace, never in the public dependency graph of the real session.
     let realIds=new Set(this.appliedDeductions.map(x=>x.id));
@@ -281,6 +285,7 @@ class Session{
 }
 
 function dedupeConclusions(cs){let m=new Map();for(const c of cs||[])m.set(cellKey(c.cell)+'='+c.value,{cell:c.cell.slice(),value:c.value});return [...m.values()]}
+function cloneBranchDeduction(d){return d?JSON.parse(JSON.stringify(d)):null}
 function stripWitness(w){if(!w)return null;let out={...w};if(out.premises)out.premises=out.premises.map(p=>JSON.parse(JSON.stringify(p)));return JSON.parse(JSON.stringify(out))}
 function deductionComparator(a,b){return (a.rank-b.rank)||(a.techniqueLevel-b.techniqueLevel)||(a.priority-b.priority)||(a.clarity-b.clarity)||(a.focusCells.length-b.focusCells.length)||a.rule.localeCompare(b.rule)}
 

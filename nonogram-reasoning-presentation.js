@@ -16,7 +16,7 @@
 if(!ReasoningPresentation||typeof ReasoningPresentation.captureEngineEvidence!=='function')throw new Error('NonogramReasoningPresenter requires QuadludReasoningPresentation');
 if(!Logic||typeof Logic.analyzeLine!=='function')throw new Error('NonogramReasoningPresenter requires NonogramLogic');
 
-const VERSION=2,GAME='nonogram',SOURCE='nonogram-logic-engine';
+const VERSION=2,GAME='nonogram',SOURCE='nonogram-logic-engine',PLACEMENT_DETAIL_LIMIT=6;
 const TECHNIQUE_TITLES=Object.freeze({
   N_EMPTY_LINE:'Empty line',N_EXACT_FIT:'Exact fit',N_OVERLAP:'Overlap',N_FORCED_EMPTY:'Forced empty cells',N_BLOCK_EXTENSION:'Block extension',N_BLOCK_BOUNDARY:'Block boundary',N_CONTRADICTION:'Visible contradiction'
 });
@@ -35,6 +35,9 @@ function entityKey(ref){return `${ref?.kind||''}:${ref?.id||''}`}
 function tierFor(rule){const n=Difficulty&&typeof Difficulty.policyTierForRule==='function'?Difficulty.policyTierForRule(rule):null;return Number.isInteger(n)?n:0}
 function clueText(clues){return Array.isArray(clues)&&clues.length?clues.join(' · '):'0'}
 function targetGroups(d){const filled=[],empty=[];for(const c of d?.conclusions||[])(c.state===Logic.FILLED?filled:empty).push(c.cell);return {filled,empty}}
+function placementBits(bits){const raw=bits&&typeof bits==='object'&&Object.prototype.hasOwnProperty.call(bits,'bits')?bits.bits:bits;return Array.from(raw||[]).map(v=>Number(v)===1?'■':'·').join('')}
+function placementDetailEligible(d){const n=Number(d?.compatibleCount)||0;return !['N_EMPTY_LINE','N_EXACT_FIT'].includes(d?.techniqueId)&&n>1&&n<=PLACEMENT_DETAIL_LIMIT&&Array.isArray(d?.compatiblePlacements)&&d.compatiblePlacements.length===n}
+function placementDetailHtml(d){if(!placementDetailEligible(d))return '';return (d.compatiblePlacements||[]).map((bits,i)=>`${i+1}. ${placementBits(bits)}`).join(' · ')}
 function focusForDeduction(d){
   const raw=[];
   if(d?.line?.entity)raw.push({entity:clone(d.line.entity),role:'context'});
@@ -91,15 +94,16 @@ function createPresenter(options={}){
       const parts=[];if(groups.filled.length)parts.push(`every compatible placement fills ${groups.filled.map(cellLabel).join(', ')}`);if(groups.empty.length)parts.push(`every compatible placement leaves ${groups.empty.map(cellLabel).join(', ')} empty`);const shared=parts.length?parts.join(' and '):'the compatible placements force the target cells';
       if(d.techniqueId==='N_EMPTY_LINE')return 'The clue contains no block, so every cell in the line must be empty.';
       if(d.techniqueId==='N_EXACT_FIT')return `The clue and mandatory separators occupy the whole line exactly; ${shared}.`;
-      if(d.techniqueId==='N_OVERLAP')return `Among the ${count} placements compatible with the clue and visible marks, ${shared}.`;
-      if(d.techniqueId==='N_FORCED_EMPTY')return `Among the ${count} placements compatible with the clue and visible marks, ${shared}.`;
-      if(d.techniqueId==='N_BLOCK_EXTENSION')return `The visible filled cells constrain the block placements; among the ${count} compatible placements, ${shared}.`;
-      if(d.techniqueId==='N_BLOCK_BOUNDARY')return `The visible completed block fixes its boundary; among the ${count} compatible placements, ${shared}.`;
+      if(d.techniqueId==='N_OVERLAP'){const base=`Among the ${count} placements compatible with the clue and visible marks, ${shared}.`,detail=placementDetailHtml(d);return detail?`${base}<br>${detail}`:base}
+      if(d.techniqueId==='N_FORCED_EMPTY'){const base=`Among the ${count} placements compatible with the clue and visible marks, ${shared}.`,detail=placementDetailHtml(d);return detail?`${base}<br>${detail}`:base}
+      if(d.techniqueId==='N_BLOCK_EXTENSION'){const base=`The visible filled cells constrain the block placements; among the ${count} compatible placements, ${shared}.`,detail=placementDetailHtml(d);return detail?`${base}<br>${detail}`:base}
+      if(d.techniqueId==='N_BLOCK_BOUNDARY'){const base=`The visible completed block fixes its boundary; among the ${count} compatible placements, ${shared}.`,detail=placementDetailHtml(d);return detail?`${base}<br>${detail}`:base}
       return `The ${count} compatible placements agree on the target cells.`
     }
     if(d.techniqueId==='N_EMPTY_LINE')return text('ngWhyEmptyLine');
     if(d.techniqueId==='N_EXACT_FIT')return text('ngWhyExactFit');
-    return text('ngWhyCompatible',{count})
+    const base=text('ngWhyCompatible',{count}),detail=placementDetailHtml(d);
+    return detail?`${base}<br>${detail}`:base
   }
   function moveText(d){
     const groups=targetGroups(d);
@@ -114,16 +118,18 @@ function createPresenter(options={}){
   const legacyReasoning=d=>{const p=engineDeduction(d);return freezeDeep({schema:2,source:SOURCE,game:GAME,id:p.id,signature:p.signature,rule:p.rule,technique:p.rule,rank:p.rank,techniqueLevel:p.techniqueLevel,premises:clone(p.premises),focus:clone(p.focus),conclusions:clone(p.conclusions),move:clone(p.move)})};
   function presentation(d){
     if(!d)return null;const primary=engineDeduction(d),evidence=ReasoningPresentation.captureEngineEvidence({game:GAME,source:SOURCE,primary,supports:[],final:primary,metadata:{proofSchema:d.schema||1,visibleOnly:true}});
-    const view=explanation(d),action={type:'APPLY_LOGICAL_MOVE',move:clone(primary.move),conclusions:clone(primary.conclusions)};
+    const view=explanation(d),action={type:'APPLY_LOGICAL_MOVE',move:clone(primary.move),conclusions:clone(primary.conclusions)},detailed=placementDetailEligible(d);
+    const proofNarrative=!['N_EMPTY_LINE','N_EXACT_FIT'].includes(d.techniqueId)?ReasoningPresentation.defineProofNarrative(evidence,{steps:[{id:'compatible-placement-analysis',evidenceRefs:['primary']}],conclusion:{id:'forced-cells',evidenceRefs:['primary.conclusions']},action:{id:'logical-move',evidenceRefs:['primary.move']},metadata:{family:d.techniqueId,compatibleCount:primary.compatibleCount,placementDetailShown:detailed}}):null;
     return ReasoningPresentation.defineReasoningPresentation({
       evidence,technique:d.techniqueId,focus:clone(primary.focus),explanation:view,action,
       derivation:{technique:['primary.rule'],focus:['primary.line','primary.premises','primary.conclusions'],explanation:['primary.rule','primary.clues','primary.visibleState','primary.compatiblePlacements','primary.conclusions'],action:['primary.move','primary.conclusions']},
-      metadata:{coachLevels:4,visibleOnly:true,proofSchema:d.schema||1,deductionSignature:primary.signature,showTutorMove:true}
+      ...(proofNarrative?{proofNarrative}:{}),metadata:{coachLevels:4,visibleOnly:true,proofSchema:d.schema||1,deductionSignature:primary.signature,showTutorMove:true,proofNarrative:!!proofNarrative,placementDetailShown:detailed}
     })
   }
   function contradictionText(w){if(!w)return '';const a=contradictionAnalysis(w),count=a?.cluePlacementCount??0;if(!rawTr)return `${lineLabel(w.line)} has no placement compatible with clue ${clueText(w.clues)} and the visible marks. The clue permits ${count} placement${count===1?'':'s'} before visible marks; every one conflicts with at least one visible cell.`;return text('ngContradictionWhy',{line:lineLabel(w.line),clue:clueText(w.clues),count})}
-  function contradictionExplanation(w){const a=contradictionAnalysis(w);if(!a)return null;return freezeDeep({title:techniqueTitle('N_CONTRADICTION'),where:`${lineLabel(w.line)} — ${text('ngClue')} ${clueText(w.clues)}.`,why:contradictionText(w),focus:clone(a.focus),analysis:clone(a)})}
+  function contradictionDetailHtml(a){if(!a||a.cluePlacementCount<1||a.cluePlacementCount>PLACEMENT_DETAIL_LIMIT)return '';return a.rejectedPlacements.map((item,i)=>`${i+1}. ${placementBits(String(item.bits).split('').map(Number))} × ${item.conflicts.map(c=>c.cell?.id||c.index).join(', ')}`).join(' · ')}
+  function contradictionExplanation(w){const a=contradictionAnalysis(w);if(!a)return null;const base=contradictionText(w),detail=contradictionDetailHtml(a);return freezeDeep({title:techniqueTitle('N_CONTRADICTION'),where:`${lineLabel(w.line)} — ${text('ngClue')} ${clueText(w.clues)}.`,why:detail?`${base}<br>${detail}`:base,focus:clone(a.focus),analysis:clone(a),placementDetailShown:!!detail})}
   return Object.freeze({GAME,SOURCE,VERSION,techniqueTitle,focusForDeduction,engineDeduction,signature,whereText,whyText,moveText,explanation,legacyReasoning,presentation,contradictionFocus,contradictionAnalysis,contradictionExplanation,contradictionText,text})
 }
-return Object.freeze({VERSION,GAME,SOURCE,TECHNIQUE_TITLES,createPresenter,focusForDeduction,engineDeduction,signature,contradictionFocus,contradictionAnalysis});
+return Object.freeze({VERSION,GAME,SOURCE,PLACEMENT_DETAIL_LIMIT,TECHNIQUE_TITLES,createPresenter,focusForDeduction,engineDeduction,signature,placementDetailEligible,placementDetailHtml,contradictionFocus,contradictionAnalysis});
 });

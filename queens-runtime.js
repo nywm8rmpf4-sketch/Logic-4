@@ -281,8 +281,22 @@ function queenShowLogicalContradiction(w){
 }
 
 function queenCoachHandleDeduction(d){
-  let presenter=queenReasoningPresenter(),boardKey=historySnapshotKey(),sig=d.id+'|'+d.rank,flow=current.hintFlow,isSame=flow?.kind==='queens-proof'&&flow.boardKey===boardKey&&flow.signature===sig,view=presenter.presentation(d);
-  if(!isSame){current.hintFlow={kind:'queens-proof',boardKey,signature:sig,stage:1,deduction:JSON.parse(JSON.stringify(d))};coachUsage(1,view.technique);queenFocusDeduction(d,false);showHintNotice(`<span class="coach-progress">1/2</span><b>${tr('where')} :</b> ${view.explanation.where}`);saveCurrent();return}
+  let presenter=queenReasoningPresenter(),boardKey=historySnapshotKey(),sig=d.id+'|'+d.rank,flow=current.hintFlow,isSame=flow?.kind==='queens-proof'&&flow.boardKey===boardKey&&flow.signature===sig,view=presenter.presentation(d),sequence=presenter.coachSequence?.(d,view);
+  if(Array.isArray(sequence)&&sequence.length>=4){
+    if(!isSame||flow?.flowVersion!==4){
+      current.hintFlow={kind:'queens-proof',boardKey,signature:sig,stage:1,total:sequence.length,flowVersion:4,whyRecorded:false,revealRecorded:false,deduction:JSON.parse(JSON.stringify(d))};
+      coachUsage(1,view.technique);queenFocusDeduction(d,false);showHintNotice(`<span class="coach-progress">1/${sequence.length}</span>${sequence[0].html}`);saveCurrent();return
+    }
+    let proof=flow.deduction||d,proofView=presenter.presentation(proof),proofSequence=presenter.coachSequence?.(proof,proofView);
+    if(!Array.isArray(proofSequence)||proofSequence.length!==flow.total){current.hintFlow=null;showHintNotice(tr('hintError'));return}
+    let next=Math.min((flow.stage||1)+1,proofSequence.length);flow.stage=next;
+    if(next>=2&&!flow.whyRecorded){coachUsage(2,proofView.technique);flow.whyRecorded=true}
+    if(next===proofSequence.length-1&&!flow.revealRecorded){coachUsage(3,proofView.technique);markHintUsed();updateScoreFlags();flow.revealRecorded=true}
+    if(next<proofSequence.length){queenFocusDeduction(proof,false);showHintNotice(`<span class="coach-progress">${next}/${proofSequence.length}</span>${proofSequence[next-1].html}`);saveCurrent();return}
+    let before=historySnapshotKey();if(!flow.revealRecorded){coachUsage(3,proofView.technique);markHintUsed();updateScoreFlags();flow.revealRecorded=true}queenFocusDeduction(proof,true);let application=queenApplyDeductionToCurrent(proof);if(!application){current.hintFlow=null;showHintNotice(tr('hintError'));return}drawGameUi();historyRecord({type:'COACH_APPLY',reasoning:presenter.legacyReasoning(application.deduction,application.automatic),coachStage:proofSequence.length,coachFlowVersion:4,proofNarrativeSteps:proofView.proofNarrative?.steps?.length||0},before);current.hintFlow=null;
+    showHintNotice(`<span class="coach-progress">${proofSequence.length}/${proofSequence.length}</span>${proofSequence[proofSequence.length-1].html}`);maybeAutoFinish();saveCurrent();haptic(12);return
+  }
+  if(!isSame||flow?.flowVersion===4){current.hintFlow={kind:'queens-proof',boardKey,signature:sig,stage:1,flowVersion:3,deduction:JSON.parse(JSON.stringify(d))};coachUsage(1,view.technique);queenFocusDeduction(d,false);showHintNotice(`<span class="coach-progress">1/2</span><b>${tr('where')} :</b> ${view.explanation.where}`);saveCurrent();return}
   let proof=flow.deduction||d,before=historySnapshotKey();coachUsage(2,view.technique);coachUsage(3,view.technique);markHintUsed();updateScoreFlags();queenFocusDeduction(proof,true);let application=queenApplyDeductionToCurrent(proof);if(!application){current.hintFlow=null;showHintNotice(tr('hintError'));return}drawGameUi();let appliedView=presenter.presentation(application.deduction,application.automatic);historyRecord({type:'COACH_APPLY',reasoning:presenter.legacyReasoning(application.deduction,application.automatic),coachStage:2,coachFlowVersion:3},before);current.hintFlow=null;
   showHintNotice(`<span class="coach-progress">2/2</span><b>${appliedView.explanation.title}</b><br>${appliedView.explanation.why}`);maybeAutoFinish();saveCurrent();haptic(12)
 }
@@ -314,6 +328,19 @@ function justifyQueenAt(r,c,v,deadline){
   return proofResult('unjustified',null,null,[r,c],null)
 }
 
+function queenWalkthroughApplyChanges(state,changes){
+  for(let ch of changes||[]){let cell=ch?.cell;if(!Array.isArray(cell)||cell.length<2)continue;let r=Number(cell[0]),c=Number(cell[1]),value=Number(ch.value);if(Number.isInteger(r)&&Number.isInteger(c)&&state?.[r]&&Number.isInteger(value))state[r][c]=value}
+  return state
+}
+function queenWalkthroughTemporaryCells(baseState,state){
+  let out=[],n=Math.max(baseState?.length||0,state?.length||0);for(let r=0;r<n;r++)for(let c=0;c<Math.max(baseState?.[r]?.length||0,state?.[r]?.length||0);c++)if(baseState?.[r]?.[c]!==state?.[r]?.[c])out.push([r,c]);return out
+}
+function queenWalkthroughStageDeduction(stage,beforeState,stageState,assumptionCell){
+  let focus=JSON.parse(JSON.stringify(stage?.focusDeduction||{}));focus.walkthroughStageKind=stage?.kind||null;focus.walkthroughTemporary=stage?.temporary===true;focus.walkthroughTemporaryCells=stage?.temporary?queenWalkthroughTemporaryCells(beforeState,stageState):[];focus.walkthroughHypothesisCell=stage?.temporary&&Array.isArray(assumptionCell)?[...assumptionCell]:null;return focus
+}
+function queenWalkthroughStagePresentation(presentation,stage){
+  let out=JSON.parse(JSON.stringify(presentation));out.metadata={...(out.metadata||{}),showTutorMove:stage?.kind==='action'};return out
+}
 function walkthroughGenerateQueensNext(){
   let s=walkthroughSession;if(!s||s.base.game!=='queens'||s.done||s.stalled)return false;
   if(!s.queenLogic)s.queenLogic=queenLogicSession(s.work,s.work.state);
@@ -323,11 +350,24 @@ function walkthroughGenerateQueensNext(){
   if(!result.deduction){s.stalled=true;return false}
   let beforeSnapshot=walkthroughSnapshot(s.work),applied=s.queenLogic.applyDeduction(result.deduction),d=applied.deduction;if(!d){s.stalled=true;return false}
   s.work.state=cloneGrid(s.queenLogic.state);
-  let presenter=queenReasoningPresenter(),presentation=presenter.presentation(d,applied.automatic),reasoning=presenter.legacyReasoning(d,applied.automatic),info={
+  let finalSnapshot=walkthroughSnapshot(s.work),presenter=queenReasoningPresenter(),presentation=presenter.presentation(d,applied.automatic),reasoning=presenter.legacyReasoning(d,applied.automatic),tutorSequence=presenter.tutorSequence?.(d,presentation),baseInfo={
     rule:presentation.rule,technique:presentation.technique,rank:presentation.rank,techniqueLevel:presentation.techniqueLevel,target:d.conclusions?.[0]?.cell?[...d.conclusions[0].cell]:null,
-    presentation,deduction:reasoning,where:presentation.explanation.where,why:presentation.explanation.why,move:presentation.explanation.move,automatic:JSON.parse(JSON.stringify(applied.automatic||[])),metrics:s.queenLogic.metrics(),beforeSnapshot
+    automatic:JSON.parse(JSON.stringify(applied.automatic||[])),metrics:s.queenLogic.metrics(),beforeSnapshot,logicalDeduction:reasoning
   };
-  info.snapshot=walkthroughSnapshot(s.work);s.moves.push(info);
+  if(Array.isArray(tutorSequence)&&tutorSequence.length>=5){
+    let visibleState=cloneGrid(beforeSnapshot.state),stageState=cloneGrid(beforeSnapshot.state),assumptionCell=d.explanationData?.assumption?.cell||null;
+    for(let stage of tutorSequence){
+      if(stage.resetToVisible===true)stageState=cloneGrid(visibleState);
+      if(stage.kind!=='action')queenWalkthroughApplyChanges(stageState,stage.stateChanges);
+      let snapshot=stage.kind==='action'?finalSnapshot:{state:cloneGrid(stageState)},focus=queenWalkthroughStageDeduction(stage,visibleState,snapshot.state,assumptionCell),info={...baseInfo,
+        presentation:queenWalkthroughStagePresentation(presentation,stage),deduction:focus,where:stage.where||presentation.explanation.where,why:stage.why||'',move:stage.move||'',snapshot,
+        proofStage:{kind:stage.kind,id:stage.id,evidenceRefs:[...(stage.evidenceRefs||[])],temporary:stage.temporary===true,apply:stage.apply===true}
+      };
+      s.moves.push(info)
+    }
+  }else{
+    let info={...baseInfo,presentation,deduction:reasoning,where:presentation.explanation.where,why:presentation.explanation.why,move:presentation.explanation.move,snapshot:finalSnapshot};s.moves.push(info)
+  }
   if(walkthroughComplete()){s.done=true;s.total=s.moves.length;s.metrics=s.queenLogic.metrics()}
   return true
 }
