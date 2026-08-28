@@ -38,11 +38,9 @@
     function reducedMotionRequested(){return typeof root?.matchMedia==='function'&&root.matchMedia('(prefers-reduced-motion: reduce)').matches}
     function nextFrame(fn){return typeof root?.requestAnimationFrame==='function'?root.requestAnimationFrame(fn):setTimeout(fn,16)}
     function animateLighthouse(cell){
-      if(!cell||reducedMotionRequested())return false;
-      const piece=cell.querySelector?.('.lighthouse-piece');
-      if(!piece)return false;
-      piece.classList.remove('lighthouse-enter');
-      nextFrame(()=>{if(!piece.isConnected)return;void piece.offsetWidth;nextFrame(()=>{if(!piece.isConnected)return;piece.classList.add('lighthouse-enter');piece.addEventListener('animationend',()=>piece.classList.remove('lighthouse-enter'),{once:true})})});
+      if(!cell||reducedMotionRequested()||!cell.querySelector?.('.lighthouse-piece'))return false;
+      cell.classList.remove('lighthouse-cell-enter');
+      nextFrame(()=>{if(!cell.isConnected)return;void cell.offsetWidth;nextFrame(()=>{if(!cell.isConnected)return;cell.classList.add('lighthouse-cell-enter');cell.addEventListener('animationend',()=>cell.classList.remove('lighthouse-cell-enter'),{once:true})})});
       return true
     }
 
